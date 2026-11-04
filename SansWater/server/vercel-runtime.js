@@ -6,24 +6,104 @@ import { openDatabase } from "./database.js";
 import { createCloudStore, createPostgresPool } from "./cloud-store.js";
 import { runtimeConfig } from "./runtime-config.js";
 import { createLoginLimiter } from "./login-limiter.js";
+import { GasPhotoClient } from "./gas-photo-client.js";
+
+const deploymentDefaults = Object.freeze({
+  NODE_ENV: "production",
+  DATA_PROVIDER: "supabase",
+  AUTH_PROVIDER: "local",
+  PHOTO_STORAGE: "gas",
+  SECURE_COOKIE: "true",
+  APP_ORIGIN: "https://sanswater.vercel.app",
+  PHOTO_CACHE_MAX_MB: "96",
+});
+const secretFields = ["DATABASE_URL", "GAS_PHOTO_URL", "GAS_PHOTO_SECRET"];
+
+function configError(fields, message) {
+  return Object.assign(new Error(message), {
+    deploymentCode: "DEPLOYMENT_CONFIG",
+    deploymentFields: fields,
+  });
+}
+
+export function resolveVercelEnvironment(env = process.env) {
+  const resolved = { ...env };
+  for (const [key, fallback] of Object.entries(deploymentDefaults)) {
+    const value = env[key];
+    resolved[key] =
+      typeof value === "string" && value.trim() ? value.trim() : fallback;
+  }
+  // Only known template values fall back to the fixed canonical domain. Never
+  // trust a request Host/Origin header to choose an allowed production origin.
+  if (
+    /^https:\/\/ganti[a-z-]*(?:\.vercel\.app)?\/?$/i.test(resolved.APP_ORIGIN)
+  )
+    resolved.APP_ORIGIN = deploymentDefaults.APP_ORIGIN;
+  for (const key of secretFields)
+    if (typeof resolved[key] === "string") resolved[key] = resolved[key].trim();
+  return resolved;
+}
 
 export function vercelConfig(env = process.env) {
-  runtimeConfig({ ...env, NODE_ENV: "production" });
+  env = resolveVercelEnvironment(env);
+  try {
+    runtimeConfig({ ...env, NODE_ENV: "production" });
+  } catch {
+    throw configError(
+      ["DATA_PROVIDER", "PHOTO_STORAGE", "APP_ORIGIN", "SECURE_COOKIE", "PORT"],
+      "Pengaturan server belum valid. Periksa DATA_PROVIDER, PHOTO_STORAGE, APP_ORIGIN, SECURE_COOKIE dan PORT di Vercel.",
+    );
+  }
   if (env.DATA_PROVIDER !== "supabase" || env.AUTH_PROVIDER !== "local")
-    throw new Error(
+    throw configError(
+      ["DATA_PROVIDER", "AUTH_PROVIDER"],
       "Vercel memerlukan DATA_PROVIDER=supabase dan AUTH_PROVIDER=local.",
     );
-  if (!env.DATABASE_URL || !env.GAS_PHOTO_URL || !env.GAS_PHOTO_SECRET)
-    throw new Error(
-      "Lengkapi konfigurasi database dan foto pada environment server.",
+  const missing = secretFields.filter((key) => !env[key]);
+  if (missing.length)
+    throw configError(
+      missing,
+      "Konfigurasi server belum lengkap. Isi environment Vercel: " +
+        missing.join(", ") +
+        ".",
     );
+  try {
+    const database = new URL(env.DATABASE_URL);
+    if (
+      !["postgres:", "postgresql:"].includes(database.protocol) ||
+      !database.username ||
+      !database.password ||
+      !database.hostname
+    )
+      throw new Error();
+  } catch {
+    throw configError(
+      ["DATABASE_URL"],
+      "DATABASE_URL belum valid. Gunakan URI Transaction pooler dengan kredensial role backend.",
+    );
+  }
+  try {
+    new GasPhotoClient({
+      url: env.GAS_PHOTO_URL,
+      secret: env.GAS_PHOTO_SECRET,
+    });
+  } catch {
+    throw configError(
+      ["GAS_PHOTO_URL", "GAS_PHOTO_SECRET"],
+      "Konfigurasi foto belum valid. Periksa GAS_PHOTO_URL /exec dan GAS_PHOTO_SECRET 64 karakter hex di Vercel.",
+    );
+  }
   if (env.VERCEL_ENV === "preview" && env.ALLOW_PREVIEW_DATABASE !== "true")
-    throw new Error(
+    throw configError(
+      ["ALLOW_PREVIEW_DATABASE"],
       "API Preview dinonaktifkan. Gunakan database uji terpisah sebelum mengaktifkannya.",
     );
   const photoCacheMB = Number(env.PHOTO_CACHE_MAX_MB ?? 96);
   if (!Number.isInteger(photoCacheMB) || photoCacheMB < 0 || photoCacheMB > 128)
-    throw new Error("Cache foto Vercel harus 0–128 MiB.");
+    throw configError(
+      ["PHOTO_CACHE_MAX_MB"],
+      "Cache foto Vercel harus 0–128 MiB.",
+    );
   return { photoCacheMB };
 }
 
@@ -44,7 +124,12 @@ export function lazyRuntime(initialize) {
 }
 
 export async function createVercelRuntime() {
-  const { photoCacheMB } = vercelConfig();
+  const environment = resolveVercelEnvironment();
+  const { photoCacheMB } = vercelConfig(environment);
+  // The application checks origin and secure cookies at request time. Apply
+  // validated defaults there as well, rather than only validating a copy.
+  for (const key of [...Object.keys(deploymentDefaults), ...secretFields])
+    process.env[key] = environment[key];
   const directory = await mkdtemp(join(tmpdir(), "sanswater-"));
   let db, cloud, pool;
   try {
@@ -84,6 +169,8 @@ export async function createVercelRuntime() {
     if (db?.isOpen) db.close();
     await pool?.end();
     await rm(directory, { recursive: true, force: true });
+    if (!error.deploymentCode)
+      error.deploymentCode = cloud ? "APPLICATION_STARTUP" : "DATABASE_STARTUP";
     throw error;
   }
 }
@@ -133,15 +220,28 @@ export function createVercelHandler(
         JSON.stringify({
           error:
             status === 503
-              ? "Server belum dapat dihubungi. Periksa konfigurasi deployment atau coba kembali."
+              ? error.deploymentFields
+                ? error.message
+                : error.deploymentCode === "DATABASE_STARTUP"
+                  ? "Database belum tersambung. Periksa DATABASE_URL di Vercel atau coba kembali."
+                  : "Server belum dapat dihubungi. Periksa konfigurasi deployment atau coba kembali."
               : error.message,
+          ...(status === 503
+            ? {
+                code: error.deploymentCode || "RUNTIME_INIT",
+                ...(error.deploymentFields
+                  ? { fields: error.deploymentFields }
+                  : {}),
+              }
+            : {}),
         }),
       );
       // Never log connection strings, request bodies, tokens, or GAS secrets.
       if (status === 503)
         console.error(
           "SansWater API unavailable",
-          error.code || "RUNTIME_INIT",
+          error.deploymentCode || "RUNTIME_INIT",
+          error.code || error.cause?.code || "NO_DETAIL",
         );
     }
   };

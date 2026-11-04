@@ -24,7 +24,7 @@ Jangan mengisi perintah `npm start` sebagai Build Command. Vercel menjalankan AP
 
 ## 3. Environment Production
 
-Pada Settings → Environment Variables, tambahkan nilai berikut untuk **Production**. Nilai rahasia diambil dari konfigurasi privat yang sudah ada; jangan kirim password melalui chat.
+Pada Settings → Environment Variables, tiga nilai yang wajib diisi untuk **Production** adalah DATABASE_URL, GAS_PHOTO_URL dan GAS_PHOTO_SECRET. Nilai rahasia diambil dari konfigurasi privat yang sudah ada; jangan kirim password melalui chat. Pengaturan nonrahasia di bawah sudah menjadi nilai bawaan kode. Nilai environment yang diisi manual tetap diperiksa, sehingga pengaturan tidak valid perlu dikoreksi.
 
 | Nama | Nilai |
 | --- | --- |
@@ -32,7 +32,7 @@ Pada Settings → Environment Variables, tambahkan nilai berikut untuk **Product
 | AUTH_PROVIDER | `local` |
 | PHOTO_STORAGE | `gas` |
 | SECURE_COOKIE | `true` |
-| APP_ORIGIN | URL utama aplikasi, misalnya `https://nama-project.vercel.app`, tanpa slash akhir |
+| APP_ORIGIN | Bawaan `https://sanswater.vercel.app`; isi hanya jika memakai domain lain, tanpa slash akhir |
 | DATABASE_URL | URI Transaction pooler Supabase dengan role `depot_runtime.PROJECT_REF`, password role tersebut dan port `6543` |
 | GAS_PHOTO_URL | URL deployment GAS `/exec` yang sudah ada |
 | GAS_PHOTO_SECRET | Secret 64 karakter hex yang sama dengan properti GAS |
@@ -48,7 +48,7 @@ postgresql://depot_runtime.ntzvooqqplbnzixmkesh:PASSWORD_ROLE_YANG_SUDAH_ADA@aws
 
 Password harus di-URL-encode jika memiliki karakter khusus. Jangan memakai password akun aplikasi atau password role `postgres` untuk role `depot_runtime`. Jangan mengganti role menjadi admin hanya agar koneksi berhasil. Verifikasi TLS tetap aktif; root CA proyek dan root CA publik untuk pooler ikut disertakan.
 
-APP_ORIGIN harus sama persis dengan alamat yang dibuka pengguna. Bila domain utama berubah, ubah nilai tersebut dan redeploy. Alias/deployment URL lain dapat membuka tampilan, tetapi mutasi ditolak jika origin-nya berbeda. Setelah mengganti environment, lakukan **Redeploy** agar Functions memakai nilai baru.
+APP_ORIGIN harus sama persis dengan alamat yang dibuka pengguna. Kode sudah memakai `https://sanswater.vercel.app` bila nilai ini kosong atau masih berupa placeholder GANTI dari contoh lama. Bila domain utama berubah, ubah nilai tersebut dan redeploy. Alias/deployment URL lain dapat membuka tampilan, tetapi mutasi ditolak jika origin-nya berbeda. Setelah mengganti environment, lakukan **Redeploy** agar Functions memakai nilai baru. Rahasia tetap wajib disimpan di dashboard; mengunggah kode tidak mengisi kredensial tersebut secara otomatis.
 
 ## 4. Supabase
 
@@ -75,6 +75,7 @@ Request dibatasi sekitar 4 MB oleh aplikasi agar berada di bawah batas platform 
 | --- | --- |
 | Tampilan terbuka, API 404 | Root Directory salah, folder `api` belum ikut diunggah, atau `vercel.json` belum digunakan |
 | API 503 dari awal | Periksa environment Production, koneksi pooler, kredensial role backend, GAS URL/secret dan status Supabase |
+| API 503 dengan code DEPLOYMENT_CONFIG | Baca nama variabel pada respons, lalu isi/koreksi di Environment Variables Production dan redeploy; respons tidak menampilkan nilai rahasia |
 | Login 403 asal permintaan | APP_ORIGIN berbeda dari domain yang sedang dibuka |
 | Login 429 | Tunggu jendela pembatasan 15 menit; jangan mereset tabel untuk melewati pembatasan |
 | Foto lambat pertama kali | Cache sementara kosong; Vercel mengambil foto dari GAS dan memverifikasi isinya |

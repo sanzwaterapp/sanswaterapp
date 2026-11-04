@@ -16,11 +16,12 @@ Foto asli tetap di Google Drive. Arsip kode dan snapshot database bukan salinan 
 
 | Pemeriksaan | Hasil |
 | --- | --- |
-| Regresi dan kasus khusus Vercel | 154 tes lulus, 0 gagal. Satu pengujian integrasi sengaja dilewati pada run reguler dan dijalankan terpisah. |
+| Regresi dan kasus khusus Vercel | 156 tes lulus, 0 gagal. Satu pengujian integrasi sengaja dilewati pada run reguler dan dijalankan terpisah. |
 | PostgreSQL melalui adapter Vercel | 16 tes lulus, termasuk dua backend, rebuild cache ketiga, sesi, perubahan bersamaan, replay, putus koneksi dan kegagalan GAS. |
 | Builder resmi @vercel/node 29.0.1 | Bundel runtime `nodejs24.x` berhasil; entry API, modul server, limiter dan sertifikat CA ikut terkemas. Build dilakukan di komputer Windows; bukan uji deployment Linux publik. |
 | Compiler routing resmi Vercel | Enam pola request API beserta query filter berhasil dicocokkan; routing dan header valid. |
 | Bootstrap runtime dengan Supabase nyata | Health HTTP 200, state tanpa sesi HTTP 401, database existing dikenali sehingga setup owner tidak ditawarkan. |
+| Perbaikan startup domain | Dengan hanya tiga kredensial backend, bootstrap berhasil, health HTTP 200, state anonim HTTP 401; domain `https://sanswater.vercel.app` dan Secure cookie diterapkan dari nilai bawaan yang divalidasi. |
 | Pooler IPv4 | Berhasil terhubung melalui port 6543 memakai role backend terbatas, tanpa mematikan verifikasi TLS. |
 | Pembatasan login lintas instance | 10 percobaan diterima untuk pemeriksaan, percobaan ke-11 ditolak dengan 429; setelah jendela berakhir akses pulih. Counter memakai tabel privat terpisah dari revisi bisnis. |
 | Foto GAS dan cache | Satu foto trip terverifikasi: sekitar 4,4 detik dari GAS dan 8 ms dari cache, dengan byte identik. Ini waktu komponen backend pada satu sampel, bukan jaminan waktu klik HP. |
@@ -28,6 +29,8 @@ Foto asli tetap di Google Drive. Arsip kode dan snapshot database bukan salinan 
 | Dependensi | Instalasi dari lockfile berhasil; npm audit tidak melaporkan kerentanan pada pemeriksaan ini. |
 
 Kasus baru yang diuji mencakup bootstrap serentak, pemulihan bootstrap gagal, raw/parsed request body, cookie, validasi origin, idempotensi, routing dan query filter, JSON 413, pesan error platform tanpa membocorkan rahasia, batas ukuran tiga foto, renewal SSE tanpa reload state, dan pembatalan antrean tanpa membiarkan dua request masuk ke satu scope SQLite. Setup owner lewat API publik juga ditolak, termasuk ketika proxy internal memakai alamat loopback.
+
+Perbaikan setelah deployment pertama menambahkan nilai bawaan nonrahasia untuk domain, provider dan Secure cookie. APP_ORIGIN kosong atau placeholder GANTI dari contoh lama memakai domain tetap yang sudah ditentukan; request Host/Origin tidak dipakai untuk memilih domain yang diizinkan. Environment yang secara eksplisit melemahkan HTTPS/cookie tetap ditolak. Kredensial tetap hanya di dashboard Vercel. Error startup kini membedakan konfigurasi tidak lengkap dari kegagalan koneksi database, tanpa menampilkan nilai rahasia.
 
 Tes menggunakan data terpisah dalam schema `depot_integration`. Schema uji dihapus setelah tes. Data bisnis utama tidak ditambah/dihapus oleh tes. Tambahan permanen pada Supabase hanya `depot_private.login_limits` beserta index, RLS dan izin backend yang diperlukan.
 

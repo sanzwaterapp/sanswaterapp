@@ -21,7 +21,7 @@ Mulai dari **[DEPLOY-VERCEL.md](DEPLOY-VERCEL.md)**. Hasil pemeriksaan, arsitekt
 1. Unggah isi folder ini ke GitHub. Jangan unggah folder backup atau file konfigurasi privat.
 2. Import repository ke Vercel. Jika folder `SansWater` ikut berada di dalam repository, pilih Root Directory `SansWater`; jika isinya berada langsung di akar repository, pilih `./`.
 3. Framework **Vite**, Node **24.x**, Install **npm ci**, Build **npm run build**, Output **dist**. API ditangani Functions; jangan mengisi Start Command `npm start` pada Vercel.
-4. Isi environment **Production** sesuai contoh. Gunakan **Transaction pooler** Supabase, port **6543**, dengan role backend terbatas. Isi APP_ORIGIN dengan URL HTTPS aplikasi tanpa slash akhir. Foto memakai URL dan secret GAS yang sama dengan sebelumnya.
+4. Isi tiga environment rahasia **Production**: DATABASE_URL, GAS_PHOTO_URL dan GAS_PHOTO_SECRET. Gunakan **Transaction pooler** Supabase, port **6543**, dengan role backend terbatas. Domain bawaan sudah `https://sanswater.vercel.app`; pengaturan nonrahasia lain tersedia otomatis. APP_ORIGIN dapat diisi jika memakai domain lain, tanpa slash akhir. Foto memakai URL dan secret GAS yang sama dengan sebelumnya.
 5. Pada proyek Supabase depot yang sudah disiapkan, `setup.sql` telah diterapkan. Untuk pemulihan ke proyek lain yang sudah memiliki schema bisnis, jalankan SQL itu sekali melalui akun admin.
 6. Deploy, periksa `/api/health`, lalu login dan uji dua perangkat pada alamat HTTPS aplikasi.
 

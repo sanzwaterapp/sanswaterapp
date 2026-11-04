@@ -1,0 +1,718 @@
+/* The ring shares an origin across the app bar and the page header below it. */
+.auth.rv-auth-screen {
+  box-sizing: border-box;
+  max-width: 420px;
+  padding: 32px 24px 24px;
+  gap: 0;
+}
+.rv-auth-screen .auth-brand {
+  width: 60px;
+  height: 60px;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px #4336ff1c;
+  margin-bottom: 15px;
+}
+.rv-auth-screen .auth-brand .sanz-brand-mark {
+  width: 42px;
+  height: 42px;
+}
+.rv-auth-screen .sanz-wordmark {
+  font-size: 23px;
+}
+.rv-auth-screen h1 {
+  margin: 22px 0 6px;
+  font-size: 25px;
+  letter-spacing: -0.7px;
+}
+.rv-auth-screen > p {
+  margin: 0 0 24px;
+  font-size: 12px;
+  color: #8a7c9e;
+}
+.rv-auth-screen .rv-auth-form {
+  box-sizing: border-box;
+  display: grid;
+  gap: 16px;
+  padding: 23px;
+  margin: 0;
+  background: #ffffffd9;
+  border: 1px solid #e5dff2;
+  border-radius: 22px;
+  box-shadow: 0 12px 34px #43316c08;
+}
+.rv-auth-form .rv-field {
+  gap: 7px;
+  color: #74658a;
+  font-size: 12px;
+}
+.rv-auth-form .rv-field input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 12px;
+  border: 1px solid #e3ddef;
+  border-radius: 11px;
+  background: #faf8ff;
+  color: #253752;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+.rv-auth-form .rv-field input:focus {
+  border-color: #8477ff;
+  box-shadow: 0 0 0 3px #7566ff12;
+}
+.rv-auth-form .rv-primary {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 11px;
+  margin-top: 2px;
+}
+.rv-auth-form .rv-primary:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.rv-auth-screen .auth-foot {
+  margin-top: 22px;
+  max-width: 280px;
+  line-height: 1.6;
+}
+.rv-auth-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 12px;
+  border: 1px solid #f0dce1;
+  border-radius: 11px;
+  background: #fff5f7;
+  color: #a85068;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.rv-auth-alert > svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+.rv-auth-alert > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.rv-auth-alert strong {
+  font-size: 12px;
+  font-weight: 700;
+  color: #98465c;
+}
+#depot-order-payment-review .rv-selected-compact .rv-selected-with-discount {
+  grid-template-columns: minmax(0, 1fr) 58px;
+  gap: 6px;
+  padding: 8px;
+}
+#depot-order-payment-review .rv-selected-compact .rv-selected-line {
+  grid-template-columns: minmax(0, 1fr) auto 64px;
+  gap: 6px;
+  min-height: 32px;
+}
+#depot-order-payment-review
+  .rv-selected-compact
+  .rv-selected-line
+  > span:first-child {
+  min-width: 0;
+}
+#depot-order-payment-review
+  .rv-selected-compact
+  .rv-selected-line
+  > span:first-child
+  strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+#depot-order-payment-review .rv-selected-compact .rv-quantity-control,
+#depot-order-payment-review .rv-selected-compact .rv-selected-quantity {
+  grid-column: 2;
+  grid-row: 1;
+}
+#depot-order-payment-review .rv-selected-compact .rv-selected-subtotal {
+  grid-column: 3;
+  grid-row: 1;
+  font-size: 11px;
+}
+#depot-order-payment-review .rv-selected-compact .rv-quantity-control {
+  gap: 3px;
+}
+#depot-order-payment-review .rv-selected-compact .rv-quantity-control button {
+  width: 25px;
+  height: 32px;
+  min-height: 32px;
+}
+#depot-order-payment-review .rv-selected-compact .rv-quantity-control strong {
+  min-width: 14px;
+  font-size: 11px;
+}
+#depot-order-payment-review .rv-selected-compact .rv-selected-discount {
+  min-width: 0;
+}
+#depot-order-payment-review .rv-selected-compact .rv-selected-discount > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+#depot-order-payment-review .rv-selected-compact .rv-selected-discount input {
+  padding: 5px 6px;
+  min-height: 32px;
+}
+#depot-order-payment-review .rv-selected-column-labels {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 70px 64px 58px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  font-size: 10px;
+  color: #9884ab;
+}
+#depot-order-payment-review .rv-selected-column-labels > span:nth-child(2) {
+  text-align: center;
+}
+#depot-order-payment-review .rv-selected-column-labels > span:nth-child(n + 3) {
+  text-align: right;
+}
+#depot-order-payment-review
+  .rv-phone
+  :is(.rv-reports-header, .rv-orders-header)
+  .rv-period-controls {
+  margin-top: 14px;
+}
+#depot-order-payment-review
+  .rv-phone
+  :is(.rv-reports-header, .rv-orders-header)
+  .rv-period-buttons
+  button {
+  background: #ffffff20;
+  color: #eeeaff;
+  min-height: 31px;
+}
+#depot-order-payment-review
+  .rv-phone
+  :is(.rv-reports-header, .rv-orders-header)
+  .rv-period-buttons
+  button[aria-pressed="true"] {
+  background: #fff;
+  color: #4638f5;
+  box-shadow: 0 3px 8px #21129c14;
+}
+#depot-order-payment-review
+  .rv-phone
+  :is(.rv-reports-header, .rv-orders-header)
+  .rv-period-range-label {
+  color: #f0ebff;
+}
+#depot-order-payment-review .rv-phone .rv-new-customer .rv-new-order-payment {
+  padding: 12px 0 0;
+  margin-top: 3px;
+  border: 0;
+  border-top: 1px solid #8881c538;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.rv-sync-status {
+  padding: 9px 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #84683c;
+  background: #fff5e5;
+  border-bottom: 1px solid #f1e3ca;
+}
+#depot-order-payment-review .rv-phone .rv-app-bar {
+  background-color: #4337ff;
+  background-image:
+    radial-gradient(
+      circle at calc(100% - 12px) 36px,
+      transparent 72px,
+      #ffffff09 73px 101px,
+      transparent 102px
+    ),
+    linear-gradient(90deg, #3931f2, #5544ff);
+}
+#depot-order-payment-review .rv-phone .rv-header,
+#depot-order-payment-review .rv-phone #rv-home .rv-home-hero {
+  background-color: #4337ff;
+  background-image:
+    radial-gradient(
+      circle at calc(100% - 12px) -16px,
+      transparent 72px,
+      #ffffff09 73px 101px,
+      transparent 102px
+    ),
+    linear-gradient(90deg, #3931f2, #5544ff);
+}
+#depot-order-payment-review .rv-phone.rv-departure-screen .rv-header {
+  background-image:
+    radial-gradient(
+      circle at calc(100% - 12px) 36px,
+      transparent 72px,
+      #ffffff09 73px 101px,
+      transparent 102px
+    ),
+    linear-gradient(90deg, #3931f2, #5544ff);
+}
+#depot-order-payment-review .rv-phone #rv-home .rv-home-funds {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin: 13px 0 0;
+  padding: 11px 0 0;
+  border-top: 1px solid #ffffff22;
+}
+#depot-order-payment-review .rv-phone #rv-home .rv-home-funds > div {
+  min-width: 0;
+  padding: 0;
+  text-align: center;
+  border-left: 1px solid #ffffff26;
+}
+#depot-order-payment-review
+  .rv-phone
+  #rv-home
+  .rv-home-funds
+  > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+#depot-order-payment-review .rv-phone #rv-home .rv-home-funds dt {
+  font-size: 11px;
+  color: #e2dcff;
+  line-height: 1.5;
+}
+#depot-order-payment-review .rv-phone #rv-home .rv-home-funds dd {
+  margin: 3px 0 0;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.2px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-toolbar {
+  padding: 9px 12px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-toolbar > .rv-icon-button {
+  margin-left: auto;
+}
+#depot-order-payment-review .rv-phone .rv-statement-download {
+  padding: 9px 11px;
+  font-size: 12px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-bills {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+#depot-order-payment-review .rv-phone .rv-statement-bill {
+  position: relative;
+  display: block;
+  padding: 13px 0 13px 14px;
+  border-bottom: 1px solid #efecf7;
+}
+#depot-order-payment-review .rv-phone .rv-statement-bill::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 21px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #a394e5;
+}
+#depot-order-payment-review .rv-phone .rv-statement-bill:first-child::before {
+  top: 8px;
+}
+#depot-order-payment-review .rv-side-menu-heading h2 > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  padding: 4px 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+#depot-order-payment-review .rv-side-menu-heading h2 > button:focus-visible {
+  outline: 2px solid #b5a6f4;
+  outline-offset: 4px;
+  border-radius: 5px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-bill:first-child {
+  padding-top: 0;
+}
+#depot-order-payment-review .rv-phone .rv-statement-bill:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+#depot-order-payment-review .rv-phone .rv-statement-bill-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 5px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-bill-main time {
+  font-size: 13px;
+  font-weight: 600;
+  color: #43365e;
+}
+#depot-order-payment-review .rv-phone .rv-statement-bill-main strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: #5742ce;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+#depot-order-payment-review .rv-phone .rv-statement-bill > p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+#depot-order-payment-review .rv-phone .rv-statement-product-line {
+  color: #75668b;
+}
+#depot-order-payment-review .rv-phone .rv-statement-meta-line {
+  color: #7d6b8e;
+}
+#depot-order-payment-review .rv-phone .rv-statement-paid-line {
+  color: #467a6f;
+}
+
+/* Trip rows keep editing and payment as separate actions. */
+#depot-order-payment-review .rv-phone .rv-trip-content {
+  padding: 0 12px;
+}
+#depot-order-payment-review .rv-phone .rv-trip-entry {
+  padding: 7px 0;
+}
+#depot-order-payment-review .rv-phone .rv-trip-entry > .rv-trip-order {
+  min-height: 0;
+  padding: 0;
+  gap: 8px;
+}
+#depot-order-payment-review .rv-phone .rv-trip-order > span:first-child {
+  min-width: 0;
+}
+#depot-order-payment-review .rv-phone .rv-trip-order .rv-identity {
+  max-width: 100%;
+  width: fit-content;
+  font-size: 12px;
+  padding: 4px 7px;
+}
+#depot-order-payment-review .rv-phone .rv-trip-product-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  margin-top: 2px;
+}
+#depot-order-payment-review .rv-phone .rv-trip-detail-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 3px;
+}
+#depot-order-payment-review
+  .rv-phone
+  .rv-trip-detail-line
+  > .rv-trip-product-summary {
+  min-width: 0;
+  margin-top: 0;
+}
+#depot-order-payment-review .rv-phone .rv-trip-detail-line > .rv-trip-progress {
+  flex-shrink: 0;
+  margin: 0;
+}
+#depot-order-payment-review .rv-phone .rv-trip-product-summary > .rv-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+#depot-order-payment-review .rv-phone .rv-trip-product-summary .rv-trip-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  min-height: 28px;
+  font-size: 11px;
+  color: var(--ui-accent);
+  white-space: nowrap;
+}
+#depot-order-payment-review .rv-phone .rv-trip-order > .rv-trip-right {
+  flex: 0 0 auto;
+  gap: 3px;
+}
+#depot-order-payment-review .rv-phone .rv-trip-right > strong {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+#depot-order-payment-review .rv-phone .rv-trip-progress {
+  padding: 0;
+  margin-top: 2px;
+}
+#depot-order-payment-review .rv-phone .rv-trip-progress > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 5px 8px;
+  font-size: 11px;
+}
+#depot-order-payment-review .rv-phone .rv-trip-progress > .rv-trip-record {
+  border: 1px solid var(--ui-line);
+  border-radius: 8px;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent);
+  font-weight: 700;
+}
+#depot-order-payment-review .rv-phone .rv-trip-entry > .rv-order-revision {
+  margin: 4px 0;
+  padding: 5px 7px;
+}
+#depot-order-payment-review .rv-phone .rv-trip-history-entry .rv-history-row {
+  min-height: 0;
+  padding: 8px 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+#depot-order-payment-review
+  .rv-phone
+  .rv-trip-history-entry:first-child
+  .rv-history-row {
+  border-top: 0;
+}
+#depot-order-payment-review
+  .rv-phone
+  .rv-trip-history-entry
+  .rv-handover-history {
+  margin-top: 1px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+#depot-order-payment-review .rv-phone .rv-trip-history-entry .rv-complete {
+  padding: 4px 7px;
+  font-size: 11px;
+}
+#depot-order-payment-review .rv-phone .rv-trip-entry > .rv-inline-panel {
+  margin: 7px 0 0;
+  padding: 10px;
+  border: 1px solid var(--ui-line);
+  border-radius: 14px;
+  background: var(--ui-surface);
+  box-shadow: 0 4px 14px #30266d08;
+}
+#depot-order-payment-review .rv-phone .rv-trip-entry > .rv-trip-payment-panel {
+  padding: 0;
+  overflow: hidden;
+}
+#depot-order-payment-review .rv-phone .rv-trip-entry > .rv-trip-edit-panel {
+  padding: 0;
+  overflow: hidden;
+}
+#depot-order-payment-review
+  .rv-phone
+  .rv-trip-edit-panel
+  .rv-order-quantity-editor {
+  padding: 12px;
+  border: 0;
+  border-radius: 0;
+  background: var(--ui-surface);
+}
+#depot-order-payment-review
+  .rv-phone
+  .rv-order-quantity-editor
+  > .rv-section-heading {
+  margin: -12px -12px 4px;
+  padding: 10px 12px;
+  background: linear-gradient(110deg, #4337ff, #6151ff);
+  color: #fff;
+}
+#depot-order-payment-review
+  .rv-phone
+  .rv-order-quantity-editor
+  > .rv-section-heading
+  h3 {
+  color: #fff;
+  font-size: 12px;
+}
+#depot-order-payment-review
+  .rv-phone
+  .rv-order-quantity-editor
+  > .rv-section-heading
+  .rv-icon-button {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  background: #ffffff1f;
+  color: #fff;
+}
+#depot-order-payment-review .rv-phone .rv-trip-checkout {
+  gap: 0;
+  background: var(--ui-accent-soft);
+  background: color-mix(in srgb, #6985ff 20%, var(--ui-surface));
+}
+#depot-order-payment-review .rv-phone .rv-trip-checkout > .rv-inline-heading {
+  gap: 8px;
+  padding: 9px 12px;
+  background: linear-gradient(110deg, #4337ff, #6151ff);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+#depot-order-payment-review .rv-phone .rv-trip-payment-total {
+  margin-left: auto;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+#depot-order-payment-review
+  .rv-phone
+  .rv-trip-checkout
+  > .rv-inline-heading
+  .rv-icon-button {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  background: #ffffff1f;
+  color: #fff;
+}
+#depot-order-payment-review .rv-phone .rv-trip-checkout .rv-payment-card {
+  padding: 12px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  gap: 10px;
+}
+#depot-order-payment-review
+  .rv-phone
+  .rv-trip-checkout
+  .rv-field
+  :is(input, select) {
+  min-height: 40px;
+  padding: 9px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--ui-line);
+  background: var(--ui-input);
+  color: var(--ui-ink);
+  font-size: 13px;
+}
+#depot-order-payment-review .rv-phone .rv-trip-checkout .rv-payment-balance {
+  padding: 9px 10px;
+  border-radius: 9px;
+}
+#depot-order-payment-review .rv-phone .rv-trip-adjustment-fields {
+  padding: 0;
+  align-items: start;
+}
+#depot-order-payment-review .rv-phone .rv-trip-adjustment-fields > .rv-note {
+  grid-column: 1 / -1;
+}
+#depot-order-payment-review .rv-phone .rv-trip-history-entry .rv-identity {
+  max-width: 100%;
+  width: fit-content;
+  font-size: 12px;
+  padding: 4px 7px;
+}
+#depot-order-payment-review
+  .rv-phone
+  .rv-trip-history-entry
+  .rv-history-row
+  > span:first-child {
+  min-width: 0;
+}
+#depot-order-payment-review .rv-phone .rv-trip-checkout .rv-primary {
+  min-height: 40px;
+  font-size: 12px;
+  border-radius: 10px;
+}
+#depot-order-payment-review .rv-phone .rv-trip-checkout .rv-outcome-chips {
+  padding: 0 12px 10px;
+  justify-content: flex-end;
+  gap: 6px;
+}
+#depot-order-payment-review .rv-phone .rv-trip-checkout .rv-outcome-chip {
+  min-height: 30px;
+  padding: 5px 12px;
+  font-size: 11px;
+}
+#depot-order-payment-review
+  .rv-phone
+  .rv-trip-checkout
+  > .rv-stack:not(.rv-payment-card) {
+  padding: 0 12px 12px;
+}
+#depot-order-payment-review .rv-phone .rv-trip-checkout .rv-extra > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 0;
+  list-style: none;
+  font-size: 11px;
+  color: var(--ui-muted);
+  cursor: pointer;
+}
+#depot-order-payment-review
+  .rv-phone
+  .rv-trip-checkout
+  .rv-extra
+  > summary::-webkit-details-marker {
+  display: none;
+}
+#depot-order-payment-review
+  .rv-phone
+  .rv-trip-checkout
+  .rv-extra
+  > summary:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+  border-radius: 5px;
+}
+@media (pointer: coarse) {
+  #depot-order-payment-review
+    .rv-phone
+    .rv-trip-checkout
+    .rv-field
+    :is(input, select) {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  #depot-order-payment-review .rv-phone .rv-trip-checkout .rv-primary {
+    min-height: 44px;
+  }
+}
+
+#depot-order-payment-review .rv-phone .rv-orders-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0 8px;
+}
+#depot-order-payment-review .rv-phone .rv-orders-pagination > span {
+  font-size: 11px;
+  color: var(--ui-muted);
+  white-space: nowrap;
+}
+#depot-order-payment-review .rv-phone .rv-orders-pagination > button {
+  min-height: 36px;
+  padding: 8px 10px;
+  font-size: 11px;
+}

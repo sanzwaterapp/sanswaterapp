@@ -1,0 +1,576 @@
+#depot-order-payment-review .rv-phone button.rv-app-user {
+  color: white;
+  background: transparent;
+  border: 0;
+  padding: 6px 0 6px 6px;
+  cursor: pointer;
+  font: inherit;
+}
+#depot-order-payment-review .rv-phone .rv-overlay-dialog {
+  box-sizing: border-box;
+  color: #182b4c;
+  font-family: inherit;
+  border: 0;
+  padding: 0;
+  width: min(410px, calc(100vw - 24px));
+  max-width: none;
+  max-height: calc(100dvh - 36px);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 18px 70px #1d186955;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.rv-overlay-dialog::backdrop {
+  background: #17164f70;
+  backdrop-filter: blur(3px);
+}
+#depot-order-payment-review .rv-phone .rv-statement-download {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #5141dc;
+  background: #e3ddff;
+  border: 0;
+  padding: 8px;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#depot-order-payment-review .rv-phone .rv-statement-download:disabled {
+  opacity: 0.5;
+}
+#depot-order-payment-review .rv-phone .rv-statement-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #efecff;
+}
+#depot-order-payment-review .rv-phone .rv-statement-save-error {
+  padding: 0 15px;
+  color: #b44d68;
+  font-size: 12px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-export-ready {
+  font-size: 11px;
+  padding: 8px 15px;
+  background: #efecff;
+  color: #746397;
+}
+#depot-order-payment-review .rv-phone .rv-statement-export-ready a {
+  color: #4b3bea;
+  font-weight: 700;
+  margin-left: 5px;
+}
+#depot-order-payment-review .rv-phone .rv-account-menu {
+  position: fixed;
+  inset: auto;
+  width: min(270px, calc(100vw - 24px));
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #e2dcf5;
+  border-radius: 16px;
+  box-sizing: border-box;
+  background: #fff;
+  color: #182b4c;
+  font-family: inherit;
+  box-shadow: 0 10px 35px #3224772b;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+#depot-order-payment-review .rv-phone .rv-account-menu:not([data-view="menu"]) {
+  width: min(310px, calc(100vw - 24px));
+}
+.rv-account-menu::backdrop {
+  background: transparent;
+}
+#depot-order-payment-review .rv-phone .rv-account-heading {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  background: #f0efff;
+  border-bottom: 1px solid #e0ddfa;
+}
+#depot-order-payment-review .rv-phone .rv-account-heading > span {
+  flex: 1;
+  min-width: 0;
+}
+#depot-order-payment-review .rv-phone .rv-account-heading h2 {
+  font-size: 15px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+#depot-order-payment-review .rv-phone .rv-account-heading small {
+  color: #756d9c;
+  font-size: 10px;
+}
+#depot-order-payment-review .rv-phone .rv-account-content {
+  padding: 10px;
+}
+#depot-order-payment-review .rv-phone .rv-account-options {
+  display: grid;
+  gap: 5px;
+}
+#depot-order-payment-review .rv-phone .rv-account-options > button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f5f4ff;
+  border: 1px solid #e9e5ff;
+  border-radius: 10px;
+  padding: 10px;
+  color: #4941e8;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+#depot-order-payment-review .rv-phone .rv-account-options > button > span {
+  flex: 1;
+}
+#depot-order-payment-review .rv-phone .rv-account-logout {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  color: #bd4d68;
+  font: inherit;
+  background: #fff3f5;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px;
+  margin-top: 8px;
+  cursor: pointer;
+}
+.rv-app-loading.auth {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 24px;
+  box-sizing: border-box;
+}
+.rv-app-loading .rv-loading-logo {
+  width: 76px;
+  height: 76px;
+  border-radius: 25px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: #4436ff;
+  box-shadow: 0 12px 35px #4436ff20;
+}
+.rv-app-loading .rv-loading-logo svg {
+  width: 52px;
+  height: 52px;
+}
+.rv-app-loading.auth h1 {
+  font-size: 26px;
+  color: #4436ff;
+  letter-spacing: -0.7px;
+  margin: 18px 0 8px;
+}
+.rv-app-loading.auth > p {
+  margin: 0;
+  font-size: 13px;
+  color: #9483b5;
+}
+.rv-app-loading.auth .rv-error:empty {
+  display: none;
+}
+#depot-order-payment-review .rv-phone .rv-account-success {
+  color: #19856b;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+}
+#depot-order-payment-review .rv-phone .rv-account-attendance {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: #f5f3ff;
+  border-radius: 12px;
+  padding: 12px;
+  color: #7a70ab;
+}
+#depot-order-payment-review .rv-phone .rv-account-attendance.is-present {
+  color: #1f806b;
+  background: #eaf8f2;
+}
+#depot-order-payment-review .rv-phone .rv-account-attendance span {
+  display: grid;
+  gap: 3px;
+}
+#depot-order-payment-review .rv-phone .rv-account-attendance strong {
+  font-size: 14px;
+}
+#depot-order-payment-review .rv-phone .rv-account-attendance small {
+  font-size: 12px;
+}
+#depot-order-payment-review .rv-phone .rv-account-log-title {
+  font-size: 14px;
+  margin: 6px 0 0;
+}
+#depot-order-payment-review .rv-phone .rv-account-attendance-log > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 0;
+  border-bottom: 1px solid #eeebf7;
+  font-size: 14px;
+}
+#depot-order-payment-review .rv-phone .rv-account-attendance-log small {
+  margin-left: 9px;
+  color: #8c81ae;
+}
+#depot-order-payment-review .rv-phone .rv-staff-owner-wrapper {
+  padding: 0;
+  overflow: hidden;
+}
+#depot-order-payment-review .rv-phone .rv-owner-edit-toggle {
+  width: 100%;
+  border: 0;
+  background: #f3f0ff;
+  text-align: left;
+  font: inherit;
+  padding: 15px;
+  cursor: pointer;
+}
+#depot-order-payment-review .rv-phone .rv-statement-open {
+  flex-shrink: 0;
+  font-size: 11px;
+  gap: 5px;
+  padding: 9px;
+  white-space: nowrap;
+}
+#depot-order-payment-review .rv-phone .rv-heading:has(.rv-statement-open) {
+  gap: 8px;
+}
+#depot-order-payment-review .rv-phone .rv-heading:has(.rv-statement-open) h2 {
+  min-width: 0;
+  flex-wrap: wrap;
+  font-size: 22px;
+}
+#depot-order-payment-review .rv-phone .rv-debt-statement-dialog {
+  margin: auto;
+  background: #eeebff;
+  border-radius: 18px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px 8px 15px;
+  gap: 8px;
+  color: #746b9b;
+}
+#depot-order-payment-review .rv-phone .rv-statement-toolbar > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-loading {
+  padding: 25px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-paper {
+  background: white;
+  overflow: hidden;
+}
+#depot-order-payment-review .rv-phone .rv-statement-hero {
+  color: #fff;
+  background: linear-gradient(125deg, #3430ec, #5141ff 70%, #7063ff);
+  padding: 22px 22px 24px;
+  position: relative;
+  overflow: hidden;
+}
+#depot-order-payment-review .rv-phone .rv-statement-hero::after {
+  content: "";
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  border: 28px solid #ffffff0a;
+  border-radius: 50%;
+  right: -65px;
+  top: -60px;
+  pointer-events: none;
+}
+#depot-order-payment-review .rv-phone .rv-statement-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-brand svg {
+  width: 32px;
+  height: 37px;
+  color: white;
+}
+#depot-order-payment-review .rv-phone .rv-statement-brand > span {
+  display: grid;
+  gap: 2px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-brand strong {
+  font-size: 19px;
+  letter-spacing: -0.4px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-brand small {
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: #e0dcff;
+}
+#depot-order-payment-review .rv-phone .rv-statement-heading {
+  margin-top: 26px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-heading > span {
+  color: #d5ceff;
+  font-size: 9px;
+  letter-spacing: 1.7px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-heading h2 {
+  font-size: 29px;
+  letter-spacing: -0.9px;
+  margin: 5px 0 0;
+  line-height: 1.1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-heading h2 span {
+  background: #ffffff22;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+  border: 1px solid #ffffff30;
+  padding: 7px 9px;
+  border-radius: 30px;
+  white-space: nowrap;
+}
+#depot-order-payment-review .rv-phone .rv-statement-content {
+  padding: 20px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-recipient {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-recipient > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+#depot-order-payment-review .rv-phone .rv-statement-recipient small {
+  color: #938ba9;
+  letter-spacing: 1px;
+  font-size: 9px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-recipient strong {
+  font-size: 19px;
+  overflow-wrap: anywhere;
+}
+#depot-order-payment-review .rv-phone .rv-statement-recipient span {
+  color: #8a7da6;
+  font-size: 12px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-issued {
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 12px;
+  align-content: start;
+}
+#depot-order-payment-review .rv-phone .rv-statement-total {
+  margin: 18px 0 22px;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: #f0edff;
+  border: 1px solid #e7e0ff;
+  border-radius: 14px;
+  color: #5140c6;
+}
+#depot-order-payment-review .rv-phone .rv-statement-total > span {
+  font-size: 12px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-total small {
+  display: block;
+  margin-top: 4px;
+  color: #9384b7;
+  font-size: 10px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-total > strong {
+  font-size: clamp(19px, 6vw, 25px);
+  letter-spacing: -0.8px;
+}
+
+#depot-order-payment-review .rv-phone .rv-statement-bills {
+  border: 1px solid #e9e5f4;
+  border-radius: 12px;
+  overflow: hidden;
+}
+#depot-order-payment-review .rv-phone .rv-statement-bill {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 13px 14px;
+  border-bottom: 1px solid #eeebf7;
+  break-inside: avoid;
+}
+#depot-order-payment-review .rv-phone .rv-statement-bill:last-child {
+  border-bottom: 0;
+}
+#depot-order-payment-review .rv-phone .rv-statement-bill-copy {
+  min-width: 0;
+}
+#depot-order-payment-review .rv-phone .rv-statement-bill-date {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 5px;
+  color: #74649a;
+  font-size: 11px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-bill-date time {
+  font-weight: 600;
+}
+#depot-order-payment-review .rv-phone .rv-statement-number {
+  color: #b1a4c9;
+  font-size: 9px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-items > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: 11px;
+  line-height: 1.6;
+}
+#depot-order-payment-review .rv-phone .rv-statement-items strong {
+  font-weight: 500;
+}
+#depot-order-payment-review .rv-phone .rv-statement-items small {
+  color: #9287aa;
+  font-size: 10px;
+}
+#depot-order-payment-review
+  .rv-phone
+  .rv-statement-items
+  > div
+  > span:last-child:not(:first-child) {
+  color: #887a9f;
+  font-size: 10px;
+  white-space: nowrap;
+}
+#depot-order-payment-review .rv-phone .rv-statement-adjustment,
+#depot-order-payment-review .rv-phone .rv-statement-payment,
+#depot-order-payment-review .rv-phone .rv-statement-payment-detail {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  padding-top: 4px;
+  font-size: 9px;
+  line-height: 1.5;
+  color: #9589aa;
+}
+#depot-order-payment-review .rv-phone .rv-statement-payment,
+#depot-order-payment-review .rv-phone .rv-statement-payment-detail {
+  color: #388d7b;
+}
+#depot-order-payment-review .rv-phone .rv-statement-balance {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  color: #5242bd;
+  white-space: nowrap;
+}
+#depot-order-payment-review .rv-phone .rv-statement-balance strong {
+  font-size: 14px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-balance > span {
+  font-size: 9px;
+  color: #9a8bb5;
+}
+#depot-order-payment-review .rv-phone .rv-statement-footer {
+  margin-top: 22px;
+  padding-top: 14px;
+  text-align: center;
+  border-top: 1px solid #f0edf8;
+  color: #a397bb;
+}
+#depot-order-payment-review .rv-phone .rv-statement-footer svg {
+  display: block;
+  width: 22px;
+  height: 24px;
+  margin: 0 auto 6px;
+  color: #b4a8ff;
+  --sanz-mark-wave: white;
+}
+#depot-order-payment-review .rv-phone .rv-statement-footer strong {
+  display: block;
+  font-size: 11px;
+  color: #82729f;
+  font-weight: 500;
+}
+#depot-order-payment-review .rv-phone .rv-statement-footer-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-footer-brand svg {
+  margin: 0;
+  width: 26px;
+  height: 30px;
+  color: #9180ee;
+}
+#depot-order-payment-review .rv-phone .rv-statement-footer-brand > span {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+#depot-order-payment-review .rv-phone .rv-statement-footer-brand b {
+  color: #8977cb;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+#depot-order-payment-review .rv-phone .rv-statement-footer-brand small {
+  font-size: 6px;
+  letter-spacing: 1.2px;
+  color: #a293c4;
+}
+#depot-order-payment-review .rv-phone .rv-statement-footer > span {
+  display: block;
+  margin-top: 5px;
+  font-size: 9px;
+  line-height: 1.7;
+}
+#depot-order-payment-review .rv-phone .rv-statement-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: #27866c;
+  font-size: 13px;
+  padding: 15px 0;
+}
+@media (max-width: 359px) {
+  #depot-order-payment-review .rv-phone .rv-statement-content {
+    padding: 15px;
+  }
+  #depot-order-payment-review .rv-phone .rv-statement-total {
+    flex-wrap: wrap;
+  }
+}

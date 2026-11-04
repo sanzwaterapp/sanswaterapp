@@ -1,0 +1,637 @@
+
+#depot-order-payment-review .rv-stage{padding:18px 10px;margin-top:10px}
+#depot-order-payment-review .rv-phone{--rv-brand:#3d3bff;--rv-ink:#2b2640;--rv-muted:#786c88;--rv-bg:#f3f1fb;--rv-card:#fff;--rv-shadow:0 5px 15px #35286e13,0 1px 3px #35286e08;max-width:410px;width:100%;margin:auto;border-radius:25px;overflow:hidden;background:var(--rv-bg);color:var(--rv-ink);font:13px/1.45 'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;letter-spacing:-.15px;box-shadow:0 14px 40px #30256d1c;-webkit-font-smoothing:antialiased;color-scheme:light}
+#depot-order-payment-review .rv-phone *{box-sizing:border-box;min-width:0}
+#depot-order-payment-review .rv-phone [hidden]{display:none!important}
+#depot-order-payment-review .rv-phone button,#depot-order-payment-review .rv-phone input,#depot-order-payment-review .rv-phone select,#depot-order-payment-review .rv-phone textarea{font-family:inherit;letter-spacing:inherit}
+#depot-order-payment-review .rv-phone button{display:inline-flex;align-items:center;justify-content:center;gap:5px}
+#depot-order-payment-review .rv-phone button:disabled{opacity:.5}
+#depot-order-payment-review .rv-phone svg{width:15px;height:15px;stroke-width:1.8;flex-shrink:0}
+#depot-order-payment-review .rv-header{padding:14px 16px 16px;background:var(--rv-brand);color:#fff;border-radius:0 0 23px 0;box-shadow:0 4px 14px #3d3bff15}
+#depot-order-payment-review .rv-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;font-size:12px;color:#e6e0ff}
+#depot-order-payment-review .rv-top>span:first-child{display:flex;align-items:center;gap:5px}
+#depot-order-payment-review .rv-heading{display:flex;justify-content:space-between;align-items:center;gap:8px}
+#depot-order-payment-review .rv-heading h2{font-size:22px;line-height:1.2;font-weight:700;letter-spacing:-.7px;margin:0}
+#depot-order-payment-review .rv-header-button{background:#ffffff1c;border:1px solid #ffffff30;color:#fff;border-radius:11px;font-size:12px;font-weight:500;padding:7px 9px;min-height:34px}
+#depot-order-payment-review .rv-search{display:flex;align-items:center;gap:7px;margin-top:13px;background:#ffffff1c;border:1px solid #ffffff30;border-radius:11px;color:#e7e1ff;padding:0 10px}
+#depot-order-payment-review .rv-search input{width:100%;background:transparent;border:0;color:#fff;min-height:38px;padding:9px 0;font-size:12px}
+#depot-order-payment-review .rv-search input::placeholder{color:#e5deff;opacity:1}
+#depot-order-payment-review .rv-body{display:grid;gap:11px;padding:13px 12px}
+#depot-order-payment-review .rv-phone h3{font-size:13px;font-weight:700;letter-spacing:-.2px;line-height:1.4;margin:0}
+#depot-order-payment-review .rv-phone strong{font-weight:600}
+#depot-order-payment-review .rv-note{display:block;font-size:12px;line-height:1.45;font-weight:400;color:var(--rv-muted)}
+#depot-order-payment-review .rv-section-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#depot-order-payment-review .rv-section-heading>.rv-note{font-size:11.5px;text-align:right}
+#depot-order-payment-review .rv-list{display:grid;gap:9px}
+#depot-order-payment-review .rv-filters{display:flex;flex-wrap:wrap;gap:6px}
+#depot-order-payment-review .rv-filter{background:#fff;border:0;border-radius:18px;color:#80708f;font-size:12px;font-weight:500;padding:6px 10px;min-height:31px;box-shadow:0 2px 6px #35286e06}
+#depot-order-payment-review .rv-filter[aria-pressed=true]{background:var(--rv-brand);color:#fff;box-shadow:0 3px 8px #3d3bff20}
+#depot-order-payment-review .rv-order{padding:10px 11px;background:#fff;border-radius:15px;box-shadow:var(--rv-shadow)}
+#depot-order-payment-review .rv-order:has(input:checked){box-shadow:0 0 0 1.5px #8b79ff,0 5px 15px #49319714}
+#depot-order-payment-review .rv-order-top{display:flex;align-items:center;justify-content:space-between;gap:7px}
+#depot-order-payment-review .rv-select-row{display:flex;align-items:center;gap:7px;flex:1;font-size:14px;font-weight:700;letter-spacing:-.25px}
+#depot-order-payment-review .rv-select-row input{margin:0;width:18px;height:18px;flex:0 0 18px;accent-color:var(--rv-brand)}
+#depot-order-payment-review .rv-select-row input:disabled{opacity:.35}
+#depot-order-payment-review .rv-code{font-size:12px;font-weight:500;color:#8b7d98;margin-left:4px;letter-spacing:0}
+#depot-order-payment-review .rv-time{font-size:12px;font-weight:700;border-radius:7px;padding:4px 7px;line-height:1.3;white-space:nowrap;font-variant-numeric:tabular-nums}
+#depot-order-payment-review .rv-time-blue{background:#296bc2;color:#fff}
+#depot-order-payment-review .rv-time-green{background:#257b4c;color:#fff}
+#depot-order-payment-review .rv-time-yellow{background:#f7cb35;color:#523d00}
+#depot-order-payment-review .rv-time-red{background:#d0354b;color:#fff}
+#depot-order-payment-review .rv-order-products{font-size:13px;color:#5e506d;margin:4px 0 5px;padding-left:25px}
+#depot-order-payment-review .rv-order-bottom{display:flex;align-items:center;justify-content:space-between;gap:6px;padding-left:25px}
+#depot-order-payment-review .rv-order-meta{font-size:12px;color:#82718f;line-height:1.45}
+#depot-order-payment-review .rv-courier{display:block;color:#746380;font-size:12px;margin-top:2px}
+#depot-order-payment-review .rv-status-button{border:0;background:#f0eaff;color:#755399;min-height:29px;border-radius:8px;padding:5px 7px;font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0}
+#depot-order-payment-review .rv-status-button svg{width:12px;height:12px}
+#depot-order-payment-review .rv-status-panel{margin-top:10px;padding:10px;background:#f8f5ff;border-radius:11px;display:grid;gap:8px}
+#depot-order-payment-review .rv-status-title{display:flex;align-items:center;justify-content:space-between;gap:7px;font-size:12px;font-weight:600;color:#776086}
+#depot-order-payment-review .rv-status-choices{display:flex;flex-wrap:wrap;gap:6px}
+#depot-order-payment-review .rv-status-choice{font-size:12px;min-height:31px;padding:6px 8px;background:#fff;color:#725b84;border:1px solid #e7dbf1;border-radius:8px}
+#depot-order-payment-review .rv-status-choice[aria-pressed=true]{background:#e9ddfb;color:#68448a}
+#depot-order-payment-review .rv-status-actions{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+#depot-order-payment-review .rv-text-button{background:transparent;border:0;color:#856398;min-height:27px;font-size:12px;font-weight:500;padding:4px 0}
+#depot-order-payment-review .rv-icon-button{height:27px;width:27px;background:#efe7fb;border:0;border-radius:8px;color:#9172a5}
+#depot-order-payment-review .rv-card{background:#fff;border-radius:16px;padding:12px;box-shadow:var(--rv-shadow)}
+#depot-order-payment-review .rv-stack{display:grid;gap:10px}
+#depot-order-payment-review .rv-selection{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:12px;background:#e9e2ff;color:#6a4c8d;font-size:13px;font-weight:600}
+#depot-order-payment-review .rv-primary{background:var(--rv-brand);color:#fff;border:0;border-radius:11px;padding:11px 12px;min-height:42px;font-size:13px;font-weight:600;box-shadow:0 4px 10px #3d3bff20}
+#depot-order-payment-review .rv-primary svg{width:15px;height:15px}
+#depot-order-payment-review .rv-small{min-height:34px;font-size:12px;padding:8px 10px}
+#depot-order-payment-review .rv-field{display:grid;gap:5px;font-size:12px;line-height:1.4;color:#7f6b8b;font-weight:500}
+#depot-order-payment-review .rv-field input,#depot-order-payment-review .rv-field select,#depot-order-payment-review .rv-field textarea{width:100%;min-height:38px;padding:9px;background:#fcfaff;color:var(--rv-ink);border:1px solid #e5dbed;border-radius:9px;font-size:13px;font-weight:500;line-height:1.3}
+#depot-order-payment-review .rv-field input{font-variant-numeric:tabular-nums}
+#depot-order-payment-review .rv-field input::placeholder,#depot-order-payment-review .rv-field textarea::placeholder{color:#a38eac;font-size:12px;font-weight:400}
+#depot-order-payment-review .rv-two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+#depot-order-payment-review .rv-line{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;font-variant-numeric:tabular-nums}
+#depot-order-payment-review .rv-photo{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:#f7f1ff;border:1px dashed #d7c9e9;border-radius:11px;color:#9270ac;min-height:57px;font-size:12px}
+#depot-order-payment-review .rv-extra>summary{display:flex;align-items:center;gap:6px;list-style:none;font-size:12px;color:#8b6c9b;min-height:28px;font-weight:500}
+#depot-order-payment-review summary::-webkit-details-marker{display:none}
+#depot-order-payment-review .rv-extra>summary>svg:last-child{margin-left:auto;width:13px;height:13px;color:#b49fc0}
+#depot-order-payment-review .rv-extra[open]>summary{margin-bottom:9px}
+#depot-order-payment-review .rv-nav{display:flex;align-items:center;justify-content:space-between;gap:3px;padding:10px 11px;background:#fff;box-shadow:0 -3px 14px #57417e08}
+#depot-order-payment-review .rv-nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:36px;background:transparent;color:#9a87aa;border:0;font-size:11px;font-weight:500;padding:2px 3px}
+#depot-order-payment-review .rv-nav-item svg{width:17px;height:17px}
+#depot-order-payment-review .rv-nav-current{display:flex;align-items:center;gap:5px;padding:8px 10px;background:var(--rv-brand);color:#fff;border-radius:19px;font-size:11px;font-weight:500;box-shadow:0 3px 8px #3d3bff21}
+#depot-order-payment-review .rv-trip{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 7px 20px #35286e18,0 2px 5px #35286e09}
+#depot-order-payment-review .rv-trip>summary{display:flex;align-items:center;gap:9px;background:linear-gradient(120deg,#5043fb,#3d3bff);color:#fff;padding:13px;list-style:none}
+#depot-order-payment-review .rv-trip-symbol{display:flex;align-items:center;justify-content:center;width:32px;height:32px;background:#ffffff1c;border-radius:10px;flex-shrink:0}
+#depot-order-payment-review .rv-trip-symbol svg{width:18px;height:18px}
+#depot-order-payment-review .rv-trip-name{flex:1}
+#depot-order-payment-review .rv-trip-name strong{display:block;font-size:15px;letter-spacing:-.3px}
+#depot-order-payment-review .rv-trip-name>span{display:block;margin-top:3px;font-size:12px;color:#e1d8ff}
+#depot-order-payment-review .rv-trip>summary>svg:last-child{width:14px;height:14px;color:#d9ceff}
+#depot-order-payment-review .rv-trip-content{padding:0 11px}
+#depot-order-payment-review .rv-trip-photo{display:flex;align-items:center;gap:5px;min-height:35px;border-bottom:1px solid #f0e8f6;font-size:12px;color:#967aaa}
+#depot-order-payment-review .rv-trip-photo>span{margin-left:auto;font-size:12px}
+#depot-order-payment-review .rv-trip-order{display:flex;align-items:center;gap:8px;background:transparent;border:0;border-bottom:1px solid #f1eaf6;padding:11px 0;width:100%;text-align:left;color:var(--rv-ink);min-height:70px}
+#depot-order-payment-review .rv-trip-order:last-child{border:0}
+#depot-order-payment-review .rv-trip-order>span:nth-child(2){flex:1}
+#depot-order-payment-review .rv-trip-order strong{font-size:14px}
+#depot-order-payment-review .rv-trip-order .rv-note{font-size:12px;margin-top:3px}
+#depot-order-payment-review .rv-avatar{display:inline-flex;align-items:center;justify-content:center;width:31px;height:31px;flex:0 0 31px;border-radius:11px;background:linear-gradient(140deg,#eee5ff,#f8f1ff);color:#9874ae;font-size:11px;font-weight:700}
+#depot-order-payment-review .rv-complete{display:inline-flex;align-items:center;justify-content:center;font-size:12px;line-height:1.3;color:#5b8558;background:#eef6e9;padding:4px 6px;border-radius:6px;white-space:nowrap}
+#depot-order-payment-review .rv-status-label{font-size:12px;color:#9570a5}
+#depot-order-payment-review .rv-subheading{margin-top:6px!important;color:#766584}
+#depot-order-payment-review .rv-trip-closed>summary{padding:12px;background:#fff;color:var(--rv-ink)}
+#depot-order-payment-review .rv-trip-closed .rv-trip-symbol{background:#f0eafa;color:#9d82b7}
+#depot-order-payment-review .rv-trip-closed .rv-trip-name>span{color:#867291}
+#depot-order-payment-review .rv-trip-closed>summary>svg:last-child{color:#b19bc0}
+#depot-order-payment-review .rv-history-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 0;border-top:1px solid #f0e8f6;font-size:13px}
+#depot-order-payment-review .rv-back{background:transparent;border:0;color:#e8e1ff;font-size:12px;padding:0;min-height:22px}
+#depot-order-payment-review .rv-customer-strip{display:flex;align-items:center;gap:9px}
+#depot-order-payment-review .rv-customer-strip strong{font-size:15px;display:block}
+#depot-order-payment-review .rv-product-line{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #f1e9f7}
+#depot-order-payment-review .rv-product-line strong{display:block;font-size:14px}
+#depot-order-payment-review .rv-product-line .rv-note{margin-top:3px;font-size:12px}
+#depot-order-payment-review .rv-discount-field{width:112px;flex:0 0 112px}
+#depot-order-payment-review .rv-discount-field input{text-align:right}
+#depot-order-payment-review .rv-total{display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid #eee5f6;padding-top:11px;font-size:13px;color:#7c628d}
+#depot-order-payment-review .rv-total strong{font-size:21px;font-weight:700;letter-spacing:-.7px;color:#3d2d52;font-variant-numeric:tabular-nums}
+#depot-order-payment-review .rv-balance-line{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;background:#f5effd;border-radius:9px;font-size:12px;color:#9275a1}
+#depot-order-payment-review .rv-balance-line strong{font-size:15px;color:#6e488e;font-weight:700;letter-spacing:-.35px;font-variant-numeric:tabular-nums}
+#depot-order-payment-review .rv-customer-button{display:flex;align-items:center;gap:9px;width:100%;padding:13px 12px;border:0;background:#fff;color:var(--rv-ink);border-radius:15px;box-shadow:var(--rv-shadow);text-align:left}
+#depot-order-payment-review .rv-customer-button>span:nth-child(2){flex:1}
+#depot-order-payment-review .rv-customer-button strong{font-size:14px;display:block}
+#depot-order-payment-review .rv-customer-button .rv-note{font-size:12px;margin-top:3px}
+#depot-order-payment-review .rv-customer-button .rv-customer-money{font-size:15px;letter-spacing:-.3px;font-variant-numeric:tabular-nums;font-weight:700;color:#78568f}
+#depot-order-payment-review .rv-customer-button>svg{color:#bba2c8;width:14px;height:14px}
+#depot-order-payment-review .rv-debt-total{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:#8b6b9d}
+#depot-order-payment-review .rv-debt-total strong{font-size:24px;letter-spacing:-.8px;font-weight:700;color:#422c58;font-variant-numeric:tabular-nums}
+#depot-order-payment-review .rv-bill{display:grid;gap:5px;padding:12px 0;border-bottom:1px solid #f0e7f6}
+#depot-order-payment-review .rv-bill:last-child{border-bottom:0;padding-bottom:0}
+#depot-order-payment-review .rv-bill-top{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px}
+#depot-order-payment-review .rv-bill-top>strong:last-child{font-size:15px;color:#73508d;font-variant-numeric:tabular-nums}
+#depot-order-payment-review .rv-bill .rv-note{font-size:12px}
+#depot-order-payment-review .rv-bill .rv-text-button{justify-self:start;min-height:23px;font-size:12px}
+#depot-order-payment-review .rv-bill-paid{opacity:.8}
+#depot-order-payment-review .rv-bill-paid .rv-bill-top>strong:last-child{color:#66865b}
+#depot-order-payment-review .rv-feedback{font-size:12px;color:#856099;line-height:1.5}
+#depot-order-payment-review .rv-error{font-size:12px;color:#b64a65;line-height:1.5}
+#depot-order-payment-review .rv-feedback:empty,#depot-order-payment-review .rv-error:empty{display:none}
+#depot-order-payment-review .rv-success{background:#f3f8ee;color:#658451;line-height:1.6;font-size:13px}
+@media(pointer:coarse){#depot-order-payment-review .rv-filter,#depot-order-payment-review .rv-status-button,#depot-order-payment-review .rv-status-choice,#depot-order-payment-review .rv-header-button,#depot-order-payment-review .rv-primary,#depot-order-payment-review .rv-nav-item,#depot-order-payment-review .rv-text-button,#depot-order-payment-review .rv-extra>summary{min-height:44px}#depot-order-payment-review .rv-field input,#depot-order-payment-review .rv-field select,#depot-order-payment-review .rv-field textarea,#depot-order-payment-review .rv-search input{font-size:16px;min-height:44px}}
+@media(max-width:360px){#depot-order-payment-review .rv-stage{padding:12px 0}#depot-order-payment-review .rv-header{padding:13px}#depot-order-payment-review .rv-body{padding:11px 10px;gap:10px}#depot-order-payment-review .rv-order{padding:9px}#depot-order-payment-review .rv-order-bottom,#depot-order-payment-review .rv-order-products{padding-left:0}#depot-order-payment-review .rv-select-row{gap:5px}#depot-order-payment-review .rv-nav{padding:9px 7px}#depot-order-payment-review .rv-nav-current{padding:8px 7px}#depot-order-payment-review .rv-nav-item{font-size:10.5px;padding:2px}#depot-order-payment-review .rv-trip-symbol{display:none}#depot-order-payment-review .rv-section-heading>.rv-note{max-width:115px}#depot-order-payment-review .rv-customer-button{padding:12px 9px;gap:6px}#depot-order-payment-review .rv-customer-button .rv-avatar{display:none}#depot-order-payment-review .rv-discount-field{width:103px;flex-basis:103px}#depot-order-payment-review .rv-trip-order .rv-avatar{display:none}#depot-order-payment-review .rv-order-bottom{align-items:flex-end}}
+/* Compact cards, softly tinted surfaces and one consistent customer identity. */
+#depot-order-payment-review .rv-phone{--rv-shadow:0 6px 16px #35286e16,0 2px 4px #35286e09;--rv-muted:#6f6281}
+#depot-order-payment-review .rv-body{gap:10px}
+#depot-order-payment-review .rv-order{position:relative;padding:8px 10px}
+#depot-order-payment-review .rv-order-grid{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:9px;align-items:start}
+#depot-order-payment-review .rv-select-row{align-items:flex-start;gap:7px;min-height:44px;line-height:1.4}
+#depot-order-payment-review .rv-select-row input{margin-top:5px}
+#depot-order-payment-review .rv-identity{display:inline-flex;align-items:center;flex-wrap:wrap;gap:3px 5px;background:#e2ddff;color:#463376;padding:5px 8px;border-radius:9px;font-size:13px;line-height:1.45;font-weight:600;letter-spacing:-.2px;max-width:100%}
+#depot-order-payment-review .rv-identity b{font-size:12px;font-weight:700;color:#3d35a4}
+#depot-order-payment-review .rv-identity .rv-dash{color:#8c7eb9;font-weight:400}
+#depot-order-payment-review .rv-order-products{display:block;padding-left:0;margin:6px 0 0;font-size:13px;line-height:1.5;color:#675777;font-weight:500}
+#depot-order-payment-review .rv-order-rail{display:grid;justify-items:end;gap:3px;min-width:107px}
+#depot-order-payment-review .rv-time{font-size:13px;padding:3px 8px;border-radius:8px}
+#depot-order-payment-review .rv-status-button{min-height:34px;font-size:13px;padding:6px 9px;border-radius:9px;background:#d4d1ff;color:#44368a;box-shadow:0 2px 4px #5344a80a}
+#depot-order-payment-review .rv-courier{display:inline-flex;align-items:center;gap:4px;margin:0;padding:2px 7px;border-radius:7px;font-size:12px;line-height:1.4;color:#6c598b;background:#f0e7fb}
+#depot-order-payment-review .rv-courier svg{width:12px;height:12px}
+#depot-order-payment-review .rv-status-panel{position:absolute;z-index:20;top:calc(100% - 5px);right:8px;width:216px;max-width:calc(100% - 16px);margin:0;padding:6px;background:#c5c4ff;border-radius:12px;gap:3px;box-shadow:0 7px 18px #4e379638,0 2px 5px #4e37961a}
+#depot-order-payment-review .rv-order:last-child .rv-status-panel{top:auto;bottom:calc(100% - 5px)}
+#depot-order-payment-review .rv-status-panel:has(textarea){position:relative;top:auto!important;bottom:auto!important;right:auto;width:100%;max-width:none;margin-top:8px}
+#depot-order-payment-review .rv-status-title{font-size:12px;color:#514389;padding-left:5px}
+#depot-order-payment-review .rv-status-choices{display:grid;gap:3px}
+#depot-order-payment-review .rv-status-choice{justify-content:space-between;min-height:30px;border:0;border-radius:7px;padding:5px 8px;font-size:12px;background:#f4f2ff;color:#544184;text-align:left}
+#depot-order-payment-review .rv-status-choice[aria-pressed=true]{background:#6960d9;color:#fff}
+#depot-order-payment-review .rv-status-actions{display:grid;grid-template-columns:1fr;gap:1px}
+#depot-order-payment-review .rv-status-actions button{justify-content:flex-start;color:#4f3b7d;padding:5px 8px;min-height:28px}
+#depot-order-payment-review .rv-icon-button{background:#ffffff70;color:#625095}
+#depot-order-payment-review .rv-status-panel .rv-icon-button{width:24px;height:24px}
+#depot-order-payment-review .rv-field{color:#68577c;gap:4px;font-size:12px}
+#depot-order-payment-review .rv-field input,#depot-order-payment-review .rv-field select,#depot-order-payment-review .rv-field textarea{background:#faf8ff;border-color:#e2daef;min-height:36px;padding:7px 9px;font-size:14px}
+#depot-order-payment-review .rv-form-symbol{display:flex;align-items:center;justify-content:center;border-radius:14px;background:#ffffff30;width:40px;height:40px;transform:rotate(-7deg)}
+#depot-order-payment-review .rv-form-symbol svg{width:21px;height:21px}
+#depot-order-payment-review .rv-new-customer{background:linear-gradient(125deg,#e4e0ff,#f4edff)}
+#depot-order-payment-review .rv-new-customer input{background:#fff}
+#depot-order-payment-review .rv-new-products,#depot-order-payment-review .rv-product-card{background:#fff8ef}
+#depot-order-payment-review .rv-soft-label{font-size:11px;font-weight:500;padding:3px 7px;background:#f1e6d4;border-radius:7px;color:#967146}
+#depot-order-payment-review .rv-add-product{min-height:34px;width:100%;border:0;border-radius:9px;background:#f5e9d9;color:#8e683a;font-size:12px;font-weight:600}
+#depot-order-payment-review .rv-new-product-row{display:grid;grid-template-columns:minmax(0,1fr) 64px 28px;gap:6px;align-items:end}
+#depot-order-payment-review .rv-new-product-row .rv-icon-button{height:36px;width:28px;background:#f5e9d9;color:#8e683a}
+#depot-order-payment-review .rv-product-card .rv-product-line{padding:6px 0;gap:8px;border-color:#ecdfd0}
+#depot-order-payment-review .rv-product-card .rv-product-line:last-child{border:0;padding-bottom:0}
+#depot-order-payment-review .rv-product-line>span{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 8px}
+#depot-order-payment-review .rv-product-line strong{font-size:13px}
+#depot-order-payment-review .rv-product-line .rv-note{font-size:12px;margin:0;color:#937b5a}
+#depot-order-payment-review .rv-discount-field{width:89px;flex-basis:89px}
+#depot-order-payment-review .rv-discount-field input{min-height:33px;padding:6px 8px;background:#fffaf4;border-color:#e8dac6;font-size:13px}
+#depot-order-payment-review .rv-payment-card{gap:8px}
+#depot-order-payment-review .rv-total{padding-top:7px;font-size:12px}
+#depot-order-payment-review .rv-total strong{font-size:20px}
+#depot-order-payment-review .rv-customer-strip{background:#e4e0ff;padding:10px 12px}
+#depot-order-payment-review .rv-customer-strip .rv-note{font-size:12px}
+#depot-order-payment-review .rv-customer-button{padding:10px;gap:8px}
+#depot-order-payment-review .rv-customer-button .rv-avatar{display:none}
+#depot-order-payment-review .rv-customer-button .rv-customer-info{flex:1;min-width:0}
+#depot-order-payment-review .rv-customer-button .rv-note{margin-top:4px;font-size:12px}
+#depot-order-payment-review .rv-customer-button .rv-customer-money{font-size:14px;flex:0 0 auto;color:#655081}
+#depot-order-payment-review .rv-customer-button>span.rv-customer-money{flex:0 0 auto}
+#depot-order-payment-review .rv-debt-total{background:linear-gradient(120deg,#e2dcff,#f0e9ff)}
+#depot-order-payment-review #rv-debt-bills{gap:7px}
+#depot-order-payment-review .rv-bill{display:grid;grid-template-columns:20px minmax(0,1fr);column-gap:7px;row-gap:0;padding:9px 10px!important;background:#fff;border:0;border-radius:12px;box-shadow:var(--rv-shadow)}
+#depot-order-payment-review .rv-bill:has(input:checked){background:#e9e5ff;box-shadow:0 0 0 1.5px #a195e8,0 4px 12px #4e379612}
+#depot-order-payment-review .rv-bill-check{display:flex;align-items:center;justify-content:center;grid-row:1 / 3;align-self:stretch}
+#depot-order-payment-review .rv-bill-check input{width:17px;height:17px;margin:0;accent-color:var(--rv-brand)}
+#depot-order-payment-review .rv-bill-top{font-size:13px;gap:5px}
+#depot-order-payment-review .rv-bill-top strong:last-child{font-size:14px;color:#5e4482}
+#depot-order-payment-review .rv-bill-top>strong:nth-child(2){margin-left:auto;color:#5e4482;font-size:14px;font-variant-numeric:tabular-nums}
+#depot-order-payment-review .rv-bill-bottom{display:flex;align-items:center;justify-content:space-between;gap:5px;font-size:11px;color:#756486}
+#depot-order-payment-review .rv-bill-bottom .rv-bill-meta{line-height:1.5;font-variant-numeric:tabular-nums}
+#depot-order-payment-review .rv-bill .rv-text-button{min-height:24px;padding:2px 0;font-size:12px;flex-shrink:0;color:#6550af;font-weight:600}
+#depot-order-payment-review .rv-bill-top .rv-text-button{background:#e7dfff;border-radius:6px;padding:3px 6px;min-width:42px}
+#depot-order-payment-review .rv-bill-paid{background:#f0f5ed;opacity:1}
+#depot-order-payment-review .rv-bill-paid .rv-bill-check{color:#69895b}
+#depot-order-payment-review .rv-debt-selection{background:#d4d1ff;color:#4c3c86;font-size:12px;font-weight:600;padding:7px 10px;border-radius:9px}
+@media(max-width:360px){#depot-order-payment-review .rv-order-grid{gap:6px}#depot-order-payment-review .rv-order{padding:9px}#depot-order-payment-review .rv-identity{font-size:12px;padding:4px 6px;gap:2px 4px}#depot-order-payment-review .rv-order-rail{min-width:100px}#depot-order-payment-review .rv-status-button{font-size:12px;padding:6px 7px}#depot-order-payment-review .rv-order-products{font-size:12px}#depot-order-payment-review .rv-customer-button{gap:6px;padding:10px 9px}#depot-order-payment-review .rv-customer-button .rv-customer-money{font-size:13px}#depot-order-payment-review .rv-bill{padding:8px!important;column-gap:5px}#depot-order-payment-review .rv-bill-bottom{gap:3px}#depot-order-payment-review .rv-bill-bottom .rv-bill-meta{font-size:11px}#depot-order-payment-review .rv-two{gap:7px}#depot-order-payment-review .rv-new-product-row{grid-template-columns:minmax(0,1fr) 56px 26px}}
+@media(pointer:coarse){#depot-order-payment-review .rv-status-button,#depot-order-payment-review .rv-status-choice,#depot-order-payment-review .rv-status-actions button,#depot-order-payment-review .rv-add-product{min-height:44px}#depot-order-payment-review .rv-field input,#depot-order-payment-review .rv-field select,#depot-order-payment-review .rv-field textarea{font-size:16px;min-height:44px}#depot-order-payment-review .rv-bill .rv-text-button{min-height:44px}#depot-order-payment-review .rv-bill-check{width:44px;margin-left:-8px}#depot-order-payment-review .rv-bill{grid-template-columns:27px minmax(0,1fr)}}
+#depot-order-payment-review .rv-delivery-label{display:inline-flex;align-items:center;gap:4px;min-height:30px;padding:5px 8px;border-radius:9px;background:#d4d1ff;color:#44368a;font-size:12px;font-weight:600;white-space:nowrap}
+#depot-order-payment-review .rv-terminal-label{display:inline-flex;padding:5px 8px;border-radius:9px;background:#e9e4f4;color:#756085;font-size:12px;font-weight:600}
+#depot-order-payment-review .rv-trip-entry{border-bottom:1px solid #eee7f7}
+#depot-order-payment-review .rv-trip-entry:last-child{border-bottom:0}
+#depot-order-payment-review .rv-trip-entry>.rv-trip-order{border:0;min-height:62px;padding:9px 0}
+#depot-order-payment-review .rv-trip-entry .rv-trip-order>span:first-child{flex:1}
+#depot-order-payment-review .rv-trip-entry .rv-trip-order>.rv-complete,#depot-order-payment-review .rv-trip-entry .rv-trip-order>.rv-status-label{flex:0 0 auto}
+#depot-order-payment-review .rv-trip-order[aria-expanded=true]{color:#4f3ca8}
+#depot-order-payment-review .rv-trip-order[aria-expanded=true]>svg:last-child{transform:rotate(180deg)}
+#depot-order-payment-review .rv-trip-order .rv-identity{font-size:12px;padding:4px 7px}
+#depot-order-payment-review .rv-trip-order .rv-note{margin-top:4px}
+#depot-order-payment-review .rv-inline-panel{padding:9px;margin:0 0 10px;background:#efebff;border-radius:12px;box-shadow:inset 0 0 0 1px #e3dcf7}
+#depot-order-payment-review .rv-inline-heading{display:flex;align-items:center;justify-content:space-between;color:#6d5a8b;font-size:12px;font-weight:600;min-height:24px}
+#depot-order-payment-review .rv-inline-panel .rv-stack{gap:7px}
+#depot-order-payment-review .rv-inline-panel .rv-card{border-radius:9px;box-shadow:none;padding:9px}
+#depot-order-payment-review .rv-inline-panel .rv-product-line{padding:5px 0;gap:6px}
+#depot-order-payment-review .rv-inline-panel .rv-product-line .rv-note{font-size:11px}
+#depot-order-payment-review .rv-inline-panel .rv-product-card h3{font-size:12px}
+#depot-order-payment-review .rv-inline-panel .rv-payment-card>h3{display:none}
+#depot-order-payment-review .rv-inline-panel .rv-payment-card .rv-total{padding-top:6px}
+#depot-order-payment-review .rv-inline-panel .rv-total strong{font-size:18px}
+#depot-order-payment-review .rv-inline-panel .rv-field input,#depot-order-payment-review .rv-inline-panel .rv-field select{min-height:34px;padding:6px 8px;font-size:13px}
+#depot-order-payment-review .rv-inline-panel .rv-primary{min-height:36px;padding:8px 10px;font-size:12px}
+#depot-order-payment-review .rv-inline-panel .rv-balance-line{padding:6px 8px}
+#depot-order-payment-review .rv-inline-panel .rv-balance-line strong{font-size:14px}
+#depot-order-payment-review .rv-pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;align-items:center}
+#depot-order-payment-review .rv-pay-summary{display:grid;gap:3px;align-content:center}
+#depot-order-payment-review .rv-inline-panel .rv-pay-summary .rv-total{display:grid;justify-items:end;border:0;padding:0;gap:0;font-size:11px}
+#depot-order-payment-review .rv-inline-panel .rv-pay-summary .rv-balance-line{background:transparent;padding:0;justify-content:flex-end;gap:5px;font-size:11px;flex-wrap:wrap}
+#depot-order-payment-review .rv-inline-panel .rv-pay-summary .rv-balance-line strong{font-size:12px}
+#depot-order-payment-review .rv-pay-grid:has(#rv-sale-paid-block[hidden]){grid-template-columns:1fr}
+#depot-order-payment-review .rv-pay-grid:has(#rv-sale-paid-block[hidden]) .rv-pay-summary{display:flex;justify-content:space-between;align-items:center}
+#depot-order-payment-review .rv-inline-panel .rv-outcome{padding:0 2px}
+#depot-order-payment-review .rv-inline-panel .rv-outcome>summary{font-size:11px;min-height:25px}
+#depot-order-payment-review .rv-inline-receipt{display:grid;gap:6px;color:#69577f;font-size:12px;line-height:1.5}
+#depot-order-payment-review .rv-inline-receipt h3{font-size:12px;color:#5d7851}
+#depot-order-payment-review #rv-trip-feedback:not(:empty){padding:7px 0 10px;color:#64814f;font-size:12px}
+@media(max-width:360px){#depot-order-payment-review .rv-inline-panel{padding:7px}#depot-order-payment-review .rv-inline-panel .rv-card{padding:8px}#depot-order-payment-review .rv-inline-panel .rv-product-line>span{gap:1px 5px}#depot-order-payment-review .rv-inline-panel .rv-discount-field{width:72px;flex-basis:72px}#depot-order-payment-review .rv-inline-panel .rv-two{gap:6px}#depot-order-payment-review .rv-inline-panel .rv-field input,#depot-order-payment-review .rv-inline-panel .rv-field select{padding:6px;font-size:12px}}
+@media(pointer:coarse){#depot-order-payment-review .rv-inline-panel .rv-primary,#depot-order-payment-review .rv-inline-panel .rv-outcome>summary{min-height:44px}#depot-order-payment-review .rv-inline-panel .rv-field input,#depot-order-payment-review .rv-inline-panel .rv-field select{min-height:44px;font-size:16px}}
+#depot-order-payment-review .rv-filters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+#depot-order-payment-review .rv-filter{font-size:12px;padding:5px 2px;min-height:29px;border-radius:9px;color:#75638c;box-shadow:0 2px 7px #35286e0a}
+#depot-order-payment-review .rv-status-button{width:102px;height:29px;min-height:29px;padding:4px 7px;font-size:11.5px;justify-content:space-between;gap:4px}
+#depot-order-payment-review .rv-status-button svg{width:11px;height:11px}
+#depot-order-payment-review .rv-order-rail{min-width:102px}
+#depot-order-payment-review .rv-status-panel{width:146px;padding:5px;border-radius:10px;gap:4px}
+#depot-order-payment-review .rv-status-choices{gap:3px}
+#depot-order-payment-review .rv-status-choice{min-height:28px;padding:5px 8px;justify-content:flex-start;font-size:12px}
+#depot-order-payment-review .rv-cancel-choice{color:#a15b7d;background:#f5e3f1}
+#depot-order-payment-review .rv-trip-entry .rv-trip-order>.rv-trip-right{flex:0 0 auto;display:grid;justify-items:end;gap:3px;color:#625083}
+#depot-order-payment-review .rv-trip-right>strong{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.3px}
+#depot-order-payment-review .rv-inline-panel .rv-discount-field{width:66px;flex-basis:66px}
+#depot-order-payment-review .rv-inline-panel .rv-discount-field input{font-size:12px;min-height:29px;padding:4px 6px;border:0;background:#f2e5d4;border-radius:7px}
+#depot-order-payment-review .rv-inline-panel .rv-pay-grid{gap:8px}
+#depot-order-payment-review .rv-inline-panel .rv-pay-grid>.rv-balance-line{display:grid;gap:2px;justify-items:end;background:transparent;padding:0;align-self:center;font-size:11px}
+#depot-order-payment-review .rv-inline-panel .rv-pay-grid>.rv-balance-line{justify-content:end}
+#depot-order-payment-review .rv-inline-panel .rv-pay-grid>.rv-balance-line strong{font-size:14px}
+#depot-order-payment-review .rv-outcome-chips{display:flex;gap:7px;justify-content:center}
+#depot-order-payment-review .rv-outcome-chip{min-height:29px;min-width:70px;padding:5px 12px;border:0;border-radius:9px;background:#ffecd7;color:#a36f34;font-size:12px;font-weight:600}
+#depot-order-payment-review .rv-outcome-chip[data-outcome-kind=cancel]{background:#f4e1ec;color:#a35c7c}
+#depot-order-payment-review .rv-outcome-chip[aria-pressed=true]{box-shadow:inset 0 0 0 1.5px currentColor}
+#depot-order-payment-review .rv-trip-closed>summary{background:linear-gradient(120deg,#5b4ee7,#4437c6);color:#fff}
+#depot-order-payment-review .rv-trip-closed .rv-trip-symbol{background:#ffffff20;color:#fff}
+#depot-order-payment-review .rv-trip-closed .rv-trip-name>span{color:#e2dfff}
+#depot-order-payment-review .rv-trip-closed>summary>svg:last-child{color:#e2dfff}
+#depot-order-payment-review .rv-trip-closed>summary .rv-complete{background:#ffffff26;color:#fff}
+#depot-order-payment-review .rv-trip-closed .rv-trip-content{background:#fff}
+#depot-order-payment-review .rv-owner-avatar{display:inline-flex;align-items:center;justify-content:center;background:#ffffff2b;border-radius:12px;width:34px;height:34px;color:#f1eaff;font-size:14px;font-weight:700}
+#depot-order-payment-review .rv-home-greeting{margin-top:7px;font-size:12px;color:#e3deff}
+#depot-order-payment-review .rv-period select{background:#e8e1fa;border:0;border-radius:8px;color:#715c91;font:500 12px/1.4 inherit;min-height:30px;padding:5px 7px;font-family:inherit;font-size:12px}
+#depot-order-payment-review .rv-home-sales{padding:13px;background:linear-gradient(115deg,#dcd4ff,#f0eaff);color:#6c5690}
+#depot-order-payment-review .rv-home-sales>.rv-line{font-size:12px}
+#depot-order-payment-review .rv-home-sales .rv-home-big{display:block;font-size:29px;font-weight:700;color:#49356d;letter-spacing:-1px;line-height:1.4;margin:3px 0 7px;font-variant-numeric:tabular-nums}
+#depot-order-payment-review .rv-home-breakdown{display:flex;gap:15px;justify-content:space-between;border-top:1px solid #ffffff80;padding-top:7px}
+#depot-order-payment-review .rv-home-breakdown>span{display:grid;gap:1px;font-size:11px;color:#85739e}
+#depot-order-payment-review .rv-home-breakdown strong{font-size:13px;color:#6b548a;font-variant-numeric:tabular-nums}
+#depot-order-payment-review .rv-home-income{gap:9px}
+#depot-order-payment-review .rv-home-income .rv-card{padding:10px 12px}
+#depot-order-payment-review .rv-home-income .rv-card>span{display:flex;align-items:center;gap:5px;font-size:12px}
+#depot-order-payment-review .rv-home-income strong{display:block;font-size:19px;letter-spacing:-.5px;margin-top:5px;font-weight:700;font-variant-numeric:tabular-nums}
+#depot-order-payment-review .rv-home-cash{background:#e8f4ec;color:#55735a}
+#depot-order-payment-review .rv-home-qris{background:#fff0df;color:#8c673e}
+#depot-order-payment-review .rv-home-debt{width:100%;display:flex!important;gap:7px;justify-content:space-between!important;text-align:left;border:0;background:#eae3fa;color:#7c5c98}
+#depot-order-payment-review .rv-home-debt>span{flex:1;font-size:12px}
+#depot-order-payment-review .rv-home-debt .rv-note{font-size:11px;margin-top:2px}
+#depot-order-payment-review .rv-home-debt>strong{font-size:17px;letter-spacing:-.4px;font-variant-numeric:tabular-nums}
+#depot-order-payment-review .rv-home-orders .rv-section-heading{margin-bottom:5px}
+#depot-order-payment-review .rv-home-stages{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+#depot-order-payment-review .rv-home-stages>button{display:grid!important;gap:2px;border:0;border-radius:10px;padding:7px 3px;background:#f1edfc;color:#7a6496;font-size:11px}
+#depot-order-payment-review .rv-home-stages>button:nth-child(2){background:#edf4ee;color:#729075}
+#depot-order-payment-review .rv-home-stages>button:nth-child(3){background:#fff1df;color:#a5885f}
+#depot-order-payment-review .rv-home-stages strong{font-size:20px;font-weight:700;line-height:1.2}
+#depot-order-payment-review .rv-home-results{display:flex;justify-content:space-between;gap:6px;padding-top:6px}
+#depot-order-payment-review .rv-home-results button{background:transparent;border:0;color:#9274a4;font-size:11px;padding:3px 0}
+#depot-order-payment-review .rv-home-trip-link{border:0;border-top:1px solid #f0e8f6;background:transparent;width:100%;justify-content:space-between!important;color:#8b73a2;font-size:11px;margin-top:5px;padding:7px 0 0;min-height:28px}
+#depot-order-payment-review .rv-home-extra{padding:10px 12px}
+#depot-order-payment-review .rv-home-extra>summary{color:#776189;gap:7px}
+#depot-order-payment-review .rv-home-extra>summary>.rv-note{margin-left:auto;font-size:11px}
+#depot-order-payment-review .rv-home-extra>summary>svg:last-child{margin-left:0}
+#depot-order-payment-review .rv-home-extra .rv-line{padding:6px 0;border-top:1px solid #f0e8f6;color:#8a7298}
+#depot-order-payment-review #rv-home .rv-body>.rv-section-heading{margin:1px 0 -4px}
+@media(max-width:360px){#depot-order-payment-review .rv-filter{font-size:11px}#depot-order-payment-review .rv-status-button{width:94px;font-size:11px;height:29px;min-height:29px;padding:4px 6px}#depot-order-payment-review .rv-order-rail{min-width:94px}#depot-order-payment-review .rv-inline-panel .rv-discount-field{width:59px;flex-basis:59px}#depot-order-payment-review .rv-trip-right>strong{font-size:13px}#depot-order-payment-review .rv-home-income strong{font-size:17px}#depot-order-payment-review .rv-home-sales .rv-home-big{font-size:26px}#depot-order-payment-review .rv-home-debt>strong{font-size:15px}}
+@media(pointer:coarse){#depot-order-payment-review .rv-filter,#depot-order-payment-review .rv-status-button,#depot-order-payment-review .rv-status-choice,#depot-order-payment-review .rv-outcome-chip,#depot-order-payment-review .rv-home-results button,#depot-order-payment-review .rv-period select{min-height:44px}#depot-order-payment-review .rv-inline-panel .rv-discount-field input{min-height:44px;font-size:16px}}
+/* Beranda: softer hierarchy, balanced money tiles, and compact daily actions. */
+#depot-order-payment-review #rv-home .rv-phone{background:#f4f3fe}
+#depot-order-payment-review #rv-home .rv-header{padding:14px 16px 15px;background:radial-gradient(ellipse at 100% 0,#7169ff80,transparent 64%),linear-gradient(125deg,#4f45ff,#3734ee);border-radius:0 0 26px 0}
+#depot-order-payment-review #rv-home .rv-heading h2{font-size:23px;letter-spacing:-.7px}
+#depot-order-payment-review #rv-home .rv-home-greeting{color:#e7e2ff;font-size:12px;margin-top:5px}
+#depot-order-payment-review .rv-home-body{gap:11px;padding:12px}
+#depot-order-payment-review .rv-home-body .rv-card{border-radius:19px;box-shadow:0 6px 18px #50418d12,0 2px 5px #50418d08}
+#depot-order-payment-review .rv-home-sales{padding:13px 14px 12px;background:linear-gradient(110deg,#e2ddff,#f0eaff);color:#6d5b91}
+#depot-order-payment-review .rv-home-sales .rv-line{gap:4px}
+#depot-order-payment-review .rv-home-sales .rv-period select{background:#ffffff85;border:0;border-radius:10px;min-height:28px;padding:4px 5px;color:#79629c;font:500 11px 'Plus Jakarta Sans',sans-serif;max-width:110px}
+#depot-order-payment-review .rv-home-sales .rv-home-big{font-size:30px;letter-spacing:-1px;line-height:1.25;margin:5px 0 10px;color:#4a356f}
+#depot-order-payment-review .rv-home-breakdown{display:grid;grid-template-columns:1fr 1fr;gap:7px;border:0;padding:0}
+#depot-order-payment-review .rv-home-breakdown>span{display:flex;align-items:center;flex-wrap:wrap;gap:4px;font-size:11px;background:#ffffff70;border-radius:9px;padding:6px 7px;color:#847096}
+#depot-order-payment-review .rv-home-breakdown svg{width:12px;height:12px}
+#depot-order-payment-review .rv-home-breakdown strong{font-size:12px;color:#715389;margin-left:auto;letter-spacing:-.25px}
+#depot-order-payment-review .rv-home-money{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+#depot-order-payment-review .rv-home-money .rv-home-money-tile{display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:5px;width:100%;min-height:101px;padding:10px 11px;border:0;text-align:left;font:500 12px/1.4 'Plus Jakarta Sans',sans-serif;letter-spacing:-.2px}
+#depot-order-payment-review .rv-home-money .rv-home-money-tile>span:not(.rv-money-symbol){display:inline-flex;align-items:center;gap:3px;font-size:11.5px}
+#depot-order-payment-review .rv-home-money .rv-home-money-tile>span:not(.rv-money-symbol)>svg{width:11px;height:11px}
+#depot-order-payment-review .rv-home-money .rv-home-money-tile>strong{font-size:16px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+#depot-order-payment-review .rv-money-symbol{display:inline-flex;align-items:center;justify-content:center;width:27px;height:25px;border-radius:8px;background:#ffffff90;box-shadow:0 2px 4px #5a428008}
+#depot-order-payment-review .rv-money-symbol svg{width:15px;height:15px}
+#depot-order-payment-review .rv-home-money .rv-home-cash{background:linear-gradient(140deg,#e5f3eb,#eef8f0);color:#4b735b}
+#depot-order-payment-review .rv-home-money .rv-home-qris{background:linear-gradient(140deg,#e7e3ff,#f1ecff);color:#695193}
+#depot-order-payment-review .rv-home-money .rv-home-credit{background:linear-gradient(140deg,#fff0e1,#fff6ed);color:#9a6a3a}
+#depot-order-payment-review .rv-home-orders{padding:11px 12px}
+#depot-order-payment-review .rv-home-orders .rv-section-heading{margin:0 0 7px}
+#depot-order-payment-review .rv-home-orders h3{font-size:13px;letter-spacing:-.3px}
+#depot-order-payment-review .rv-home-stages{gap:6px}
+#depot-order-payment-review .rv-home-stages>button{display:flex!important;align-items:center;justify-content:center;gap:5px;padding:7px 4px;border-radius:10px;min-height:38px;font-size:11px;line-height:1.3}
+#depot-order-payment-review .rv-home-stages strong{font-size:18px;font-weight:700}
+#depot-order-payment-review .rv-home-stages>button:nth-child(2){background:#eeebff;color:#8470a2}
+#depot-order-payment-review .rv-home-stages>button:nth-child(3){background:#eeebff;color:#8470a2}
+#depot-order-payment-review .rv-home-results{justify-content:flex-start;gap:6px;padding-top:7px}
+#depot-order-payment-review .rv-home-results button{min-height:25px;padding:4px 7px;border-radius:7px;background:#edf5ef;color:#6a8c74;font-size:11px;line-height:1.3}
+#depot-order-payment-review .rv-home-results button:last-child{background:#f8edf1;color:#aa8195}
+#depot-order-payment-review .rv-home-trip-link{margin-top:7px;padding:7px 0 0;min-height:27px;color:#8b77a0}
+#depot-order-payment-review .rv-attendance{padding:11px 12px}
+#depot-order-payment-review .rv-attendance-count{font-size:11px;background:#f0ebfa;color:#9277a6;padding:3px 7px;border-radius:7px}
+#depot-order-payment-review .rv-attendance-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:9px}
+#depot-order-payment-review .rv-attendance-grid>button{display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:transparent;color:#6d5a85;padding:2px 0 1px;min-height:83px}
+#depot-order-payment-review .rv-attendance-grid strong{font-size:12px;font-weight:600;line-height:1.4;margin-top:3px}
+#depot-order-payment-review .rv-attendance-grid>button>span:last-child{font-size:11px;color:#9c87af;line-height:1.4;font-variant-numeric:tabular-nums}
+#depot-order-payment-review .rv-selfie{position:relative;display:block;width:39px;height:39px;border-radius:14px;background:#e5dfff;box-shadow:0 3px 7px #6c519f18}
+#depot-order-payment-review .rv-selfie img{width:39px;height:39px;border-radius:14px;object-fit:cover;display:block}
+#depot-order-payment-review .rv-selfie>svg{position:absolute;right:-5px;bottom:-2px;width:18px;height:18px;padding:3px;border-radius:6px;background:#7563dc;color:#fff;box-shadow:0 1px 3px #6041a830}
+#depot-order-payment-review .rv-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+/* Trip metadata remains inside the summary, so it stays available while closed. */
+#depot-order-payment-review .rv-trip>summary{display:grid;gap:7px;padding:11px 12px;background:linear-gradient(118deg,#5548f5,#3d3bf3)}
+#depot-order-payment-review .rv-trip-titleline{display:flex;align-items:center;gap:7px;width:100%}
+#depot-order-payment-review .rv-trip-titleline>.rv-trip-name{flex:1}
+#depot-order-payment-review .rv-trip-titleline>.rv-trip-name>strong{font-size:15px}
+#depot-order-payment-review .rv-trip-titleline>.rv-trip-name>span{font-size:11px;margin-top:2px;color:#e0d9ff}
+#depot-order-payment-review .rv-trip-titleline>svg{width:14px;height:14px;color:#e6e0ff}
+#depot-order-payment-review .rv-trip[open] .rv-trip-titleline>svg:last-child{transform:rotate(180deg)}
+#depot-order-payment-review .rv-trip-metachips{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+#depot-order-payment-review .rv-trip-metachips .rv-trip-chip{display:inline-flex;align-items:center;justify-content:center;gap:4px;border:0;background:#ffffff25;color:#fff;padding:4px 7px;min-height:26px;border-radius:8px;font-family:inherit;font-size:11px;line-height:1.4;font-weight:500;box-shadow:0 1px 2px #27248d10}
+#depot-order-payment-review .rv-trip-chip>svg{width:12px;height:12px}
+#depot-order-payment-review .rv-trip-metachips button.rv-trip-chip{background:#ffffff38}
+#depot-order-payment-review .rv-trip-closed>summary .rv-complete{font-size:11px;min-height:22px;padding:3px 6px}
+#depot-order-payment-review .rv-added-trip-header{background:linear-gradient(118deg,#5548f5,#3d3bf3);color:#fff}
+#depot-order-payment-review .rv-added-trip-header .rv-note{color:#e0d9ff}
+#depot-order-payment-review .rv-added-trip-header .rv-section-heading>span{font-size:11px;color:#e6e0ff}
+/* Native image viewer: one close action returns to the exact same context. */
+#depot-order-payment-review .rv-photo-dialog{width:min(354px,calc(100% - 28px));padding:0;border:0;border-radius:20px;background:#fff;color:#4e3a66;box-shadow:0 20px 65px #25195150;font:13px/1.4 'Plus Jakarta Sans',sans-serif;color-scheme:light;overflow:hidden}
+#depot-order-payment-review .rv-photo-dialog::backdrop{background:#20183c88;backdrop-filter:blur(4px)}
+#depot-order-payment-review .rv-photo-dialog-top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 13px;background:#f3efff}
+#depot-order-payment-review .rv-photo-dialog-top>span{display:grid;gap:3px;min-width:0}
+#depot-order-payment-review .rv-photo-dialog-top strong{font-size:14px;font-weight:600}
+#depot-order-payment-review #rv-photo-meta{font-size:11px;color:#947ba7}
+#depot-order-payment-review .rv-photo-dialog button{display:inline-flex;align-items:center;justify-content:center;width:29px;height:29px;border:0;border-radius:9px;background:#e5dcfa;color:#89709d;flex-shrink:0}
+#depot-order-payment-review .rv-photo-dialog button svg{width:15px;height:15px}
+#depot-order-payment-review #rv-photo-image{display:block;width:100%;height:auto;aspect-ratio:1;object-fit:contain;background:#ebe7f4}
+#depot-order-payment-review .rv-photo-caption{font-size:11px;color:#a08aac;text-align:center;padding:7px 9px}
+@media(max-width:360px){#depot-order-payment-review .rv-home-body{padding:11px 10px;gap:10px}#depot-order-payment-review .rv-home-sales{padding:11px}#depot-order-payment-review .rv-home-sales .rv-home-big{font-size:27px}#depot-order-payment-review .rv-home-breakdown>span{padding:5px 6px;gap:3px}#depot-order-payment-review .rv-home-breakdown svg{display:none}#depot-order-payment-review .rv-home-money{gap:6px}#depot-order-payment-review .rv-home-money .rv-home-money-tile{padding:9px 8px;min-height:96px}#depot-order-payment-review .rv-home-money .rv-home-money-tile>strong{font-size:14px;letter-spacing:-.5px}#depot-order-payment-review .rv-home-stages>button{gap:3px;padding:7px 2px;font-size:11px}#depot-order-payment-review .rv-home-stages strong{font-size:17px}#depot-order-payment-review .rv-home-orders{padding:10px}#depot-order-payment-review .rv-trip>summary{padding:10px 11px;gap:6px}}
+@media(pointer:coarse){#depot-order-payment-review .rv-home-stages>button,#depot-order-payment-review .rv-home-results button,#depot-order-payment-review .rv-trip-metachips button.rv-trip-chip{min-height:44px}#depot-order-payment-review .rv-photo-dialog button{width:44px;height:44px}#depot-order-payment-review .rv-home-sales .rv-period select{min-height:44px}}
+/* Compact revision: one metadata row, slender summaries and themed native pickers. */
+#depot-order-payment-review .rv-home-body{gap:9px}
+#depot-order-payment-review .rv-home-money .rv-home-money-tile{min-height:64px;padding:9px 10px;gap:4px;justify-content:center;border-radius:15px}
+#depot-order-payment-review .rv-home-money .rv-home-money-tile>span:not(.rv-money-symbol){font-size:11px;gap:5px;color:inherit}
+#depot-order-payment-review .rv-home-money .rv-home-money-tile>span:not(.rv-money-symbol)>svg{width:13px;height:13px}
+#depot-order-payment-review .rv-home-money .rv-home-money-tile>strong{font-size:15px;letter-spacing:-.5px}
+#depot-order-payment-review .rv-home-orders{padding:10px 11px}
+#depot-order-payment-review .rv-home-orders .rv-section-heading{margin:0 0 5px}
+#depot-order-payment-review .rv-home-stages>button{padding:5px 3px;min-height:32px;border-radius:9px;color:#685488}
+#depot-order-payment-review .rv-home-stages strong{font-size:16px}
+#depot-order-payment-review .rv-home-order-foot{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-top:6px}
+#depot-order-payment-review .rv-home-order-foot .rv-home-results{padding:0;gap:4px}
+#depot-order-payment-review .rv-home-order-foot .rv-home-results button{padding:3px 5px;font-size:11px;color:#557961;min-height:25px}
+#depot-order-payment-review .rv-home-order-foot .rv-home-results button:last-child{color:#926578}
+#depot-order-payment-review .rv-home-order-foot .rv-home-trip-link{margin:0;padding:3px 0;min-height:25px;width:auto;border:0;gap:3px;font-size:11px;white-space:nowrap;color:#756091}
+#depot-order-payment-review .rv-home-trip-link svg{width:12px;height:12px}
+#depot-order-payment-review .rv-attendance{padding:10px 11px}
+#depot-order-payment-review .rv-attendance .rv-section-heading{margin-bottom:3px}
+#depot-order-payment-review .rv-attendance-list{display:grid}
+#depot-order-payment-review .rv-attendance-row{display:flex;align-items:center;gap:10px;min-height:34px;border-bottom:1px solid #f1edf8}
+#depot-order-payment-review .rv-attendance-row:last-child{border:0}
+#depot-order-payment-review .rv-attendance-name{display:flex;align-items:center;gap:7px;flex:1;color:#67517f}
+#depot-order-payment-review .rv-attendance-name strong{font-size:12px;font-weight:600}
+#depot-order-payment-review .rv-staff-dot{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:8px;background:#eee8ff;color:#9477b4;font-size:11px}
+#depot-order-payment-review .rv-attendance-row time{font-size:11px;color:#8d759e;font-variant-numeric:tabular-nums}
+#depot-order-payment-review .rv-attendance-photo{display:inline-flex;align-items:center;justify-content:center;width:30px;min-height:30px;padding:0;border:0;border-radius:9px;background:#eee8ff;color:#8266b0}
+#depot-order-payment-review .rv-attendance-photo svg{width:15px;height:15px}
+#depot-order-payment-review .rv-trip>summary{padding:10px 11px;gap:0}
+#depot-order-payment-review .rv-trip-titleline{gap:6px}
+#depot-order-payment-review .rv-trip-titleline>.rv-trip-name{min-width:0}
+#depot-order-payment-review .rv-trip-name>strong{display:flex;align-items:center;gap:5px}
+#depot-order-payment-review .rv-trip-name .rv-trip-done{font-size:10px;font-weight:500;line-height:1.4;background:#ffffff20;padding:2px 4px;border-radius:5px;color:#ede9ff}
+#depot-order-payment-review .rv-trip-metachips{flex-wrap:nowrap;gap:4px;flex-shrink:0}
+#depot-order-payment-review .rv-trip-metachips .rv-trip-chip{padding:4px 6px;min-height:28px;white-space:nowrap}
+#depot-order-payment-review .rv-trip-metachips .rv-trip-photo{width:29px;padding:4px}
+#depot-order-payment-review .rv-trip-titleline>svg{flex-shrink:0}
+#depot-order-payment-review .rv-new-customer{gap:9px;padding:13px}
+#depot-order-payment-review .rv-new-customer h3{margin:0}
+#depot-order-payment-review .rv-customer-search{position:relative}
+#depot-order-payment-review .rv-customer-suggestions{position:absolute;inset:calc(100% + 5px) 0 auto;z-index:20;padding:5px;border:1px solid #ded3fa;border-radius:14px;background:#f7f3ff;box-shadow:0 12px 30px #4e328b24,0 3px 8px #4e328b12}
+#depot-order-payment-review .rv-customer-suggestions>button{display:flex;align-items:center;gap:7px;width:100%;padding:8px;border:0;border-radius:9px;background:transparent;color:#6d508d;text-align:left;font:500 12px/1.4 'Plus Jakarta Sans',sans-serif}
+#depot-order-payment-review .rv-customer-suggestions>button:hover,#depot-order-payment-review .rv-customer-suggestions>button:focus-visible{background:#e9e0ff}
+#depot-order-payment-review .rv-customer-suggestions>button{justify-content:flex-start}
+#depot-order-payment-review .rv-customer-suggestions b{font-weight:600;color:#8262b4;background:#e9dfff;padding:3px 5px;border-radius:6px}
+#depot-order-payment-review select,#depot-order-payment-review select::picker(select){appearance:base-select}
+#depot-order-payment-review select{display:flex;align-items:center;justify-content:space-between;gap:6px;min-width:0;font-family:inherit}
+#depot-order-payment-review select::picker-icon{color:#9b83be;font-size:11px;transition:rotate .15s}
+#depot-order-payment-review select:open::picker-icon{rotate:180deg}
+#depot-order-payment-review select::picker(select){padding:5px;border:1px solid #ddcff9;border-radius:13px;background:#f7f3ff;color:#654a87;box-shadow:0 12px 30px #4e328b28,0 3px 8px #4e328b12;font:500 12px/1.4 'Plus Jakarta Sans',sans-serif;min-width:anchor-size(width);max-width:calc(100vw - 28px)}
+#depot-order-payment-review select option{display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:8px;background:transparent;color:#76558e;min-height:33px}
+#depot-order-payment-review select option:hover,#depot-order-payment-review select option:focus-visible{background:#eae0ff;color:#5b3b84}
+#depot-order-payment-review select option:checked{background:#e4d8ff;color:#6239a0;font-weight:600}
+#depot-order-payment-review select option::checkmark{color:#8360c6;font-size:12px;order:1;margin-left:auto}
+#depot-order-payment-review #rv-home-period::picker(select){position-area:block-end span-inline-start}
+#depot-order-payment-review .rv-status-panel{background:#f2ebff;border-color:#e0d1fc;box-shadow:0 8px 24px #59359225}
+@media(max-width:360px){#depot-order-payment-review .rv-home-money .rv-home-money-tile{min-height:62px;padding:8px 7px}#depot-order-payment-review .rv-home-money .rv-home-money-tile>strong{font-size:13.5px}#depot-order-payment-review .rv-home-money .rv-home-money-tile>span:not(.rv-money-symbol){gap:3px}#depot-order-payment-review .rv-trip-metachips .rv-trip-chip{font-size:11px;padding:4px 5px}#depot-order-payment-review .rv-trip-titleline{gap:4px}#depot-order-payment-review .rv-trip-name .rv-trip-done{font-size:10px;padding:2px 3px}#depot-order-payment-review .rv-new-customer{padding:11px}}
+@media(pointer:coarse){#depot-order-payment-review .rv-attendance-photo{width:44px;min-height:44px}#depot-order-payment-review .rv-attendance-row{min-height:44px}#depot-order-payment-review .rv-home-stages>button,#depot-order-payment-review .rv-home-order-foot .rv-home-results button,#depot-order-payment-review .rv-home-order-foot .rv-home-trip-link,#depot-order-payment-review select option,#depot-order-payment-review .rv-customer-suggestions>button{min-height:44px}#depot-order-payment-review .rv-trip-metachips .rv-trip-photo{width:44px;min-height:44px}}
+/* New activity strip and the additional feature family. */
+#depot-order-payment-review:has(#rv-other:not([hidden]))>.rv-stage{display:none}
+#depot-order-payment-review #rv-other{padding:18px 10px;margin-top:10px}
+#depot-order-payment-review .rv-activity-card{border-radius:18px;background:linear-gradient(115deg,#ede7ff,#f9f5ff);box-shadow:0 5px 16px #59418d16,0 2px 4px #59418d08;overflow:hidden}
+#depot-order-payment-review .rv-activity-main{display:flex;width:100%;gap:10px;padding:11px 12px 7px;background:transparent;border:0;color:#68458c;text-align:left;justify-content:flex-start}
+#depot-order-payment-review .rv-activity-symbol{display:flex;align-items:center;justify-content:center;width:35px;height:35px;flex-shrink:0;border-radius:12px;background:linear-gradient(145deg,#a693f2,#7561db);color:#fff;box-shadow:0 4px 9px #7859b92a}
+#depot-order-payment-review .rv-activity-symbol svg{width:19px;height:19px}
+#depot-order-payment-review .rv-activity-copy{display:grid;gap:2px;flex:1}
+#depot-order-payment-review .rv-activity-copy>span{font-size:11px;color:#947ca8}
+#depot-order-payment-review .rv-activity-copy strong{font-size:16px;letter-spacing:-.5px;font-weight:700}
+#depot-order-payment-review .rv-activity-main>svg{width:16px;height:16px;color:#9a7ebb}
+#depot-order-payment-review .rv-activity-foot{display:flex;align-items:center;gap:4px;margin:0 12px;padding:3px 0 7px;border-top:1px solid #e8dff7}
+#depot-order-payment-review .rv-activity-foot button{border:0;background:transparent;padding:3px 0;color:#89709d;font-size:11px;min-height:24px;white-space:nowrap}
+#depot-order-payment-review .rv-activity-foot button:first-child{color:#6c8c74}
+#depot-order-payment-review .rv-activity-dot{font-size:11px;color:#baabca}
+#depot-order-payment-review .rv-activity-foot .rv-activity-trip{margin-left:auto;gap:4px;color:#9273b0}
+#depot-order-payment-review .rv-activity-trip svg{width:12px;height:12px}
+#depot-order-payment-review .rv-more-body,#depot-order-payment-review .rv-feature{padding:12px;gap:11px}
+#depot-order-payment-review .rv-account-strip{display:flex;align-items:center;gap:9px;padding:0 2px 2px;color:#6b5286}
+#depot-order-payment-review .rv-account-avatar{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:12px;background:#e4daff;color:#8262b6;font-size:15px;font-weight:600}
+#depot-order-payment-review .rv-account-strip>span:nth-child(2){display:grid;gap:1px;flex:1}
+#depot-order-payment-review .rv-account-strip strong{font-size:13px}
+#depot-order-payment-review .rv-account-strip>span:nth-child(2)>span{font-size:11px;color:#a18caf}
+#depot-order-payment-review .rv-account-strip>svg{color:#b09ad0}
+#depot-order-payment-review .rv-quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+#depot-order-payment-review .rv-quick-grid .rv-quick-tile{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:3px;border:0;border-radius:18px;padding:12px;background:linear-gradient(120deg,#fbeedc,#fff8ec);color:#8d6744;text-align:left;box-shadow:0 5px 14px #5e408f0d}
+#depot-order-payment-review .rv-quick-grid .rv-quick-tile:nth-child(2){background:linear-gradient(120deg,#e7f2eb,#f3faf6);color:#527e65}
+#depot-order-payment-review .rv-quick-tile strong{font-size:13px;font-weight:600;margin-top:3px}
+#depot-order-payment-review .rv-quick-tile>span:last-of-type{font-size:11px;opacity:.8}
+#depot-order-payment-review .rv-quick-tile>svg{position:absolute;top:13px;right:12px;width:14px;height:14px;opacity:.7}
+#depot-order-payment-review .rv-menu-icon{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;width:32px;height:32px;border-radius:11px;background:#eee6ff;color:#9270b9}
+#depot-order-payment-review .rv-menu-icon svg{width:17px;height:17px}
+#depot-order-payment-review .rv-menu-icon.rv-peach{background:#f8e7d4;color:#b08457}
+#depot-order-payment-review .rv-menu-icon.rv-mint{background:#dceee2;color:#739681}
+#depot-order-payment-review .rv-menu-group{background:#fff;border-radius:18px;padding:2px 11px;box-shadow:0 5px 16px #55408012,0 1px 4px #55408008}
+#depot-order-payment-review .rv-menu-group>.rv-menu-row{display:flex;align-items:center;justify-content:flex-start;gap:10px;width:100%;padding:10px 0;border:0;border-bottom:1px solid #f2edf8;background:transparent;text-align:left;color:#6c5185}
+#depot-order-payment-review .rv-menu-group>.rv-menu-row:last-child{border:0}
+#depot-order-payment-review .rv-menu-row>span:nth-child(2){display:grid;gap:2px;flex:1}
+#depot-order-payment-review .rv-menu-row strong{font-size:12px;font-weight:600}
+#depot-order-payment-review .rv-menu-row>span:nth-child(2)>span{font-size:11px;color:#a18daf}
+#depot-order-payment-review .rv-menu-row>svg{width:13px;height:13px;color:#b8a4cb}
+#depot-order-payment-review .rv-soft-search{display:flex;align-items:center;gap:7px;padding:0 11px;border-radius:12px;background:#eae3f9;color:#aa90bf}
+#depot-order-payment-review .rv-soft-search input{width:100%;min-height:36px;border:0;background:transparent;font-size:13px;color:#71538f;padding:7px 0}
+#depot-order-payment-review .rv-feature .rv-section-heading select{min-height:29px;border:0;background:#eae1fa;border-radius:9px;padding:4px 7px;font-size:11px;color:#9274ad}
+#depot-order-payment-review .rv-master-card,#depot-order-payment-review .rv-catalog-card,#depot-order-payment-review .rv-staff-card{border-radius:16px;background:#fff;box-shadow:0 5px 15px #5a3b8d11;overflow:hidden}
+#depot-order-payment-review .rv-data-row{display:flex;align-items:center;justify-content:flex-start;gap:8px;width:100%;padding:10px 11px;border:0;background:transparent;text-align:left;color:#6f5289}
+#depot-order-payment-review .rv-data-row>span:first-child{display:grid;gap:4px;flex:1}
+#depot-order-payment-review .rv-data-row strong{font-size:12px;font-weight:600}
+#depot-order-payment-review .rv-data-row .rv-note{font-size:11px;color:#a28cad}
+#depot-order-payment-review .rv-data-row>svg{width:13px;height:13px;color:#b49bca}
+#depot-order-payment-review .rv-data-panel{padding:10px 11px;background:#f6f1ff;border-top:1px solid #eee5fb;display:grid;gap:9px}
+#depot-order-payment-review .rv-data-panel .rv-field{font-size:11px}
+#depot-order-payment-review .rv-stock-badge{font-size:11px;white-space:nowrap;border-radius:8px;padding:4px 6px;background:#edf4ef;color:#7b9c86}
+#depot-order-payment-review .rv-stock-unlimited{background:#f2eef9;color:#a08bb0}
+#depot-order-payment-review .rv-stock-minus{background:#fbe4ea;color:#b46d87}
+#depot-order-payment-review .rv-inline-two{display:grid;grid-template-columns:1fr auto;align-items:end;gap:7px}
+#depot-order-payment-review .rv-permission-list{display:grid;grid-template-columns:1fr 1fr;gap:4px 7px}
+#depot-order-payment-review .rv-permission-list label{display:flex;align-items:center;gap:5px;font-size:11px;color:#8c6da4;min-height:31px}
+#depot-order-payment-review .rv-permission-list input{width:15px;height:15px;accent-color:#8f6bd0}
+#depot-order-payment-review .rv-my-attendance{display:flex;align-items:center;gap:9px;padding:11px}
+#depot-order-payment-review .rv-my-attendance>span:nth-child(2){display:grid;gap:3px;flex:1;color:#6d5485}
+#depot-order-payment-review .rv-my-attendance strong{font-size:12px}
+#depot-order-payment-review .rv-my-attendance>span:nth-child(2)>span{font-size:11px;color:#9d87ac}
+#depot-order-payment-review .rv-counter-line{display:grid;gap:7px;border-bottom:1px solid #f0e9f8;padding-bottom:9px}
+#depot-order-payment-review .rv-counter-line:last-child{border:0;padding-bottom:0}
+#depot-order-payment-review .rv-counter-product{display:grid;grid-template-columns:1fr auto;gap:7px;align-items:center}
+#depot-order-payment-review .rv-counter-product select{width:100%;min-height:34px;border:0;border-radius:9px;background:#eee7fa;color:#8866a5;padding:6px;font-size:12px}
+#depot-order-payment-review .rv-counter-fields{display:grid;grid-template-columns:54px 1fr 1fr;gap:7px;align-items:end}
+#depot-order-payment-review .rv-counter-fields>.rv-note{text-align:right;font-size:11px;padding-bottom:8px}
+#depot-order-payment-review .rv-counter-total{display:flex;align-items:center;justify-content:space-between;padding:0 3px;color:#80609c}
+#depot-order-payment-review .rv-counter-total strong{font-size:24px;font-weight:700;letter-spacing:-.8px;color:#64408d}
+#depot-order-payment-review .rv-report-summary{padding:13px}
+#depot-order-payment-review .rv-report-separator{height:1px;background:#eee5fa}
+#depot-order-payment-review .rv-report-summary .rv-line>strong{font-size:14px;color:#7c5999}
+#depot-order-payment-review .rv-report-receipt{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid #f2edf7}
+#depot-order-payment-review .rv-report-receipt:last-child{border:0}
+#depot-order-payment-review .rv-report-receipt>span{display:grid;gap:3px;font-size:12px;color:#8c6aa4}
+#depot-order-payment-review .rv-report-receipt small{font-size:11px;color:#ac96ba}
+#depot-order-payment-review .rv-report-receipt strong{font-size:12px;color:#7d5a98;white-space:nowrap}
+#depot-order-payment-review .rv-tv-table-wrap{overflow-x:auto}
+#depot-order-payment-review .rv-tv-table{width:100%;border-collapse:collapse;min-width:450px;text-align:left;font:12px/1.5 'Plus Jakarta Sans',sans-serif;color:#7c5e96}
+#depot-order-payment-review .rv-tv-table th{padding:9px;background:#e9e1fb;font-weight:600;white-space:nowrap}
+#depot-order-payment-review .rv-tv-table td{padding:10px 9px;border-bottom:1px solid #eee7f7}
+#depot-order-payment-review .rv-tv-table td:first-child{white-space:nowrap}
+#depot-order-payment-review .rv-tv-table .rv-time{white-space:nowrap;font-size:12px;min-width:58px}
+#depot-order-payment-review .rv-tv-dialog{border:0;border-radius:20px;background:#fbf8ff;color:#7e5b98;padding:15px;width:min(920px,calc(100% - 24px));box-shadow:0 20px 70px #2e165752;color-scheme:light;font-family:'Plus Jakarta Sans',sans-serif}
+#depot-order-payment-review .rv-tv-dialog::backdrop{background:#20183c88;backdrop-filter:blur(4px)}
+#depot-order-payment-review .rv-tv-dialog h3{font-size:15px}
+#depot-order-payment-review .rv-duration-key{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#depot-order-payment-review .rv-history-amount{display:grid;gap:3px;text-align:right;flex-shrink:0}
+#depot-order-payment-review .rv-history-amount strong{white-space:nowrap}
+#depot-order-payment-review .rv-counter-fields{grid-template-columns:65px 1fr}
+#depot-order-payment-review .rv-counter-discounts{display:grid;gap:5px;padding-top:4px}
+#depot-order-payment-review .rv-counter-discount-row{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#9a7dad;font-size:11px}
+#depot-order-payment-review .rv-counter-discount-row input{width:90px;min-height:32px;padding:6px 8px;border:1px solid #e6dcf4;border-radius:9px;background:#f8f4ff;font:500 12px 'Plus Jakarta Sans',sans-serif;color:#795590;text-align:right}
+@media(pointer:coarse){#depot-order-payment-review .rv-counter-discount-row input{min-height:44px;font-size:16px}}
+#depot-order-payment-review .rv-tv-dialog .rv-tv-table{font-size:16px}
+#depot-order-payment-review .rv-tv-dialog .rv-tv-table th,#depot-order-payment-review .rv-tv-dialog .rv-tv-table td{padding:12px}
+@media(max-width:360px){#depot-order-payment-review #rv-other{padding:10px 0}#depot-order-payment-review .rv-feature{padding:10px;gap:9px}#depot-order-payment-review #rv-feature-title{font-size:20px;letter-spacing:-.6px}}
+#depot-order-payment-review .rv-duration-key .blue{background:#296bc2;color:#fff}
+#depot-order-payment-review .rv-duration-key .green{background:#257b4c;color:#fff}
+#depot-order-payment-review .rv-duration-key .yellow{background:#f7cb35;color:#523d00}
+#depot-order-payment-review .rv-duration-key .red{background:#d0354b;color:#fff}
+@media(pointer:coarse){#depot-order-payment-review .rv-activity-foot button{min-height:44px}#depot-order-payment-review .rv-soft-search input,#depot-order-payment-review .rv-counter-product select{min-height:44px;font-size:16px}#depot-order-payment-review .rv-permission-list label{min-height:44px}#depot-order-payment-review .rv-feature .rv-section-heading select{min-height:44px}}
+/* The home summaries share the attendance card's shape, rhythm and heading. */
+#depot-order-payment-review .rv-home-order-summary{padding:10px 11px}
+#depot-order-payment-review .rv-home-order-summary .rv-section-heading{margin-bottom:3px}
+#depot-order-payment-review #rv-home .rv-home-sales h3,#depot-order-payment-review #rv-home .rv-home-order-summary h3,#depot-order-payment-review #rv-home .rv-attendance h3{font-size:13px;font-weight:700;letter-spacing:-.2px;line-height:1.4;color:var(--rv-ink);margin:0}
+#depot-order-payment-review .rv-daily-status-list{display:grid}
+#depot-order-payment-review .rv-daily-status-list>.rv-daily-status-row{display:flex;align-items:center;justify-content:flex-start;gap:7px;width:100%;min-height:34px;padding:0;border:0;border-bottom:1px solid #f1edf8;background:transparent;color:#67517f;text-align:left}
+#depot-order-payment-review .rv-daily-status-row:last-child{border-bottom:0}
+#depot-order-payment-review .rv-daily-status-row>strong{flex:1;font-size:12px;font-weight:600}
+#depot-order-payment-review .rv-daily-status-row .rv-staff-dot svg{width:12px;height:12px}
+#depot-order-payment-review .rv-daily-status-row .rv-daily-mint{background:#e6f1ea;color:#87a290}
+#depot-order-payment-review .rv-daily-status-row .rv-daily-rose{background:#f8eaf0;color:#b18a9c}
+#depot-order-payment-review .rv-daily-count{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:#8d759e;min-width:18px;text-align:right}
+#depot-order-payment-review .rv-daily-status-row>svg{width:13px;height:13px;margin-left:9px;color:#a58abb}
+@media(pointer:coarse){#depot-order-payment-review .rv-daily-status-list>.rv-daily-status-row{min-height:44px}}
+/* Product taps and light customer/report drill-downs. */
+#depot-order-payment-review .rv-category-chips{display:flex;gap:5px;flex-wrap:wrap}
+#depot-order-payment-review .rv-catalog-tools{display:flex;align-items:center;gap:7px}
+#depot-order-payment-review .rv-category-manager-row{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 0;border-bottom:1px solid #f1e9f8;font-size:12px;color:#89709c}
+#depot-order-payment-review .rv-category-chips button{max-width:100%;overflow-wrap:anywhere}
+#depot-order-payment-review .rv-category-chips button{border:0;border-radius:9px;background:#f0e7d9;color:#aa8b65;font-size:11px;padding:6px 8px;min-height:29px}
+#depot-order-payment-review .rv-category-chips button[aria-pressed=true]{background:#8967c4;color:#fff;box-shadow:0 3px 8px #7954aa25}
+#depot-order-payment-review .rv-product-tiles{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#depot-order-payment-review .rv-product-tiles>.rv-product-pick{display:flex;align-items:center;justify-content:space-between;gap:5px;border:1px solid #eee1d0;border-radius:11px;background:#fffdf9;color:#846044;padding:8px;text-align:left;min-height:54px}
+#depot-order-payment-review .rv-product-pick>span:first-child{display:grid;gap:2px;flex:1}
+#depot-order-payment-review .rv-product-pick strong{font-size:12px;font-weight:600}
+#depot-order-payment-review .rv-product-pick small{font-size:11px;color:#8f7055}
+#depot-order-payment-review .rv-product-pick-count{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 4px;border-radius:7px;background:#f0e8fa;color:#9c7db7;font-size:12px;font-weight:600;flex-shrink:0}
+#depot-order-payment-review .rv-product-pick[data-picked=true]{background:#f0e9ff;border-color:#d1bfe9;color:#816095}
+#depot-order-payment-review .rv-product-pick[data-picked=true] .rv-product-pick-count{background:#a88bcf;color:#fff}
+#depot-order-payment-review .rv-picked-products{display:grid;border-top:1px solid #ecdfd3;padding-top:4px}
+#depot-order-payment-review .rv-picked-row{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:35px;color:#9a7d69;font-size:11px}
+#depot-order-payment-review .rv-picked-row>span:first-child{flex:1}
+#depot-order-payment-review .rv-quantity-control{display:flex;align-items:center;gap:4px;flex-shrink:0}
+#depot-order-payment-review .rv-quantity-control button{width:26px;min-height:27px;padding:0;border:0;border-radius:7px;background:#eee5f8;color:#a388b9}
+#depot-order-payment-review .rv-quantity-control button svg{width:12px;height:12px}
+#depot-order-payment-review .rv-quantity-control strong{min-width:20px;text-align:center;font-size:12px;color:#89679f}
+#depot-order-payment-review .rv-customer-group{background:#fff;border-radius:17px;box-shadow:0 5px 15px #5a3b8d11;overflow:hidden}
+#depot-order-payment-review .rv-customer-group-head{display:flex;align-items:center;justify-content:flex-start;gap:8px;width:100%;padding:10px 11px;border:0;background:#fff;color:#836397;text-align:left}
+#depot-order-payment-review .rv-group-code{display:flex;align-items:center;justify-content:center;width:29px;height:29px;border-radius:10px;background:#eae0fc;color:#9974bb;font-size:13px;font-weight:600}
+#depot-order-payment-review .rv-customer-group-head>strong{font-size:12px;font-weight:600;flex:1}
+#depot-order-payment-review .rv-customer-group-head>span:not(.rv-group-code){font-size:11px;color:#b09abe}
+#depot-order-payment-review .rv-customer-group-head>svg{width:13px;height:13px;color:#b69bc9}
+#depot-order-payment-review .rv-customer-group-head[aria-expanded=true]{background:#f5efff}
+#depot-order-payment-review .rv-customer-group-head[aria-expanded=true]>svg{transform:rotate(180deg)}
+#depot-order-payment-review .rv-group-person{border-top:1px solid #f0e8f8}
+#depot-order-payment-review .rv-customer-group .rv-data-row .rv-identity{font-size:12px;padding:3px 6px}
+#depot-order-payment-review .rv-customer-spend{font-size:12px;white-space:nowrap}
+#depot-order-payment-review .rv-customer-purchases{padding:10px;gap:8px}
+#depot-order-payment-review .rv-purchase-overview{display:flex;justify-content:space-between;gap:7px;align-items:center;padding:7px 0;color:#9e82b2}
+#depot-order-payment-review .rv-purchase-overview>span:first-child{display:grid;gap:3px;font-size:11px}
+#depot-order-payment-review .rv-purchase-overview>span:first-child strong{font-size:21px;font-weight:700;color:#775090;letter-spacing:-.6px}
+#depot-order-payment-review .rv-purchase-overview>span:last-child{display:grid;gap:4px;font-size:11px;text-align:right;color:#9e7eb2}
+#depot-order-payment-review .rv-purchase-overview small{font-size:11px;color:#b49bc3}
+#depot-order-payment-review .rv-purchase-list{border-radius:12px;background:#fff;padding:0 8px}
+#depot-order-payment-review .rv-purchase-entry{background:#fff;border-radius:13px;overflow:hidden;box-shadow:0 3px 10px #63428c0a}
+#depot-order-payment-review .rv-purchase-list>.rv-purchase-entry{border-radius:0;box-shadow:none;border-bottom:1px solid #f1e9f8}
+#depot-order-payment-review .rv-purchase-list>.rv-purchase-entry:last-child{border:0}
+#depot-order-payment-review .rv-purchase-trigger{display:flex;align-items:center;justify-content:flex-start;gap:7px;width:100%;padding:10px;border:0;background:transparent;color:#8e6aa4;text-align:left}
+#depot-order-payment-review .rv-purchase-trigger>span:first-child{display:grid;gap:3px;flex:1}
+#depot-order-payment-review .rv-purchase-trigger .rv-identity{font-size:12px;padding:3px 5px}
+#depot-order-payment-review .rv-purchase-trigger strong{font-size:12px;font-weight:600}
+#depot-order-payment-review .rv-purchase-trigger small{font-size:11px;color:#b09abd}
+#depot-order-payment-review .rv-purchase-trigger>svg{width:12px;height:12px;color:#b79ccc}
+#depot-order-payment-review .rv-purchase-trigger[aria-expanded=true]>svg{transform:rotate(180deg)}
+#depot-order-payment-review .rv-purchase-detail{padding:9px 10px;display:grid;gap:7px;background:#f8f3ff;border-top:1px solid #eee3fa;font-size:11px;color:#9875ad}
+#depot-order-payment-review .rv-purchase-detail .rv-line>strong{font-size:12px;color:#8d65a4}
+#depot-order-payment-review .rv-purchase-item{display:flex;align-items:center;justify-content:space-between;gap:6px;padding-bottom:5px;border-bottom:1px solid #eee3f8}
+#depot-order-payment-review .rv-purchase-item>span{display:grid;gap:2px}
+#depot-order-payment-review .rv-purchase-item strong{font-size:11px;font-weight:600}
+#depot-order-payment-review .rv-purchase-item small{font-size:11px;color:#b097c0}
+#depot-order-payment-review .rv-report-trip{border-radius:17px;overflow:hidden;background:#fff;box-shadow:0 6px 18px #63428c16}
+#depot-order-payment-review .rv-report-trip-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;background:#e9e5ff;color:#4b3ab2}
+#depot-order-payment-review .rv-report-trip-head h4{margin:0;font-size:13px;font-weight:700}
+#depot-order-payment-review .rv-report-trip-head small{display:block;margin-top:3px;font-size:11px;color:#70629c}
+#depot-order-payment-review .rv-report-courier{display:flex;align-items:center;gap:4px;padding:4px 7px;border-radius:8px;background:#fff9;font-size:11px;font-weight:600;flex-shrink:0}
+#depot-order-payment-review .rv-report-courier svg{width:12px;height:12px}
+#depot-order-payment-review .rv-report-transaction+.rv-report-transaction{border-top:1px solid #eee8f8}
+#depot-order-payment-review .rv-report-transaction>button{display:block;width:100%;padding:10px 12px;border:0;background:#fff;text-align:left;color:#755489}
+#depot-order-payment-review .rv-report-transaction-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#depot-order-payment-review .rv-report-transaction-top .rv-identity{font-size:12px;padding:4px 7px;white-space:normal;overflow-wrap:anywhere}
+#depot-order-payment-review .rv-report-transaction-top>svg{width:14px;height:14px;flex-shrink:0;color:#9878b4}
+#depot-order-payment-review .rv-report-transaction>button[aria-expanded=true] .rv-report-transaction-top>svg{transform:rotate(180deg)}
+#depot-order-payment-review .rv-report-amounts{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:6px;margin-top:8px;font-size:11px;font-variant-numeric:tabular-nums}
+#depot-order-payment-review .rv-report-amounts>span{display:grid;gap:3px;color:#947ba4}
+#depot-order-payment-review .rv-report-amounts strong{font-size:12px;font-weight:600;color:#76568d;white-space:nowrap}
+#depot-order-payment-review .rv-report-amounts>span:last-child{text-align:right}
+#depot-order-payment-review .rv-report-amounts>span:last-child strong{color:#5140b9;font-weight:700}
+#depot-order-payment-review .rv-report-items{padding:8px 12px;background:#f7f3ff;display:grid;gap:7px;border-top:1px solid #eee8f8}
+#depot-order-payment-review .rv-report-items .rv-purchase-item{padding-bottom:0;border:0;color:#76568d}
+@media(pointer:coarse){#depot-order-payment-review .rv-category-chips button,#depot-order-payment-review .rv-quantity-control button{min-height:44px}#depot-order-payment-review .rv-quantity-control button{width:40px}}

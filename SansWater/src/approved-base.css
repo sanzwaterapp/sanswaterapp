@@ -1,0 +1,20 @@
+/* Nilai dasar lingkungan pratinjau asli, sebelum CSS tema diterapkan. */
+.rv-phone :is(button, input, select, textarea) {
+  font-size: 13.3333px;
+  line-height: normal;
+  font-weight: 400;
+}
+.rv-phone :is(h2, h3, h4) {
+  font-family:
+    -apple-system-body,
+    ui-sans-serif,
+    -apple-system,
+    system-ui,
+    "Segoe UI",
+    Helvetica,
+    "Apple Color Emoji",
+    Arial,
+    sans-serif,
+    "Segoe UI Emoji",
+    "Segoe UI Symbol";
+}

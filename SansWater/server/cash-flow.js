@@ -1,5 +1,5 @@
 // Cash uses payment timestamps and the selected expense day, never invoice sales.
-export function cashFlowSummary(db, start, end, holders = []) {
+export function cashFlowSummary(db, start, end, holders = [], { includeActive = false } = {}) {
   const from = new Date(Date.parse(start) + 25200000)
     .toISOString()
     .slice(0, 10);
@@ -19,9 +19,9 @@ export function cashFlowSummary(db, start, end, holders = []) {
       SUM(CASE WHEN from_method='Tunai' THEN amount ELSE 0 END) cash,
       SUM(CASE WHEN from_method='QRIS' THEN amount ELSE 0 END) qris FROM cash_entries
       WHERE kind='expense' AND voided_at IS NULL AND day>=? AND day<? GROUP BY actor_id
-    ) e ON e.actor_id=u.id WHERE p.actor_id IS NOT NULL OR e.actor_id IS NOT NULL ORDER BY u.name,u.id`,
+    ) e ON e.actor_id=u.id WHERE p.actor_id IS NOT NULL OR e.actor_id IS NOT NULL OR (?=1 AND u.active=1) ORDER BY u.name,u.id`,
     )
-    .all(start, end, from, to);
+    .all(start, end, from, to, includeActive ? 1 : 0);
   const incoming = rows.reduce((sum, r) => sum + r.cash + r.qris, 0),
     outgoing = rows.reduce((sum, r) => sum + r.outgoing, 0);
   const sources = new Map();

@@ -5,19 +5,10 @@
   padding: 32px 24px 24px;
   gap: 0;
 }
-.rv-auth-screen .auth-brand {
-  width: 60px;
-  height: 60px;
-  border-radius: 20px;
-  box-shadow: 0 8px 24px #4336ff1c;
-  margin-bottom: 15px;
-}
-.rv-auth-screen .auth-brand .sanz-brand-mark {
-  width: 42px;
-  height: 42px;
-}
-.rv-auth-screen .sanz-wordmark {
-  font-size: 23px;
+.rv-auth-screen > .sanz-brand-wordmark {
+  display: block;
+  width: 112px;
+  height: 34px;
 }
 .rv-auth-screen h1 {
   margin: 22px 0 6px;

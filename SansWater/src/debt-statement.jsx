@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { X, CheckCircle2, Download } from "lucide-react";
-import BrandMark from "./BrandMark.jsx";
+import { ReceiptFooter } from "./PaymentReceipt.jsx";
 import OverlayDialog from "./OverlayDialog.jsx";
 import { money, timeLabel } from "./api.js";
 import { debtStatement } from "./debt-statement.js";
@@ -121,17 +121,11 @@ export default function DebtStatement({
           aria-label={"Nota utang " + customer.name}
         >
           <header className="rv-statement-hero">
-            <div className="rv-statement-brand">
-              <BrandMark />
-              <span>
-                <strong>{depotName || "Sanz Water"}</strong>
-                <small>DEPOT AIR MINUM</small>
-              </span>
-            </div>
             <div className="rv-statement-heading">
               <span>RINCIAN TAGIHAN PELANGGAN</span>
               <h2 id="rv-statement-title">
-                Nota utang<span>Belum dibayar</span>
+                Nota utang
+                <span>{statement.remaining > 0 ? "Belum dibayar" : "Lunas"}</span>
               </h2>
             </div>
           </header>
@@ -213,21 +207,7 @@ export default function DebtStatement({
                 </li>
               )}
             </ul>
-            <footer className="rv-statement-footer">
-              <div className="rv-statement-footer-brand">
-                <BrandMark />
-                <span>
-                  <b>{depotName || "Sanz Water"}</b>
-                  <small>DEPOT AIR MINUM</small>
-                </span>
-              </div>
-              <strong>Terima kasih atas kepercayaan Anda.</strong>
-              <span>
-                Rincian ini mencakup seluruh tagihan yang belum lunas
-                <br />
-                pada waktu nota ditampilkan.
-              </span>
-            </footer>
+            <ReceiptFooter depotName={depotName} outstanding={statement.remaining > 0} />
           </div>
         </article>
       )}

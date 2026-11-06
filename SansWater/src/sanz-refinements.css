@@ -227,15 +227,9 @@
   transform: scaleX(-1);
 }
 
-/* The S-current water drop and a restrained wordmark form the shared brand. */
+/* Keep the depot name and emblem aligned in the app bar. */
 #depot-order-payment-review .rv-phone .rv-app-brand {
-  gap: 7px;
   min-width: 0;
-}
-#depot-order-payment-review .rv-phone .rv-app-brand .sanz-brand-mark {
-  width: 30px;
-  height: 30px;
-  flex-shrink: 0;
 }
 #depot-order-payment-review .rv-phone .rv-app-brand strong {
   font-family: "Nunito", sans-serif;
@@ -247,19 +241,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.auth .auth-brand .sanz-brand-mark {
-  width: 48px;
-  height: 48px;
-}
-.auth .sanz-wordmark {
-  font:
-    800 23px/1.2 "Nunito",
-    sans-serif;
-  letter-spacing: -0.7px;
-  text-transform: none;
-  color: #3d3bff;
-}
-
 /* Explicit centering keeps both total panels balanced at every text size. */
 #depot-order-payment-review
   .rv-phone
@@ -760,13 +741,16 @@
   margin-top: 0;
 }
 
-/* A single drop monogram and two-line wordmark identify the water business. */
+/* The original wordmark uses a light palette over the purple app bar. */
 #depot-order-payment-review .rv-phone .rv-app-brand {
-  gap: 6px;
+  --sanz-wordmark-top: #fff;
+  --sanz-wordmark-bottom: #bce8ff;
+  --sanz-wordmark-green: #c8ef9a;
 }
-#depot-order-payment-review .rv-phone .rv-app-brand .sanz-brand-mark {
-  width: 34px;
-  height: 34px;
+#depot-order-payment-review .rv-phone .rv-app-brand .sanz-brand-wordmark {
+  display: block;
+  width: 108px;
+  height: 33px;
 }
 #depot-order-payment-review .rv-phone .rv-app-wordmark {
   display: flex;

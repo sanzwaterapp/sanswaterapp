@@ -5,6 +5,7 @@ import { resolve, extname, sep } from "node:path";
 import { openDatabase, transaction, ensureCustomerGroup } from "./database.js";
 import { registerCashRoutes } from "./cash-routes.js";
 import { registerReportRoutes } from "./report-routes.js";
+import { isSaleReceipt } from "./sales-breakdown.js";
 import { registerCashFlowRoutes } from "./cash-flow.js";
 import { registerWaterControl } from "./water-control.js";
 import { createPhotoStorage } from "./photo-storage.js";
@@ -156,10 +157,15 @@ export function createApp(options = {}) {
     );
     return token;
   }
-  function perms(value) {
+  function perms(value, role) {
     if (!Array.isArray(value) || value.some((p) => !PERMISSIONS.includes(p)))
       fail("Daftar akses belum benar.");
-    return JSON.stringify([...new Set(value)]);
+    if (role !== undefined && !["staff", "manager"].includes(role))
+      fail("Peran akun belum benar.");
+    const permissions = new Set(value);
+    if (role === "manager") permissions.add("reports");
+    if (role === "staff") permissions.delete("reports");
+    return JSON.stringify([...permissions]);
   }
   const username = (value) => {
     const v = text(value, "Username", 40).toLowerCase();
@@ -1294,7 +1300,8 @@ export function createApp(options = {}) {
         fail("Bayar nanti hanya untuk pelanggan dan dicatat sebagai utang.");
     }
     const order = d.order(ctx.user, ctx.body, "counter");
-    return d.complete(ctx.user, order, ctx.body);
+    const result = d.complete(ctx.user, order, ctx.body);
+    return { ...result, receipt: d.invoiceReceipt(result.invoice.id) };
   });
   route("GET", "/api/orders", "login", (ctx) => {
     if (
@@ -1427,6 +1434,32 @@ export function createApp(options = {}) {
     const { total } = d.get("SELECT COUNT(*) total" + source, ...params);
     return { rows, total, offset, hasMore: offset + rows.length < total };
   });
+  route("GET", "/api/debt-payments/:id", "debts", (ctx) => {
+    const row = d.get(
+      `SELECT p.id,p.amount,p.method,p.created_at,u.name actor,
+        c.code customer_code,c.name customer_name,op.payment_id prepayment,
+        (SELECT a.after_json FROM audit a WHERE a.object_id=p.id AND a.action='payment.create' ORDER BY a.created_at,a.id LIMIT 1) metadata,
+        EXISTS(SELECT 1 FROM audit a WHERE a.object_id=i.order_id AND a.action='order.complete' AND json_extract(a.after_json,'$.paymentId')=p.id) immediate
+        FROM payments p JOIN users u ON u.id=p.actor_id JOIN customers c ON c.id=p.customer_id
+        LEFT JOIN order_prepayments op ON op.payment_id=p.id
+        LEFT JOIN invoices i ON i.id=json_extract(p.scope,'$[0]')
+        WHERE p.id=? AND p.amount>0`,
+      ctx.params.id,
+    );
+    if (!row) fail("Pembayaran tidak ditemukan.", 404);
+    const { prepayment, metadata, immediate, ...payment } = row;
+    const allocations = d.all(
+      "SELECT i.id,i.recorded_at,a.amount FROM allocations a JOIN invoices i ON i.id=a.invoice_id WHERE a.payment_id=? ORDER BY i.recorded_at,i.id",
+      payment.id,
+    );
+    return {
+      ...payment,
+      allocations,
+      kind: isSaleReceipt({ prepayment, metadata, immediate })
+        ? "payment"
+        : "debt-payment",
+    };
+  });
   route("GET", "/api/customers/:id/debts", "debts", (ctx) => {
     d.find("customers", ctx.params.id);
     const payments = new Map();
@@ -1478,7 +1511,7 @@ export function createApp(options = {}) {
   route("GET", "/api/customers/:id/payments", "debts", (ctx) => {
     d.find("customers", ctx.params.id);
     return d.all(
-      "SELECT p.id,p.amount,p.method,p.proof_id,p.created_at,p.actor_id,u.name actor FROM payments p JOIN users u ON u.id=p.actor_id WHERE p.customer_id=? ORDER BY p.created_at DESC LIMIT 100",
+      "SELECT p.id,p.amount,p.method,p.proof_id,p.created_at,p.actor_id,u.name actor FROM payments p JOIN users u ON u.id=p.actor_id WHERE p.customer_id=? ORDER BY p.created_at DESC,p.rowid DESC LIMIT 100",
       ctx.params.id,
     );
   });
@@ -1649,7 +1682,8 @@ export function createApp(options = {}) {
   route("POST", "/api/staff", "staff", (ctx) => {
     if (!ctx.user.owner) fail("Pengelolaan akun dilakukan owner.", 403);
     const b = ctx.body,
-      userId = id();
+      userId = id(),
+      permissions = perms(b.permissions, b.role);
     d.run(
       "INSERT INTO users VALUES(?,?,?,?,?,?,?,?)",
       userId,
@@ -1658,12 +1692,12 @@ export function createApp(options = {}) {
       passwordHash(b.password),
       0,
       1,
-      perms(b.permissions),
+      permissions,
       d.now(),
     );
     d.audit(ctx.user, "staff.create", userId, null, {
       name: b.name,
-      permissions: b.permissions,
+      permissions: JSON.parse(permissions),
     });
     return { id: userId };
   });
@@ -1686,11 +1720,12 @@ export function createApp(options = {}) {
     )
       fail("Akun staf sudah dihapus dari daftar.", 409);
     if (typeof b.active !== "boolean") fail("Status akun belum benar.");
+    const permissions = perms(b.permissions, b.role);
     d.run(
       "UPDATE users SET name=?,active=?,permissions=?,username=? WHERE id=?",
       text(b.name, "Nama staf"),
       b.active ? 1 : 0,
-      perms(b.permissions),
+      permissions,
       b.username === undefined ? previous.username : username(b.username),
       previous.id,
     );
@@ -1699,7 +1734,7 @@ export function createApp(options = {}) {
       name: b.name,
       username: b.username || previous.username,
       active: b.active,
-      permissions: b.permissions,
+      permissions: JSON.parse(permissions),
     });
     return { ok: true };
   });

@@ -1444,6 +1444,36 @@ form :is(input, select, textarea)[aria-invalid="true"] {
 #depot-order-payment-review .rv-framed-photo-dialog > .rv-saved-photo-frame {
   padding: 12px;
 }
+#depot-order-payment-review .rv-photo-loading {
+  display: grid;
+  place-items: center;
+  min-height: 112px;
+  margin: 0;
+}
+#depot-order-payment-review .rv-photo-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #dedaff;
+  border-top-color: var(--rv-brand);
+  border-radius: 50%;
+  animation: rv-photo-spin .75s linear infinite;
+}
+#depot-order-payment-review .rv-photo-loading-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@keyframes rv-photo-spin {
+  to { transform: rotate(1turn); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #depot-order-payment-review .rv-photo-spinner {
+    animation: none;
+  }
+}
 #depot-order-payment-review .rv-framed-photo-dialog #rv-photo-image {
   width: auto;
   height: auto;

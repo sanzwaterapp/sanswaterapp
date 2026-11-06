@@ -463,6 +463,23 @@ export function createDomain(
     if (!row) fail("Tagihan tidak ditemukan.", 404);
     return decodeInvoice(row);
   }
+  function invoiceReceipt(key) {
+    const row = invoice(key);
+    const order = get(
+      "SELECT received_at,source FROM orders WHERE id=?",
+      row.order_id,
+    );
+    const methods = all(
+      "SELECT DISTINCT p.method FROM allocations a JOIN payments p ON p.id=a.payment_id WHERE a.invoice_id=? ORDER BY p.method",
+      key,
+    ).map(({ method }) => method);
+    return { ...row, ...order, methods };
+  }
+  function transactionCash(query) {
+    const { start, end } = period(query);
+    const { cashHolders } = salesBreakdown(db, start, end);
+    return cashFlowSummary(db, start, end, cashHolders, { includeActive: true });
+  }
   function allocate(paymentId, invoiceIds, amount) {
     let remaining = amount;
     const rows = invoiceIds
@@ -882,6 +899,8 @@ export function createDomain(
     complete,
     payment,
     invoice,
+    invoiceReceipt,
+    transactionCash,
     invoiceQuery,
     ownTrip,
     period,

@@ -209,6 +209,34 @@
   color: #4434ff;
   background: white;
 }
+#depot-order-payment-review .rv-phone .rv-tv-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+#depot-order-payment-review .rv-tv-header .rv-tv-filters {
+  padding-top: 0;
+  gap: 4px;
+}
+#depot-order-payment-review .rv-tv-header .rv-tv-filters button {
+  min-height: 34px;
+  padding: 6px 8px;
+  font-size: 12px;
+}
+#depot-order-payment-review .rv-tv-header > .rv-header-button {
+  justify-self: end;
+  padding-inline: 8px;
+  font-size: 12px;
+}
+#depot-order-payment-review .rv-phone .rv-display-landscape .rv-tv-header {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+#depot-order-payment-review .rv-tv-header > .sanz-brand-wordmark {
+  display: block;
+  width: clamp(92px, 18vw, 138px);
+  height: auto;
+}
 #depot-order-payment-review .rv-orders-body .rv-order-status-chips {
   display: flex;
   flex-wrap: wrap;
@@ -258,16 +286,9 @@
   opacity: 0.7;
   margin-top: 2px;
 }
-#depot-order-payment-review .rv-display-view .rv-heading .sanz-brand-mark {
-  width: 32px;
-  height: 36px;
-}
 #depot-order-payment-review .rv-display-landscape .display-table :is(th, td) {
   font-size: clamp(20px, 2.1vw, 36px);
   padding: 7px 10px;
-}
-#depot-order-payment-review .rv-display-landscape .rv-heading h2 {
-  font-size: 30px;
 }
 #depot-order-payment-review .rv-display-view .display-table .rv-identity {
   padding: 3px 5px;
@@ -275,6 +296,19 @@
 }
 #depot-order-payment-review .rv-display-view .display-table .rv-identity b {
   font-size: 0.8em;
+}
+#depot-order-payment-review .rv-display-view .rv-tv-status
+  :is(.rv-status-button, .rv-delivery-label, .rv-terminal-label) {
+  width: auto;
+  height: auto;
+  font-size: inherit;
+  white-space: nowrap;
+}
+#depot-order-payment-review .rv-display-view .rv-tv-status .rv-status-panel {
+  position: static;
+  width: min(100%, 200px);
+  max-width: none;
+  margin-top: 4px;
 }
 #depot-order-payment-review .rv-phone .rv-cash-in {
   color: #28836b;
@@ -380,6 +414,82 @@
 }
 #depot-order-payment-review .rv-phone .rv-report-transaction-fees > span {
   justify-content: flex-start;
+}
+#depot-order-payment-review .rv-phone .rv-transaction-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  width: 100%;
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--ui-muted);
+}
+#depot-order-payment-review .rv-phone .rv-transaction-meta strong {
+  margin-left: auto;
+  color: var(--rv-brand);
+}
+#depot-order-payment-review .rv-phone .rv-order-source {
+  font-size: 0.84em;
+  font-weight: 500;
+  white-space: nowrap;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-trigger {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--ui-line);
+  border-radius: 9px;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text, var(--rv-brand));
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-trigger:hover {
+  border-color: currentColor;
+}
+#depot-order-payment-review .rv-phone .rv-report-transaction.rv-transaction-card {
+  margin-top: 7px;
+  border: 1px solid var(--ui-line);
+  border-radius: 12px;
+  background: var(--ui-surface);
+}
+#depot-order-payment-review .rv-phone .rv-transaction-card > button {
+  min-height: 35px;
+  padding: 6px 9px 2px;
+  border-bottom: 0;
+  border-radius: 11px 11px 0 0;
+}
+#depot-order-payment-review .rv-phone .rv-transaction-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 1px 9px 6px;
+}
+#depot-order-payment-review .rv-phone .rv-transaction-card-meta .rv-transaction-meta {
+  flex: 1;
+  margin: 0;
+  gap: 3px 8px;
+}
+#depot-order-payment-review .rv-phone .rv-transaction-method {
+  flex-shrink: 0;
+  max-width: 35%;
+  padding: 4px 7px;
+  border-radius: 7px;
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-text, var(--rv-brand));
+  font-size: 10px;
+  font-weight: 700;
+}
+#depot-order-payment-review .rv-phone .rv-trip-checkout .rv-outcome-chip[data-outcome-kind="receipt"] {
+  color: var(--rv-brand);
+  background: #efecff;
 }
 #depot-order-payment-review
   .rv-phone

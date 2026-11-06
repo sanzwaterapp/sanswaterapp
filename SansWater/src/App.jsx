@@ -12,6 +12,7 @@ import {
   ClipboardList,
   Truck,
   Wallet,
+  ReceiptText,
   Grid2X2,
   Plus,
   ArrowLeft,
@@ -69,7 +70,7 @@ import {
 } from "./api.js";
 import { createApprovedPages, OrderStatusFilters } from "./approved-pages.jsx";
 import { CameraCapture } from "./DepartureCamera.jsx";
-import BrandMark from "./BrandMark.jsx";
+import { BrandWordmark } from "./BrandWordmark.jsx";
 import { periodDates } from "./period-range.js";
 import PeriodFilters from "./period-filters.jsx";
 import { AppBar } from "./app-menu.jsx";
@@ -88,10 +89,11 @@ const useApp = () => useContext(Context);
 const navigate = (page) => {
   window.location.hash = page;
 };
-function Identity({ code, name }) {
+function Identity({ code, name, source }) {
   return (
     <span className="rv-identity">
       <b>{code || "Umum"}</b> <span className="rv-dash">-</span> {name}
+      {source && <span className="rv-order-source">- {source}</span>}
     </span>
   );
 }
@@ -232,19 +234,36 @@ function Header({
     </header>
   );
 }
+function PhotoPreview({ photo }) {
+  const [status, setStatus] = useState("loading");
+  return (
+    <div className="rv-saved-photo-frame">
+      {status === "loading" && (
+        <div className="rv-photo-loading" role="status">
+          <span className="rv-photo-spinner" aria-hidden="true" />
+          <span className="rv-photo-loading-text">Memuat foto…</span>
+        </div>
+      )}
+      {status === "error" && (
+        <p className="rv-photo-loading" role="alert">Foto gagal dimuat.</p>
+      )}
+      <img
+        id="rv-photo-image"
+        src={"/api/photos/" + photo.id}
+        alt={photo.label}
+        hidden={status !== "ready"}
+        onLoad={() => setStatus("ready")}
+        onError={() => setStatus("error")}
+      />
+    </div>
+  );
+}
 function PhotoViewer() {
   const { photo, setPhoto } = useApp(),
     ref = useRef();
   useEffect(() => {
     if (photo) ref.current?.showModal();
   }, [photo]);
-  const image = photo && (
-    <img
-      id="rv-photo-image"
-      src={"/api/photos/" + photo.id}
-      alt={photo.label}
-    />
-  );
   return (
     <dialog
       className="rv-photo-dialog rv-framed-photo-dialog"
@@ -264,7 +283,7 @@ function PhotoViewer() {
           <X />
         </button>
       </div>
-      <div className="rv-saved-photo-frame">{image}</div>
+      {photo && <PhotoPreview key={photo.id} photo={photo} />}
     </dialog>
   );
 }
@@ -289,10 +308,7 @@ function Auth({ session, onLogin }) {
   }
   return (
     <main className="auth rv-auth-screen">
-      <div className="auth-brand">
-        <BrandMark />
-      </div>
-      <span className="eyebrow sanz-wordmark">Sanz Water</span>
+      <BrandWordmark />
       <h1>{setup ? "Selamat datang." : "Selamat bekerja."}</h1>
       <p>
         {setup
@@ -514,10 +530,7 @@ export function App() {
   if (!session || (session.user && !data))
     return (
       <main className="auth rv-app-loading" aria-label="Memuat aplikasi">
-        <div className="rv-loading-logo">
-          <BrandMark />
-        </div>
-        <h1>Sanz Water</h1>
+        <h1><BrandWordmark /></h1>
         <p role="status">Memuat…</p>
         <p className="rv-error">{error}</p>
         {error && (
@@ -545,7 +558,7 @@ export function App() {
     ...approvedPages,
   };
   const Page = pages[page] || approvedPages.home,
-    rootPage = ["home", "orders", "trips", "debt", "expenses"].includes(page)
+    rootPage = ["home", "orders", "trips", "transactions", "debt"].includes(page)
       ? page
       : ["neworder", "counter"].includes(page)
         ? "orders"
@@ -643,8 +656,8 @@ export function App() {
                 ["home", "Beranda", House],
                 ["orders", "Pesanan", ClipboardList],
                 ["trips", "Trip", Truck],
+                ["transactions", "Transaksi", ReceiptText],
                 ["debt", "Hutang", Timer],
-                ["expenses", "Pengeluaran", Wallet],
               ]
                 .filter(([p]) => canAccessPage(data.user, p))
                 .map(([p, label, Icon]) => (
@@ -2376,7 +2389,6 @@ const staffPages = [
   ["Transaksi di depot", ["counter"]],
   ["Utang", ["debts"]],
   ["Produk & stok", ["stock", "catalog"]],
-  ["Laporan", ["reports"]],
   ["Pengeluaran & kas", ["expenses"]],
   ["Status Delivery", ["display"]],
   ["Absensi staf", ["attendanceView"]],
@@ -2387,7 +2399,7 @@ function Staff() {
     [form, setForm] = useState(null);
   const presets = {
     staff: ["orders", "trips", "customers", "counter", "debts"],
-    manager: [...new Set(staffPages.flatMap(([, keys]) => keys))],
+    manager: [...new Set(staffPages.flatMap(([, keys]) => keys)), "reports"],
   };
   function setPermission(key, checked) {
     setForm({
@@ -2462,25 +2474,31 @@ function Staff() {
             autoComplete="new-password"
             required
           />
-          <Field label="Akses awal">
+        </>
+      )}
+      {!form.owner && (
+        <>
+          <Field label="Peran akun">
             <select
-              value={form.preset || "staff"}
-              onChange={(e) =>
+              value={form.role || (form.permissions.includes("reports") ? "manager" : "staff")}
+              onChange={(e) => {
+                const role = e.target.value;
                 setForm({
                   ...form,
-                  preset: e.target.value,
-                  permissions: presets[e.target.value],
-                })
-              }
+                  role,
+                  permissions: form.id
+                    ? [
+                        ...form.permissions.filter((permission) => permission !== "reports"),
+                        ...(role === "manager" ? ["reports"] : []),
+                      ]
+                    : presets[role],
+                });
+              }}
             >
               <option value="staff">Staff</option>
               <option value="manager">Manager</option>
             </select>
           </Field>
-        </>
-      )}
-      {!form.owner && (
-        <>
           <h3>Akses halaman</h3>
           <div className="rv-permission-list">
             {staffPages.map(([label, keys]) => (
@@ -2643,6 +2661,7 @@ function Staff() {
                         <strong>{u.name}</strong>
                         <span className="rv-note">
                           {u.username}
+                          {u.permissions.includes("reports") ? " · Manager" : " · Staff"}
                           {!u.active ? " · Nonaktif" : ""}
                         </span>
                       </span>
@@ -3133,6 +3152,7 @@ function Audit() {
 function Display() {
   const { data, tick } = useApp(),
     [filter, setFilter] = useState("active"),
+    [statusOrderId, setStatusOrderId] = useState(null),
     [landscape, setLandscape] = useState(false),
     landscapeRef = useRef(null),
     [state, error] = useResource(
@@ -3160,17 +3180,16 @@ function Display() {
         setLandscape(false);
       }}
     >
-      <Header
-        title="Sanz Water"
-        icon={BrandMark}
-        filters={
-          <OrderStatusFilters
-            value={filter}
-            onChange={setFilter}
-            label="Filter pesanan TV"
-          />
-        }
-      >
+      <header className="rv-header rv-tv-header">
+        <OrderStatusFilters
+          value={filter}
+          onChange={(value) => {
+            setFilter(value);
+            setStatusOrderId(null);
+          }}
+          label="Filter pesanan TV"
+        />
+        {landscape && <BrandWordmark onDark />}
         <button
           type="button"
           className="rv-header-button"
@@ -3180,7 +3199,7 @@ function Display() {
           <RotateCw size={16} />
           {landscape ? "Kembali" : "Putar layar"}
         </button>
-      </Header>
+      </header>
       <main className="rv-body rv-display-body">
         <p className="rv-error">{error}</p>
         <div className="display-table">
@@ -3198,7 +3217,7 @@ function Display() {
               {sortDisplayOrders(state?.orders || [], tick).map((o) => (
                 <tr key={o.id}>
                   <td>
-                    <Identity code={o.code} name={o.name} />
+                    <Identity code={o.code} name={o.name} source={o.source} />
                     {new Date(Date.parse(o.received_at) + 25200000)
                       .toISOString()
                       .slice(0, 10) !== data.today && (
@@ -3217,7 +3236,23 @@ function Display() {
                       settings={data.settings}
                     />
                   </td>
-                  <td>{statuses[o.status]}</td>
+                  <td className="rv-tv-status">
+                    <OrderStatusButton
+                      order={o}
+                      open={statusOrderId === o.id}
+                      showCourier={false}
+                      onToggle={() =>
+                        setStatusOrderId(statusOrderId === o.id ? null : o.id)
+                      }
+                    />
+                    {statusOrderId === o.id && (
+                      <OrderStatusPanel
+                        order={o}
+                        onClose={() => setStatusOrderId(null)}
+                        inlineError={landscape}
+                      />
+                    )}
+                  </td>
                   <td>{o.courier || "—"}</td>
                 </tr>
               ))}
@@ -3252,7 +3287,7 @@ const WaterReports = createWaterReports({
   useResource,
   PhotoButton,
 });
-const approvedPages = createApprovedPages({
+const { OrderStatusButton, OrderStatusPanel, ...approvedPages } = createApprovedPages({
   useApp,
   Header,
   Field,

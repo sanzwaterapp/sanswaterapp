@@ -1535,17 +1535,6 @@ form {
   background: radial-gradient(ellipse at top, #ded8ff, transparent 55%);
   gap: 17px;
 }
-.auth-brand {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--indigo);
-  color: #fff;
-  width: 70px;
-  height: 70px;
-  border-radius: 24px;
-  box-shadow: 0 9px 26px #3d3bff35;
-}
 .eyebrow {
   color: #6252b7;
   font-size: 10px;

@@ -1,6 +1,7 @@
 import AppForm from "./AppForm.jsx";
 import DepartureCamera, { CameraScreenHeader } from "./DepartureCamera.jsx";
 import DebtStatement from "./debt-statement.jsx";
+import PaymentReceipt, { ReceiptButton } from "./PaymentReceipt.jsx";
 import React, { useEffect, useRef, useState } from "react";
 import { groupTripsByNumber } from "./trip-groups.js";
 import DateRangePicker from "./date-range-picker.jsx";
@@ -134,6 +135,93 @@ export function createApprovedPages(UI) {
   const orderProductSummary = (order) => {
     return order.items.map((line) => line.qty + " " + line.name).join(" + ");
   };
+  function OrderStatusButton({ order, open, onToggle, showCourier = true }) {
+    const { data, busy } = useApp();
+    if (order.status === "delivery")
+      return (
+        <span className="rv-delivery-label">
+          {showCourier ? "Antar — " + order.courier : statuses.delivery}
+        </span>
+      );
+    if (["done", "failed", "cancel"].includes(order.status))
+      return <span className="rv-terminal-label">{statuses[order.status]}</span>;
+    return (
+      <button
+        type="button"
+        className="rv-status-button"
+        disabled={busy || !can(data.user, "orders")}
+        aria-label={"Ubah status " + order.name}
+        aria-expanded={open}
+        onClick={onToggle}
+      >
+        {statuses[order.status]}
+        <ChevronDown />
+      </button>
+    );
+  }
+  function OrderStatusPanel({ order, onClose, inlineError = false }) {
+    const { data, act, busy } = useApp();
+    const [cancelling, setCancelling] = useState(false);
+    const [error, setError] = useState("");
+    if (!can(data.user, "orders") || !["new", "pickup", "fill", "partial"].includes(order.status))
+      return null;
+    async function changeStatus(status, reason) {
+      setError("");
+      await act(async () => {
+        await api("/orders/" + order.id + "/status", {
+          method: "PATCH",
+          body: { version: order.version, status, reason },
+        });
+        onClose();
+      }).catch((err) => setError(err.message));
+    }
+    return (
+      <div className="rv-status-panel">
+        <div className="rv-status-choices">
+          {["pickup", "fill"].map((status) => (
+            <button
+              type="button"
+              className="rv-status-choice"
+              key={status}
+              disabled={busy}
+              onClick={() => changeStatus(status)}
+            >
+              {statuses[status]}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="rv-status-choice rv-cancel-choice"
+            disabled={busy}
+            aria-expanded={cancelling}
+            onClick={() => setCancelling(true)}
+          >
+            Batal
+          </button>
+        </div>
+        {cancelling && (
+          <AppForm
+            className="rv-stack"
+            onSubmit={(event) => {
+              event.preventDefault();
+              changeStatus(
+                "cancel",
+                new FormData(event.currentTarget).get("reason"),
+              );
+            }}
+          >
+            <Field label="Alasan batal">
+              <textarea name="reason" required rows={2} maxLength={500} />
+            </Field>
+            <Submit>Catat batal</Submit>
+          </AppForm>
+        )}
+        {inlineError && error && (
+          <p className="rv-error" role="alert">{error}</p>
+        )}
+      </div>
+    );
+  }
   function OrderQuantityNote({ revision }) {
     if (!revision) return null;
     const editor = revision.editedBy;
@@ -609,7 +697,7 @@ export function createApprovedPages(UI) {
     );
   }
   const CashFlowList = createCashFlowList(UI);
-  function CashHolders({ rows = [], cash, qris, query }) {
+  function CashHolders({ rows = [], net, query, summaryOnly = false }) {
     const [opened, setOpened] = useState({});
     return (
       <section
@@ -620,13 +708,26 @@ export function createApprovedPages(UI) {
           <h3>
             <Banknote size={15} /> Laporan kas per akun
           </h3>
-          <strong>
-            {money(
-              cash + qris - rows.reduce((sum, row) => sum + row.outgoing, 0),
-            )}
-          </strong>
+          <strong>{money(net)}</strong>
         </div>
-        {rows.map((row) => (
+        {rows.map((row) => {
+          const methods = [
+            {
+              method: "Tunai",
+              sales: row.saleCash,
+              debt: row.debtCash,
+              expense: summaryOnly ? row.expenseCash : 0,
+              net: row.cash - row.expenseCash,
+            },
+            {
+              method: "QRIS",
+              sales: row.saleQris,
+              debt: row.debtQris,
+              expense: summaryOnly ? row.expenseQris : 0,
+              net: row.qris - row.expenseQris,
+            },
+          ];
+          return (
           <details
             className="rv-cash-holder rv-finance-account"
             key={row.key}
@@ -659,35 +760,20 @@ export function createApprovedPages(UI) {
             </summary>
             {opened[row.key] && (
               <div className="rv-cash-holder-body">
-                <CashFlowList
-                  key={query + row.key}
-                  query={query}
-                  actor={row.key}
-                >
-                  {(expenses) => (
-                    <CashMethodDetails
-                      expenses={expenses}
-                      methods={[
-                        {
-                          method: "Tunai",
-                          sales: row.saleCash,
-                          debt: row.debtCash,
-                          net: row.cash - row.expenseCash,
-                        },
-                        {
-                          method: "QRIS",
-                          sales: row.saleQris,
-                          debt: row.debtQris,
-                          net: row.qris - row.expenseQris,
-                        },
-                      ]}
-                    />
-                  )}
-                </CashFlowList>
+                {summaryOnly ? (
+                  <div className="rv-cash-expense-list">
+                    <CashMethodDetails expenses={[]} methods={methods} />
+                  </div>
+                ) : (
+                  <CashFlowList key={query + row.key} query={query} actor={row.key}>
+                    {(expenses) => <CashMethodDetails expenses={expenses} methods={methods} />}
+                  </CashFlowList>
+                )}
               </div>
             )}
           </details>
-        ))}
+          );
+        })}
       </section>
     );
   }
@@ -1116,8 +1202,6 @@ export function createApprovedPages(UI) {
       [menu, setMenu] = useState(""),
       [productEditor, setProductEditor] = useState(null),
       [productError, setProductError] = useState(""),
-      [reason, setReason] = useState(""),
-      [cancelling, setCancelling] = useState(false),
       range = periodDates(data.today, period),
       historyQuery = new URLSearchParams({
         from: range.from,
@@ -1146,12 +1230,10 @@ export function createApprovedPages(UI) {
       setMenu("");
       setProductEditor(null);
       setProductError("");
-      setCancelling(false);
     }
     function changePage(next) {
       setMenu("");
       setProductEditor(null);
-      setCancelling(false);
       setPages(next);
     }
     const selectedOrders = data.orders.filter(
@@ -1179,16 +1261,6 @@ export function createApprovedPages(UI) {
     const shown = [...(periodOrders?.orders || [])].sort(
       (a, b) => duration(b, tick) - duration(a, tick),
     );
-    async function status(o, value) {
-      await act(async () => {
-        await api("/orders/" + o.id + "/status", {
-          method: "PATCH",
-          body: { version: o.version, status: value, reason },
-        });
-        setMenu("");
-        setCancelling(false);
-      }).catch(() => {});
-    }
     return (
       <>
         <Header
@@ -1226,7 +1298,6 @@ export function createApprovedPages(UI) {
               setFilter(value);
               setMenu("");
               setProductEditor(null);
-              setCancelling(false);
             }}
           />
           <div className="rv-section-heading">
@@ -1282,7 +1353,11 @@ export function createApprovedPages(UI) {
                     />
                     <span>
                       <label htmlFor={"select-order-" + o.id}>
-                        <Identity code={o.code} name={o.name} />
+                        <Identity
+                          code={o.code}
+                          name={o.name}
+                          source={o.kind === "delivery" ? o.source : undefined}
+                        />
                       </label>
                       <span className="rv-order-products">
                         {can(data.user, "orders") &&
@@ -1358,31 +1433,14 @@ export function createApprovedPages(UI) {
                       minutes={duration(o, tick)}
                       settings={data.settings}
                     />
-                    {o.status === "delivery" ? (
-                      <span className="rv-delivery-label">
-                        Antar — {o.courier}
-                      </span>
-                    ) : ["done", "failed", "cancel"].includes(o.status) ? (
-                      <span className="rv-terminal-label">
-                        {statuses[o.status]}
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        className="rv-status-button"
-                        disabled={!can(data.user, "orders")}
-                        aria-label={"Ubah status " + o.name}
-                        aria-expanded={menu === o.id}
-                        onClick={() => {
-                          setMenu(menu === o.id ? "" : o.id);
-                          setCancelling(false);
-                          setProductEditor(null);
-                        }}
-                      >
-                        {statuses[o.status]}
-                        <ChevronDown />
-                      </button>
-                    )}
+                    <OrderStatusButton
+                      order={o}
+                      open={menu === o.id}
+                      onToggle={() => {
+                        setMenu(menu === o.id ? "" : o.id);
+                        setProductEditor(null);
+                      }}
+                    />
                   </div>
                 </div>
                 <OrderQuantityNote revision={o.revision} />
@@ -1474,44 +1532,7 @@ export function createApprovedPages(UI) {
                   </AppForm>
                 )}
                 {menu === o.id && (
-                  <div className="rv-status-panel">
-                    <div className="rv-status-choices">
-                      {["pickup", "fill"].map((s) => (
-                        <button
-                          className="rv-status-choice"
-                          key={s}
-                          onClick={() => status(o, s)}
-                        >
-                          {statuses[s]}
-                        </button>
-                      ))}
-                      <button
-                        className="rv-status-choice rv-cancel-choice"
-                        onClick={() => setCancelling(true)}
-                      >
-                        Batal
-                      </button>
-                    </div>
-                    {cancelling && (
-                      <AppForm
-                        className="rv-stack"
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          status(o, "cancel");
-                        }}
-                      >
-                        <Field label="Alasan batal">
-                          <textarea
-                            value={reason}
-                            onChange={(e) => setReason(e.target.value)}
-                            required
-                            rows={2}
-                          />
-                        </Field>
-                        <Submit>Catat batal</Submit>
-                      </AppForm>
-                    )}
-                  </div>
+                  <OrderStatusPanel order={o} onClose={() => setMenu("")} />
                 )}
               </article>
             ))}
@@ -1905,7 +1926,7 @@ export function createApprovedPages(UI) {
     discounts: externalDiscounts,
     onDiscountChange,
   }) {
-    const { act } = useApp(),
+    const { act, data } = useApp(),
       [internal, setInternal] = useState(
         order?.progress?.remainingItems || order?.items || [],
       ),
@@ -1929,11 +1950,13 @@ export function createApprovedPages(UI) {
       [payment, setPayment] = useState({ method: "", paid: "0" }),
       [paidEdited, setPaidEdited] = useState(false),
       [outcome, setOutcome] = useState(""),
-      [reason, setReason] = useState("");
+      [reason, setReason] = useState(""),
+      [receipt, setReceipt] = useState(null);
     const [payNow, setPayNow] = useState(false);
     const registered = counter ? !!customerId : !!order?.customer_id;
     const payLater = counter && registered && !payNow;
     const productIds = [...new Set(lines.map((l) => l.productId))],
+      discount = productIds.reduce((n, key) => n + Number(discounts[key] || 0), 0),
       shipping = counter
         ? 0
         : hasItemShipping(lines) &&
@@ -1942,8 +1965,7 @@ export function createApprovedPages(UI) {
           : Number(legacyShipping),
       total =
         lines.reduce((n, l) => n + l.qty * l.price, 0) -
-        productIds.reduce((n, key) => n + Number(discounts[key] || 0), 0) +
-        (counter ? 0 : Number(shipping));
+        discount + Number(shipping);
     const advanceUsed = counter
       ? 0
       : Math.min(order?.prepayment?.available || 0, total);
@@ -1975,7 +1997,7 @@ export function createApprovedPages(UI) {
     async function save(e) {
       e.preventDefault();
       await act(async () => {
-        await api(
+        const result = await api(
           counter ? "/counter" : `/trips/${trip.id}/orders/${order.id}/result`,
           {
             method: "POST",
@@ -2010,7 +2032,13 @@ export function createApprovedPages(UI) {
                 },
           },
         );
-        onSaved();
+        if (counter) {
+          setReceipt(result.receipt ?? {
+            ...result.invoice,
+            received_at: result.invoice.recorded_at,
+            methods: result.invoice.paid ? [payment.method] : [],
+          });
+        } else onSaved();
       }).catch(() => {});
     }
     return (
@@ -2238,6 +2266,28 @@ export function createApprovedPages(UI) {
         {!counter && (
           <>
             <div className="rv-outcome-chips">
+              <button
+                type="button"
+                className="rv-outcome-chip"
+                data-outcome-kind="receipt"
+                disabled={!lines.length || total < 0}
+                onClick={() => setReceipt({
+                  kind: "request",
+                  id: order.id,
+                  customer_name: order.name,
+                  customer_code: order.code,
+                  received_at: order.received_at,
+                  source: order.source,
+                  items: lines,
+                  shipping,
+                  discount,
+                  total,
+                  paid: advanceUsed,
+                  methods: advanceUsed > 0 ? [order.prepayment.method] : [],
+                })}
+              >
+                <ReceiptText size={14} /> Nota
+              </button>
               {(prepaid ? ["failed"] : ["failed", "cancel"]).map((key) => (
                 <button
                   type="button"
@@ -2264,6 +2314,16 @@ export function createApprovedPages(UI) {
               </div>
             )}
           </>
+        )}
+        {receipt && (
+          <PaymentReceipt
+            receipt={receipt}
+            depotName={data.settings.name}
+            onClose={() => {
+              setReceipt(null);
+              if (counter) onSaved();
+            }}
+          />
         )}
       </AppForm>
     );
@@ -2625,11 +2685,23 @@ export function createApprovedPages(UI) {
   function Counter() {
     return <NewOrder initialCounter />;
   }
+  function DebtPaymentReceipt({ id, depotName, onClose }) {
+    const [payment, error] = useResource("/debt-payments/" + encodeURIComponent(id));
+    return (
+      <PaymentReceipt
+        receipt={payment}
+        depotName={depotName}
+        onClose={onClose}
+        error={error}
+      />
+    );
+  }
   function DebtPaymentHistory({ onBack }) {
     const { data } = useApp();
     const [period, setPeriod, query] = usePeriod(),
       [search, setSearch] = useState(""),
       [offset, setOffset] = useState(0),
+      [receiptId, setReceiptId] = useState(null),
       [history, error] = useResource(
         "/debt-payments?" +
           query +
@@ -2719,10 +2791,21 @@ export function createApprovedPages(UI) {
                   {row.proof_id && (
                     <PhotoButton id={row.proof_id} label="Bukti QRIS" />
                   )}
+                  <ReceiptButton
+                    customer={row.customer}
+                    onClick={() => setReceiptId(row.id)}
+                  />
                 </div>
               </article>
             ))}
           </div>
+          {receiptId && (
+            <DebtPaymentReceipt
+              id={receiptId}
+              depotName={data.settings.name}
+              onClose={() => setReceiptId(null)}
+            />
+          )}
           {history && !history.rows.length && (
             <Empty>Belum ada pembayaran pada pilihan ini.</Empty>
           )}
@@ -3200,6 +3283,37 @@ export function createApprovedPages(UI) {
     );
   }
   const ReportExplorer = createReportExplorer(UI);
+  const TransactionExplorer = createReportExplorer(UI, { transactionsOnly: true });
+  function TransactionsPage() {
+    const { data } = useApp();
+    const [period, setPeriod, query] = usePeriod();
+    const [report, error] = useResource("/transactions/cash?" + query);
+    const [search, setSearch] = useState("");
+    const dates = periodDates(data.today, period);
+    return (
+      <>
+        <Header
+          title="Transaksi"
+          icon={ReceiptText}
+          className="rv-reports-header"
+          filters={<PeriodFilters value={period} onChange={setPeriod} today={data.today} label="Periode transaksi" />}
+        />
+        <main className="rv-body rv-feature rv-reports-body">
+          {error && <p className="rv-error" role="alert">{error}</p>}
+          {report && (
+            <CashHolders
+              rows={report.staffCash}
+              net={report.cashFlow.net}
+              query={query}
+              summaryOnly
+            />
+          )}
+          <SearchField value={search} onChange={setSearch} />
+          <TransactionExplorer query={query} search={search} multiDay={dates.from !== dates.to} day={dates.from} />
+        </main>
+      </>
+    );
+  }
   function Reports() {
     const { data } = useApp(),
       [period, setPeriod, query] = usePeriod(),
@@ -3382,8 +3496,7 @@ export function createApprovedPages(UI) {
               />
               <CashHolders
                 rows={report.staffCash}
-                cash={report.stats.cash}
-                qris={report.stats.qris}
+                net={report.cashFlow.net}
                 query={query}
               />
               <SearchField value={search} onChange={setSearch} />
@@ -3468,10 +3581,13 @@ export function createApprovedPages(UI) {
   return {
     home: Home,
     orders: Orders,
+    OrderStatusButton,
+    OrderStatusPanel,
     neworder: NewOrder,
     departure: Departure,
     trips: Trips,
     debt: Debts,
+    transactions: TransactionsPage,
     reports: Reports,
     expenses: createCashPage(UI),
     other: Other,

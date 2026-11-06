@@ -42,6 +42,199 @@
 #depot-order-payment-review .rv-phone .rv-statement-download:disabled {
   opacity: 0.5;
 }
+#depot-order-payment-review .rv-phone .rv-payment-receipt .rv-statement-download {
+  text-decoration: none;
+}
+#depot-order-payment-review .rv-phone .rv-payment-receipt .rv-statement-paper {
+  color: #182b4c;
+}
+#depot-order-payment-review .rv-phone .rv-payment-receipt .rv-statement-heading h2 {
+  font-size: clamp(20px, 6vw, 26px);
+}
+#depot-order-payment-review .rv-phone .rv-receipt-header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 9px;
+  margin-top: 8px;
+  color: #f1efff;
+  font-size: 11px;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-actor {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border: 1px solid #ffffff38;
+  border-radius: 20px;
+  background: #ffffff20;
+  color: #fff;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-items {
+  margin: 12px 0 0;
+  padding: 0 0 0 15px;
+  list-style: disc outside;
+  font-size: 13px;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-items li::marker {
+  color: #6250ce;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-items li > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0edf8;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-items li span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-items li span:last-child {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-details {
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-details > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0edf8;
+  break-inside: avoid;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-details dt {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-details dd {
+  flex-shrink: 0;
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-details dt:has(.rv-receipt-paid-method) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 7px;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-details .rv-receipt-total {
+  margin-top: 6px;
+  padding: 9px 10px;
+  align-items: center;
+  border: 0;
+  border-top: 1px dashed #cfc6f6;
+  border-radius: 7px;
+  background: #f0edff;
+  color: #4437a7;
+  font-weight: 700;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-total dd {
+  font-size: clamp(17px, 5vw, 21px);
+}
+#depot-order-payment-review .rv-phone .rv-receipt-paid-method {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 7px;
+  padding: 4px 7px;
+  background: #f0edf9;
+  color: #554772;
+  font-size: 11px;
+  font-weight: 500;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-footer {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  break-inside: avoid;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-bank {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #d9d4ff;
+  border-radius: 10px;
+  padding: 6px 9px;
+  background: #f2efff;
+  color: #372c96;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-bank-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 29px;
+  flex: none;
+  padding-top: 4px;
+  border: 1px solid #e4defb;
+  border-radius: 7px;
+  background: #fff;
+  color: #007c79;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-bank-mark svg {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  top: 2px;
+  right: 6px;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-bank-account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-bank small {
+  font-size: 11px;
+  color: #625383;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-bank strong {
+  flex-shrink: 0;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-footer > p {
+  margin: 3px 0 0;
+  text-align: center;
+  color: #51466f;
+  font-size: 12px;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-contact {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 4px;
+  border: 1px solid #b1dfc9;
+  border-radius: 999px;
+  background: #e3f6eb;
+  color: #15533c;
+  font-size: 10px;
+  text-decoration: none;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-contact-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #16754f;
+  color: #fff;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-contact strong {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 #depot-order-payment-review .rv-phone .rv-statement-toolbar {
   position: sticky;
   top: 0;
@@ -157,25 +350,16 @@
   padding: 24px;
   box-sizing: border-box;
 }
-.rv-app-loading .rv-loading-logo {
-  width: 76px;
-  height: 76px;
-  border-radius: 25px;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  background: #4436ff;
-  box-shadow: 0 12px 35px #4436ff20;
-}
-.rv-app-loading .rv-loading-logo svg {
-  width: 52px;
-  height: 52px;
-}
 .rv-app-loading.auth h1 {
   font-size: 26px;
   color: #4436ff;
   letter-spacing: -0.7px;
   margin: 18px 0 8px;
+}
+.rv-app-loading.auth h1 .sanz-brand-wordmark {
+  display: block;
+  width: 132px;
+  height: 40px;
 }
 .rv-app-loading.auth > p {
   margin: 0;
@@ -302,32 +486,6 @@
   right: -65px;
   top: -60px;
   pointer-events: none;
-}
-#depot-order-payment-review .rv-phone .rv-statement-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-#depot-order-payment-review .rv-phone .rv-statement-brand svg {
-  width: 32px;
-  height: 37px;
-  color: white;
-}
-#depot-order-payment-review .rv-phone .rv-statement-brand > span {
-  display: grid;
-  gap: 2px;
-}
-#depot-order-payment-review .rv-phone .rv-statement-brand strong {
-  font-size: 19px;
-  letter-spacing: -0.4px;
-}
-#depot-order-payment-review .rv-phone .rv-statement-brand small {
-  font-size: 8px;
-  letter-spacing: 2px;
-  color: #e0dcff;
-}
-#depot-order-payment-review .rv-phone .rv-statement-heading {
-  margin-top: 26px;
 }
 #depot-order-payment-review .rv-phone .rv-statement-heading > span {
   color: #d5ceff;
@@ -501,39 +659,34 @@
   font-size: 9px;
   color: #9a8bb5;
 }
-#depot-order-payment-review .rv-phone .rv-statement-footer {
-  margin-top: 22px;
-  padding-top: 14px;
-  text-align: center;
-  border-top: 1px solid #f0edf8;
-  color: #a397bb;
-}
-#depot-order-payment-review .rv-phone .rv-statement-footer svg {
-  display: block;
-  width: 22px;
-  height: 24px;
-  margin: 0 auto 6px;
-  color: #b4a8ff;
-  --sanz-mark-wave: white;
-}
-#depot-order-payment-review .rv-phone .rv-statement-footer strong {
-  display: block;
-  font-size: 11px;
-  color: #82729f;
-  font-weight: 500;
-}
 #depot-order-payment-review .rv-phone .rv-statement-footer-brand {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  margin-bottom: 12px;
+  gap: 7px;
+  margin-top: 6px;
 }
-#depot-order-payment-review .rv-phone .rv-statement-footer-brand svg {
-  margin: 0;
-  width: 26px;
-  height: 30px;
-  color: #9180ee;
+#depot-order-payment-review .rv-phone .rv-receipt-brand-art {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+/* Show the two parts of the supplied 1129 × 1129 logo side by side. */
+#depot-order-payment-review .rv-phone .rv-receipt-brand-art > span {
+  background-image: url("./assets/sanz-water-receipt.jpg");
+  background-repeat: no-repeat;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-brand-drop {
+  width: 24px;
+  aspect-ratio: 400 / 525;
+  background-size: 282.25% auto;
+  background-position: 50.1% 27.65%;
+}
+#depot-order-payment-review .rv-phone .rv-receipt-brand-wordmark {
+  width: 104px;
+  aspect-ratio: 889 / 269;
+  background-size: 127% auto;
+  background-position: 50% 80.8%;
 }
 #depot-order-payment-review .rv-phone .rv-statement-footer-brand > span {
   display: grid;
@@ -550,12 +703,6 @@
   font-size: 6px;
   letter-spacing: 1.2px;
   color: #a293c4;
-}
-#depot-order-payment-review .rv-phone .rv-statement-footer > span {
-  display: block;
-  margin-top: 5px;
-  font-size: 9px;
-  line-height: 1.7;
 }
 #depot-order-payment-review .rv-phone .rv-statement-clear {
   display: flex;

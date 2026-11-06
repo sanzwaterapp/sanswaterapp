@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Menu, UserRound, ChevronRight, LogOut } from "lucide-react";
 import { menuItemsFor } from "./app-menu-items.js";
-import BrandMark from "./BrandMark.jsx";
+import { BrandWordmark, isSanzBrand } from "./BrandWordmark.jsx";
 
 function SideMenu({ data, page, onClose, onNavigate, onLogout }) {
   const ref = useRef(null);
@@ -118,11 +118,14 @@ export function AppBar({
           <Menu size={21} />
         </button>
         <span className="rv-app-brand">
-          <BrandMark />
-          <span className="rv-app-wordmark">
-            <strong>{data.settings.name || "Sanz Water"}</strong>
-            <small>Depot air minum</small>
-          </span>
+          {isSanzBrand(data.settings.name) ? (
+            <BrandWordmark />
+          ) : (
+            <span className="rv-app-wordmark">
+              <strong>{data.settings.name}</strong>
+              <small>Depot air minum</small>
+            </span>
+          )}
         </span>
         <button
           type="button"

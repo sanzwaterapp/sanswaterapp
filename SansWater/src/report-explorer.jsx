@@ -10,6 +10,7 @@ import {
   ScanLine,
 } from "lucide-react";
 import { money, dateLabel, timeLabel } from "./api.js";
+import PaymentReceipt, { paymentLabels, ReceiptButton } from "./PaymentReceipt.jsx";
 
 export function ExpenseLines({ rows }) {
   if (!rows.length) return null;
@@ -33,17 +34,18 @@ export function ExpenseLines({ rows }) {
 }
 export function CashMethodDetails({ methods, expenses }) {
   return methods.map(
-    ({ method, sales, debt, net, transferIn = 0, transferOut = 0 }) => (
+    ({ method, sales, debt, net, expense = 0, transferIn = 0, transferOut = 0 }) => (
       <div className="rv-receipt-method" data-method={method} key={method}>
         <strong className="rv-receipt-method-label">
           {method === "Tunai" ? <Banknote size={13} /> : <ScanLine size={13} />}{" "}
           {method}
         </strong>
-        {(sales > 0 || debt > 0 || transferIn > 0 || transferOut > 0) && (
+        {(sales > 0 || debt > 0 || expense > 0 || transferIn > 0 || transferOut > 0) && (
           <dl className="rv-report-sources">
             {[
               ["Penjualan", sales, false],
               ["Bayar hutang", debt, false],
+              ["Pengeluaran", expense, true],
               ["Perpindahan masuk", transferIn, false],
               ["Perpindahan keluar", transferOut, true],
             ]
@@ -125,8 +127,10 @@ export function createCashFlowList({ useResource }) {
   };
 }
 
-export function createReportExplorer(UI) {
-  const { useResource, Identity, PhotoButton, Empty } = UI;
+export function createReportExplorer(UI, { transactionsOnly = false } = {}) {
+  const { useApp, useResource, Identity, PhotoButton, Empty } = UI;
+  const prefix = transactionsOnly ? "/transactions/" : "/report-";
+  const listPath = transactionsOnly ? "/transactions" : "/report-transactions";
   const encoded = (query, values) =>
     query + "&" + new URLSearchParams(values).toString();
   function Pending({ error }) {
@@ -139,54 +143,92 @@ export function createReportExplorer(UI) {
       </p>
     );
   }
-  function Detail({ id }) {
+  function Detail({
+    id,
+    customer,
+    showItems,
+    showReceipt,
+    onOpenReceipt,
+    onCloseReceipt,
+  }) {
+    const { data } = useApp();
     const [row, error] = useResource(
-      "/report-transactions/" + encodeURIComponent(id),
+      listPath + "/" + encodeURIComponent(id),
     );
-    if (!row) return <Pending error={error} />;
     return (
-      <div className="rv-report-items" aria-label="Rincian transaksi">
-        <ul className="rv-report-item-list">
-          {row.items.map((line, index) => (
-            <li className="rv-report-item" key={index}>
-              <span className="rv-report-item-name">
-                <span>
-                  {line.qty}× {line.name}
-                </span>
-                <small>
-                  {" "}
-                  · {line.mode} · {money(line.price)}/unit
-                </small>
-              </span>
-              <span className="rv-report-item-amount">
-                {money(line.qty * line.price)}
-              </span>
-            </li>
-          ))}
-        </ul>
-        {!!(row.discount || row.shipping) && (
-          <dl className="rv-report-detail-fees">
-            {!!row.discount && (
-              <div>
-                <dt>Diskon</dt>
-                <dd>{money(row.discount)}</dd>
-              </div>
+      <>
+        {showItems && !row && <Pending error={error} />}
+        {showItems && row && (
+          <div className="rv-report-items" aria-label="Rincian transaksi">
+            <ul className="rv-report-item-list">
+              {row.items.map((line, index) => (
+                <li className="rv-report-item" key={index}>
+                  <span className="rv-report-item-name">
+                    <span>
+                      {line.qty}× {line.name}
+                    </span>
+                    <small>
+                      {" "}
+                      · {line.mode} · {money(line.price)}/unit
+                    </small>
+                  </span>
+                  <span className="rv-report-item-amount">
+                    {money(line.qty * line.price)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {!!(row.discount || row.shipping) && (
+              <dl className="rv-report-detail-fees">
+                {!!row.discount && (
+                  <div>
+                    <dt>Diskon</dt>
+                    <dd>−{money(row.discount)}</dd>
+                  </div>
+                )}
+                {!!row.shipping && (
+                  <div>
+                    <dt>Ongkir</dt>
+                    <dd>{money(row.shipping)}</dd>
+                  </div>
+                )}
+              </dl>
             )}
-            {!!row.shipping && (
-              <div>
-                <dt>Ongkir</dt>
-                <dd>{money(row.shipping)}</dd>
-              </div>
+            {!transactionsOnly && (
+              <ReceiptButton customer={customer} onClick={onOpenReceipt} />
             )}
-          </dl>
+          </div>
         )}
-      </div>
+        {showReceipt && (
+          <PaymentReceipt
+            receipt={row}
+            depotName={data.settings.name}
+            onClose={onCloseReceipt}
+            error={error}
+          />
+        )}
+      </>
     );
   }
   function Transaction({ row }) {
     const [open, setOpen] = useState(false);
+    const [showReceipt, setShowReceipt] = useState(false);
+    const methods = paymentLabels(
+      row.payment_methods?.split(","),
+      row.total > row.paid,
+    );
+    const differentDay =
+      row.received_at && dateLabel(row.received_at) !== dateLabel(row.recorded_at);
+    const orderTime = row.received_at && (
+      <time dateTime={row.received_at}>
+        Pesan {transactionsOnly && differentDay && dateLabel(row.received_at) + " · "}
+        {timeLabel(row.received_at)}{!transactionsOnly && " WIB"}
+      </time>
+    );
     return (
-      <div className="rv-report-transaction">
+      <div
+        className={"rv-report-transaction" + (transactionsOnly ? " rv-transaction-card" : "")}
+      >
         <button
           type="button"
           aria-expanded={open}
@@ -195,7 +237,7 @@ export function createReportExplorer(UI) {
           <span className="rv-report-transaction-top">
             <Identity code={row.customer_code} name={row.customer_name} />
 
-            {!!(row.shipping || row.discount) && (
+            {!transactionsOnly && !!(row.shipping || row.discount) && (
               <span className="rv-report-transaction-fees">
                 {!!row.shipping && (
                   <span>
@@ -212,15 +254,43 @@ export function createReportExplorer(UI) {
             <strong>{money(row.total)}</strong>
             <ChevronDown size={15} />
           </span>
+          {!transactionsOnly && (
+            <span className="rv-transaction-meta">
+              {orderTime}
+              {methods && <strong>{methods}</strong>}
+            </span>
+          )}
         </button>
-        {open && <Detail id={row.id} />}
+        {transactionsOnly && (
+          <div className="rv-transaction-card-meta">
+            <div className="rv-transaction-meta">
+              {orderTime}
+              <time dateTime={row.recorded_at}>Selesai {timeLabel(row.recorded_at)}</time>
+            </div>
+            {methods && <span className="rv-transaction-method">{methods}</span>}
+            <ReceiptButton
+              customer={row.customer_name}
+              onClick={() => setShowReceipt(true)}
+            />
+          </div>
+        )}
+        {(open || showReceipt) && (
+          <Detail
+            id={row.id}
+            customer={row.customer_name}
+            showItems={open}
+            showReceipt={showReceipt}
+            onOpenReceipt={() => setShowReceipt(true)}
+            onCloseReceipt={() => setShowReceipt(false)}
+          />
+        )}
       </div>
     );
   }
   function Transactions({ query }) {
     const [offset, setOffset] = useState(0),
       [result, error] = useResource(
-        "/report-transactions?" + query + "&offset=" + offset,
+        listPath + "?" + query + "&offset=" + offset,
       );
     if (!result) return <Pending error={error} />;
     return (
@@ -269,6 +339,9 @@ export function createReportExplorer(UI) {
                 {trip.number ? "Trip " + trip.number : "Transaksi di depot"}
               </strong>
               <small>
+                {trip.departure_day && trip.departure_day !== day
+                  ? dateLabel(trip.departure_day) + " · "
+                  : ""}
                 {trip.departed_at ? timeLabel(trip.departed_at) + " · " : ""}
                 {trip.count} transaksi
               </small>
@@ -294,7 +367,7 @@ export function createReportExplorer(UI) {
   }
   function Trips({ query, day }) {
     const [result, error] = useResource(
-      "/report-trips?" + encoded(query, { day }),
+      prefix + "trips?" + encoded(query, { day }),
     );
     if (!result) return <Pending error={error} />;
     return (
@@ -312,7 +385,14 @@ export function createReportExplorer(UI) {
       </div>
     );
   }
-  function Day({ row, query }) {
+  function DayTransactions({ query, day, counter }) {
+    return transactionsOnly && counter ? (
+      <Transactions query={encoded(query, { day })} />
+    ) : (
+      <Trips query={query} day={day} />
+    );
+  }
+  function Day({ row, query, counter }) {
     const [open, setOpen] = useState(false);
     return (
       <section className="rv-report-day">
@@ -329,17 +409,17 @@ export function createReportExplorer(UI) {
           <span>{row.count} transaksi</span>
           <ChevronDown size={16} />
         </button>
-        {open && <Trips query={query} day={row.day} />}
+        {open && <DayTransactions query={query} day={row.day} counter={counter} />}
       </section>
     );
   }
-  function Days({ query }) {
-    const [result, error] = useResource("/report-days?" + query);
+  function Days({ query, counter }) {
+    const [result, error] = useResource(prefix + "days?" + query);
     if (!result) return <Pending error={error} />;
     return (
       <div className="rv-report-days">
         {result.rows.map((row) => (
-          <Day key={row.day} row={row} query={query} />
+          <Day key={row.day} row={row} query={query} counter={counter} />
         ))}
       </div>
     );
@@ -347,6 +427,7 @@ export function createReportExplorer(UI) {
   function Channel({ row, query, multiDay, day }) {
     const [open, setOpen] = useState(false);
     const next = encoded(query, { channel: row.key });
+    const counter = row.key.startsWith("counter");
     return (
       <section className="rv-report-channel">
         <button
@@ -355,19 +436,20 @@ export function createReportExplorer(UI) {
           aria-expanded={open}
           onClick={() => setOpen(!open)}
         >
-          {row.key === "counter" ? <Store size={17} /> : <Truck size={17} />}
+          {counter ? <Store size={17} /> : <Truck size={17} />}
           <strong>{row.name}</strong>
           <span>{row.count} transaksi</span>
           <ChevronDown size={17} />
         </button>
-        {open &&
-          (multiDay ? <Days query={next} /> : <Trips query={next} day={day} />)}
+        {open && (multiDay
+          ? <Days query={next} counter={counter} />
+          : <DayTransactions query={next} day={day} counter={counter} />)}
       </section>
     );
   }
   return function ReportExplorer({ query, search, multiDay, day }) {
     const request = encoded(query, { search }),
-      [result, error] = useResource("/report-channels?" + request, {
+      [result, error] = useResource(prefix + "channels?" + request, {
         keepPrevious: true,
       });
     return (

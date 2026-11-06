@@ -10,6 +10,7 @@ export const PAGE_PERMISSIONS = {
   productedit: ["catalog"],
   stockhistory: ["stock", "reports"],
   watercontrol: ["waterControl", "reports"],
+  waterreports: ["waterControl", "reports"],
   reports: ["reports"],
   expenses: ["expenses", "reports"],
   history: ["reports"],

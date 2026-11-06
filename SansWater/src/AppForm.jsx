@@ -8,6 +8,7 @@ export default function AppForm({
   onInputCapture,
   onChangeCapture,
   onReset,
+  validationDurationMs = 4000,
   ...props
 }) {
   const [error, setError] = useState(null);
@@ -47,9 +48,9 @@ export default function AppForm({
     if (!error?.visible) return;
     const timer = setTimeout(() => {
       setError((current) => (current ? { ...current, visible: false } : null));
-    }, 4000);
+    }, validationDurationMs);
     return () => clearTimeout(timer);
-  }, [error]);
+  }, [error, validationDurationMs]);
   useEffect(() => {
     const field = marked.current?.field;
     if (!field) return;

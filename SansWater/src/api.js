@@ -121,6 +121,14 @@ export function duration(order, now = Date.now()) {
     ),
   );
 }
+export function sortDisplayOrders(orders, now = Date.now()) {
+  return [...orders].sort(
+    (a, b) =>
+      duration(b, now) - duration(a, now) ||
+      Date.parse(a.received_at) - Date.parse(b.received_at) ||
+      String(a.id).localeCompare(String(b.id)),
+  );
+}
 export const durationColor = (n, settings) => {
   const limits = durationLimits(settings);
   return n >= limits.late
@@ -140,7 +148,7 @@ export async function imageFile(file) {
   } catch {
     throw new Error("Foto tidak dapat dibaca. Pilih foto lain.");
   }
-  const scale = Math.min(1, 1400 / Math.max(bitmap.width, bitmap.height)),
+  const scale = Math.min(1, 1280 / Math.max(bitmap.width, bitmap.height)),
     canvas = document.createElement("canvas");
   canvas.width = Math.round(bitmap.width * scale);
   canvas.height = Math.round(bitmap.height * scale);

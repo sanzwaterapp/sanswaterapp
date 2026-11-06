@@ -5,6 +5,7 @@ import { resolve, extname, sep } from "node:path";
 import { openDatabase, transaction, ensureCustomerGroup } from "./database.js";
 import { registerCashRoutes } from "./cash-routes.js";
 import { registerReportRoutes } from "./report-routes.js";
+import { registerCashFlowRoutes } from "./cash-flow.js";
 import { registerWaterControl } from "./water-control.js";
 import { createPhotoStorage } from "./photo-storage.js";
 import { createChangeFeed } from "./change-feed.js";
@@ -15,6 +16,7 @@ import {
   listCashFunds,
 } from "./cash-ledger.js";
 import { inferCategoryFund } from "../src/cash-funds.js";
+import { hasItemShipping, itemShipping } from "../src/order-pricing.js";
 import {
   validDuration,
   validDurationCategories,
@@ -37,6 +39,12 @@ import {
   decodeInvoice,
   PERMISSIONS,
 } from "./domain.js";
+
+const displayStatusGroups = {
+  active: ["new", "pickup", "fill", "delivery", "failed", "partial"],
+  done: ["done"],
+  cancel: ["cancel"],
+};
 
 function productCapacity(value) {
   if (value === undefined || value === null) return null;
@@ -477,14 +485,35 @@ export function createApp(options = {}) {
       },
     };
   });
-  route("GET", "/api/display", "display", () => ({
-    now: d.now(),
-    orders: d
-      .all(
-        "SELECT o.*,u.name courier FROM orders o LEFT JOIN trips t ON t.id=o.current_trip_id LEFT JOIN users u ON u.id=t.courier_id WHERE o.kind='delivery' AND o.status IN ('new','pickup','fill','delivery','failed','partial') ORDER BY received_at",
-      )
-      .map(orderWithPayment),
-  }));
+  route("GET", "/api/display", "display", (ctx) => {
+    const filter = ctx.query.get("filter") || "active";
+    if (!Object.hasOwn(displayStatusGroups, filter))
+      fail("Filter TV belum benar.");
+    const active = filter === "active";
+    const states = displayStatusGroups[filter];
+    const status = "o.status IN (" + states.map(() => "?").join(",") + ")";
+    const today = dayWib(d.now());
+    const args = [...states];
+    if (!active) {
+      const start = today + "T00:00:00+07:00";
+      args.push(start, new Date(Date.parse(start) + 86400000).toISOString());
+    }
+    // All unfinished days remain visible; closed lists are limited to today's activity.
+    return {
+      now: d.now(),
+      orders: d
+        .all(
+          "SELECT o.*,u.name courier FROM orders o LEFT JOIN trips t ON t.id=o.current_trip_id LEFT JOIN users u ON u.id=t.courier_id WHERE o.kind='delivery' AND " +
+            status +
+            (active
+              ? ""
+              : " AND datetime(COALESCE((SELECT max(i.recorded_at) FROM invoices i WHERE i.order_id=o.id),(SELECT max(a.created_at) FROM audit a WHERE a.object_id=o.id AND a.action IN ('order.status','trip.result')),o.created_at))>=datetime(?) AND datetime(COALESCE((SELECT max(i.recorded_at) FROM invoices i WHERE i.order_id=o.id),(SELECT max(a.created_at) FROM audit a WHERE a.object_id=o.id AND a.action IN ('order.status','trip.result')),o.created_at))<datetime(?)") +
+            " ORDER BY datetime(o.received_at) ASC,datetime(o.created_at) ASC,o.rowid ASC",
+          ...args,
+        )
+        .map(orderWithPayment),
+    };
+  });
   route("POST", "/api/categories", "catalog", (ctx) => {
     const fund = ctx.body.fund || inferCategoryFund(ctx.body.name);
     if (
@@ -963,12 +992,21 @@ export function createApp(options = {}) {
       )
     )
       fail("Pesanan selesai atau batal tidak dapat diubah.", 409);
-    const lines = d.items(
+    let lines = d.items(
       ctx.body.items,
       false,
       !(advance?.amount > 0),
       JSON.parse(row.items).map((line) => line.productId),
     );
+    lines = lines.map((line) => {
+      const previous = JSON.parse(row.items).find(
+        (old) => old.productId === line.productId && old.modeId === line.modeId,
+      );
+      return line.shippingRate === undefined &&
+        previous?.shippingRate !== undefined
+        ? { ...line, shippingRate: previous.shippingRate }
+        : line;
+    });
     if (advance?.amount > 0) {
       const previous = new Map(
         JSON.parse(row.items).map((line) => [
@@ -978,7 +1016,13 @@ export function createApp(options = {}) {
       );
       for (const line of lines) {
         const old = previous.get(line.productId + ":" + line.modeId);
-        if (old) line.price = old.price;
+        if (!advance.itemShipping && (line.shippingRate || 0) > 0)
+          fail("Ongkir mengikuti pembayaran awal pesanan ini.", 409);
+        if (old) {
+          line.price = old.price;
+          if ((line.shippingRate || 0) !== (old.shippingRate || 0))
+            fail("Ongkir per unit mengikuti pesanan yang sudah dibayar.", 409);
+        }
       }
     }
     for (const delivered of progress.deliveredItems) {
@@ -1001,6 +1045,7 @@ export function createApp(options = {}) {
             lines.some((line) => line.productId === key),
           ),
         ),
+      JSON.parse(row.discounts || "{}"),
     );
     if (
       Object.entries(progress.usedDiscounts).some(
@@ -1014,7 +1059,9 @@ export function createApp(options = {}) {
     const revisedTotal =
       lines.reduce((sum, line) => sum + line.qty * line.price, 0) -
       Object.values(discounts).reduce((sum, value) => sum + value, 0) +
-      (advance?.shipping || 0);
+      (hasItemShipping(lines) && (!advance || advance.itemShipping)
+        ? itemShipping(lines)
+        : advance?.shipping || 0);
     if (advance && revisedTotal < advance.amount)
       fail(
         "Jumlah baru menimbulkan kelebihan pembayaran. Selesaikan koreksi pembayaran terlebih dahulu.",
@@ -1266,11 +1313,11 @@ export function createApp(options = {}) {
         50,
       ),
       states = {
+        ...displayStatusGroups,
         all: [],
         orders: ["new", "pickup", "partial"],
         fill: ["fill"],
         delivery: ["delivery"],
-        done: ["done"],
         failed: ["failed", "cancel"],
       },
       clauses = ["o.created_at>=?", "o.created_at<?"],
@@ -1409,7 +1456,7 @@ export function createApp(options = {}) {
   route("POST", "/api/customers/:id/payments", "debts", (ctx) => {
     d.find("customers", ctx.params.id);
     let ids = ctx.body.invoiceIds;
-    if (ids === undefined)
+    if (ids === undefined || (Array.isArray(ids) && !ids.length))
       ids = d
         .all(
           d.invoiceQuery + " WHERE i.customer_id=? ORDER BY i.recorded_at,i.id",
@@ -1773,6 +1820,7 @@ export function createApp(options = {}) {
 
   registerCashRoutes(route, db, d);
   registerReportRoutes(route, d);
+  registerCashFlowRoutes(route, d);
   registerWaterControl(route, db, d);
   const handle = async (req, res) => {
     let cloudScope;

@@ -82,12 +82,14 @@ export function createPhotoStorage(db, options = {}) {
       return count;
     });
   }
-  async function processOne() {
-    const row = db
+  function pendingPhotos(limit) {
+    return db
       .prepare(
-        "SELECT p.*,s.sha256,s.byte_size,s.attempts FROM photo_storage s JOIN photos p ON p.id=s.photo_id WHERE s.status='pending' AND s.next_retry_at<=? ORDER BY s.rowid LIMIT 1",
+        "SELECT p.*,s.sha256,s.byte_size,s.attempts FROM photo_storage s JOIN photos p ON p.id=s.photo_id WHERE s.status='pending' AND s.next_retry_at<=? ORDER BY s.rowid LIMIT ?",
       )
-      .get(clock());
+      .all(clock(), limit);
+  }
+  async function processOne(row = pendingPhotos(1)[0]) {
     if (!row) return null;
     try {
       const bytes = Buffer.from(row.bytes);
@@ -152,9 +154,10 @@ export function createPhotoStorage(db, options = {}) {
       if (!enabled)
         throw new Error("Penyimpanan Supabase memerlukan foto GAS.");
       // Every acknowledged photo is already in Drive. No photo bytes enter PG.
-      let result;
-      while ((result = await processOne())) {
-        if (!result.ok)
+      for (let batch = pendingPhotos(3); batch.length; batch = pendingPhotos(3)) {
+        // Wait for every in-flight upload before the caller can roll back its scope.
+        const results = await Promise.allSettled(batch.map((row) => processOne(row)));
+        if (results.some((result) => result.status === "rejected" || !result.value.ok))
           throw Object.assign(
             new Error("Foto belum tersimpan di GAS. Coba simpan kembali."),
             { status: 503 },

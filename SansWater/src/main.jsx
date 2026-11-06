@@ -18,4 +18,5 @@ import "./report-refinements.css";
 import "./sanz-refinements.css";
 import "./account-statement.css";
 import "./live-polish.css";
+import "./daily-workflow.css";
 createRoot(document.getElementById("root")).render(<App />);

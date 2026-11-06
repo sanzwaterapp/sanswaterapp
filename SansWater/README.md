@@ -42,3 +42,15 @@ Backup operasional dilakukan **dari komputer/admin terpisah**, dengan Node 24 da
 DATABASE_URL dan GAS_PHOTO_SECRET hanya untuk backend. Jangan memakai nama environment berawalan `VITE_` untuk rahasia, jangan masukkan password ke GitHub, dan jangan menaruh service-role key di browser. Pengaturan dan data asli tidak disertakan di folder ini.
 
 Vercel Hobby memiliki kuota dan dibatasi untuk penggunaan pribadi nonkomersial. Pemakaian bisnis harus mengikuti ketentuan paket Vercel: [Hobby](https://vercel.com/docs/plans/hobby). Keberhasilan pengujian lokal tidak menggantikan verifikasi deployment dan kamera HP pada hosting tujuan.
+
+## Pembaruan 5 November 2026
+
+Ongkir disimpan per unit produk, dengan pilihan Rp1.000, Rp2.000 atau nominal manual. Total mengikuti jumlah produk; diskon baru hanya untuk RO dan Mineral. Pembayaran hutang tanpa pilihan tagihan dialokasikan ke tagihan tertua terlebih dahulu, lalu ke tagihan berikutnya. Pembelian di depot menerima nama kosong sebagai Pembeli umum; pembeli umum tetap wajib lunas.
+
+Laporan kas menampilkan dua sumber pemasukan (Penjualan dan Bayar hutang), ditambah masing-masing pengeluaran beserta keterangannya. Ringkasan per staff memisahkan Tunai dan QRIS dengan rincian pengeluaran, tanpa mengirim daftar pelanggan pembayar. Daftar transaksi langsung dibuka dari parent akun. Form pengeluaran lebih ringkas dan memakai chip periode yang sama dengan Laporan.
+
+TV mempertahankan seluruh pesanan aktif lintas hari, tertua lebih dahulu. Filter Aktif, Selesai dan Batal tersedia; daftar selesai/batal mengikuti aktivitas hari ini. Huruf diperbesar dengan baris rapat. Pembaruan ini memakai schema 14 yang sudah ada, tanpa impor ulang database atau perubahan akun. Foto tetap di GAS. Ongkir dan diskon historis yang sudah dibayar tetap dijaga.
+
+Rincian produk memakai kartu compact: nama, jumlah dan total pada baris atas, dropdown ongkir serta diskon pada baris bawah. Pilihan ongkir adalah Tanpa ongkir, Rp1.000, Rp2.000 dan Manual. Input manual hanya ditampilkan saat dipilih; total kartu sudah termasuk ongkir dikali unit dan dikurangi diskon.
+
+Kontrol air menyimpan tanggal operasional dan nomor shift yang dipilih. Angka awal tetap diambil dari penutupan terakhir; memilih tanggal tidak mengubah transaksi yang dihitung untuk shift tersebut. Laporan mengikuti tanggal operasional, termasuk jika shift ditutup lewat tengah malam. Detail menunjukkan perhitungan RO dan Mineral serta pemakaian liter per meteran. Catatan shift lama yang belum bernomor ditampilkan berurutan tanpa mengubah data aslinya.

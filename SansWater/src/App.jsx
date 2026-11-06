@@ -34,7 +34,6 @@ import {
   LogOut,
   X,
   Minus,
-  Image,
   ShieldCheck,
   Clock,
   CheckCircle2,
@@ -66,10 +65,10 @@ import {
   filters,
   filterLabels,
   duration,
-  imageFile,
+  sortDisplayOrders,
 } from "./api.js";
-import { createApprovedPages } from "./approved-pages.jsx";
-import DepartureCamera from "./DepartureCamera.jsx";
+import { createApprovedPages, OrderStatusFilters } from "./approved-pages.jsx";
+import { CameraCapture } from "./DepartureCamera.jsx";
 import BrandMark from "./BrandMark.jsx";
 import { periodDates } from "./period-range.js";
 import PeriodFilters from "./period-filters.jsx";
@@ -79,6 +78,7 @@ import SearchInput from "./SearchInput.jsx";
 import { staffColor, stockMovementNote } from "./stock-history-display.js";
 import { formatLiters } from "./water-volume.js";
 import { createWaterControl } from "./water-control.jsx";
+import { createWaterReports } from "./water-reports.jsx";
 import { createAccountMenu } from "./account-menu.jsx";
 import { connectLiveUpdates } from "./live-updates.js";
 import { coversVersion } from "./sync-version.js";
@@ -162,7 +162,6 @@ function PhotoButton({
   id,
   label = "Lihat foto",
   className = "rv-attendance-photo",
-  frame,
 }) {
   const { setPhoto } = useApp();
   return (
@@ -173,7 +172,7 @@ function PhotoButton({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        setPhoto({ id, label, frame });
+        setPhoto({ id, label });
       }}
     >
       <Camera size={16} />
@@ -234,12 +233,11 @@ function Header({
   );
 }
 function PhotoViewer() {
-  const { photo, setPhoto, data } = useApp(),
+  const { photo, setPhoto } = useApp(),
     ref = useRef();
   useEffect(() => {
     if (photo) ref.current?.showModal();
   }, [photo]);
-  const tripPhoto = photo?.frame === "trip";
   const image = photo && (
     <img
       id="rv-photo-image"
@@ -249,7 +247,7 @@ function PhotoViewer() {
   );
   return (
     <dialog
-      className={"rv-photo-dialog" + (tripPhoto ? " rv-trip-photo-dialog" : "")}
+      className="rv-photo-dialog rv-framed-photo-dialog"
       aria-label={photo?.label || "Foto"}
       ref={ref}
       onClose={() => setPhoto(null)}
@@ -266,65 +264,8 @@ function PhotoViewer() {
           <X />
         </button>
       </div>
-      {tripPhoto ? (
-        <div className="rv-camera-view rv-trip-photo-frame">{image}</div>
-      ) : (
-        image
-      )}
-      {data.simulation && (
-        <div className="rv-photo-caption">Foto ilustrasi simulasi</div>
-      )}
+      <div className="rv-saved-photo-frame">{image}</div>
     </dialog>
-  );
-}
-function CameraCapture({
-  onChange,
-  label = "Ambil foto",
-  facing = "environment",
-}) {
-  const [open, setOpen] = useState(false),
-    [preview, setPreview] = useState("");
-  return (
-    <div className="capture rv-attendance-capture">
-      {!open && preview && (
-        <img
-          className="capture-preview"
-          src={preview}
-          alt="Foto yang akan disimpan"
-        />
-      )}
-      {!open && (
-        <button
-          className="secondary"
-          type="button"
-          onClick={() => setOpen(true)}
-        >
-          <Camera size={17} />
-          {preview ? "Foto ulang" : label}
-        </button>
-      )}
-      {open && (
-        <>
-          <DepartureCamera
-            facing={facing}
-            caption={facing === "user" ? "Foto absensi · Kamera depan" : label}
-            alt="Foto absensi"
-            photo={preview}
-            onChange={(value) => {
-              setPreview(value);
-              onChange(value);
-            }}
-          />
-          <button
-            type="button"
-            className="rv-text-button rv-camera-close"
-            onClick={() => setOpen(false)}
-          >
-            <X size={14} /> Tutup kamera
-          </button>
-        </>
-      )}
-    </div>
   );
 }
 function Auth({ session, onLogin }) {
@@ -592,7 +533,8 @@ export function App() {
     products: Products,
     productedit: ProductEdit,
     stockhistory: StockHistory,
-    watercontrol: WaterControl,
+    watercontrol: can(data.user, "waterControl") ? WaterControl : WaterReports,
+    waterreports: WaterReports,
     attendance: Attendance,
     history: approvedPages.reports,
     staff: Staff,
@@ -860,7 +802,13 @@ function SearchField({
     </label>
   );
 }
-function CustomerPicker({ value, onChange, guestName, onGuestChange }) {
+function CustomerPicker({
+  value,
+  onChange,
+  guestName,
+  onGuestChange,
+  optional = false,
+}) {
   const { data } = useApp(),
     [query, setQuery] = useState(guestName || ""),
     [focused, setFocused] = useState(false);
@@ -880,8 +828,12 @@ function CustomerPicker({ value, onChange, guestName, onGuestChange }) {
       <Field>
         <input
           aria-label="Pelanggan"
-          placeholder="Kode, nama, atau nama pembeli umum"
-          required
+          placeholder={
+            optional
+              ? "Nama pembeli (opsional), atau cari pelanggan"
+              : "Kode, nama, atau nama pembeli umum"
+          }
+          required={!optional}
           value={selected ? selected.code + " — " + selected.name : query}
           onChange={(e) => {
             onChange("");
@@ -987,21 +939,12 @@ function PaymentFields({ value, onChange, total, registered }) {
         </>
       )}
       {value.method === "QRIS" && (
-        <label className="rv-field">
-          <Image size={16} />
-          Bukti QRIS {value.proof ? "✓" : "(opsional)"}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={async (e) => {
-              try {
-                set("proof", await imageFile(e.target.files[0]));
-              } catch (err) {
-                onChange({ ...value, error: err.message });
-              }
-            }}
-          />
-        </label>
+        <CameraCapture
+          label="Bukti QRIS (opsional)"
+          photo={value.proof}
+          onChange={(photo) => set("proof", photo)}
+          allowFile
+        />
       )}
       {value.error && <small className="rv-error">{value.error}</small>}
     </div>
@@ -1055,7 +998,6 @@ function Customers() {
     [selected, setSelected] = useState(null),
     [form, setForm] = useState(null),
     [groupForm, setGroupForm] = useState(null),
-    [photoError, setPhotoError] = useState(""),
     [period, setPeriod, query] = usePeriod("all"),
     [purchasePage, setPurchasePage] = useState(0),
     [customerPurchases] = useResource(
@@ -1302,31 +1244,12 @@ function Customers() {
                     setForm({ ...form, location: e.target.value })
                   }
                 />
-                <label className="rv-field">
-                  Foto rumah {form.photo ? "✓" : "(opsional)"}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.currentTarget.files[0];
-                      if (!file) return;
-                      try {
-                        const photo = await imageFile(file);
-                        setForm((current) =>
-                          current ? { ...current, photo } : null,
-                        );
-                        setPhotoError("");
-                      } catch (err) {
-                        setPhotoError(err.message);
-                      }
-                    }}
-                  />
-                </label>
-                {photoError && (
-                  <small className="rv-error" role="alert">
-                    {photoError}
-                  </small>
-                )}
+                <CameraCapture
+                  label="Foto rumah (opsional)"
+                  photo={form.photo}
+                  onChange={(photo) => setForm((current) => current ? { ...current, photo } : null)}
+                  allowFile
+                />
               </div>
             </details>
             <Submit>Simpan pelanggan</Submit>
@@ -2833,6 +2756,7 @@ function Attendance() {
             <CameraCapture
               facing="user"
               label="Foto di depot"
+              photo={photo}
               onChange={setPhoto}
             />
             <Submit disabled={!photo}>Catat kehadiran</Submit>
@@ -3208,9 +3132,12 @@ function Audit() {
 }
 function Display() {
   const { data, tick } = useApp(),
+    [filter, setFilter] = useState("active"),
     [landscape, setLandscape] = useState(false),
     landscapeRef = useRef(null),
-    [state, error] = useResource("/display?day=" + data.today);
+    [state, error] = useResource(
+      "/display?day=" + data.today + "&filter=" + filter,
+    );
   useEffect(() => {
     if (!landscape) return;
     const dialog = landscapeRef.current;
@@ -3233,7 +3160,17 @@ function Display() {
         setLandscape(false);
       }}
     >
-      <Header title="Status Delivery" icon={Monitor}>
+      <Header
+        title="Sanz Water"
+        icon={BrandMark}
+        filters={
+          <OrderStatusFilters
+            value={filter}
+            onChange={setFilter}
+            label="Filter pesanan TV"
+          />
+        }
+      >
         <button
           type="button"
           className="rv-header-button"
@@ -3258,10 +3195,17 @@ function Display() {
               </tr>
             </thead>
             <tbody>
-              {state?.orders.map((o) => (
+              {sortDisplayOrders(state?.orders || [], tick).map((o) => (
                 <tr key={o.id}>
                   <td>
                     <Identity code={o.code} name={o.name} />
+                    {new Date(Date.parse(o.received_at) + 25200000)
+                      .toISOString()
+                      .slice(0, 10) !== data.today && (
+                      <small className="rv-tv-order-date">
+                        {dateLabel(o.received_at)} · {timeLabel(o.received_at)}
+                      </small>
+                    )}
                   </td>
                   <td>
                     {o.items.map((l) => l.qty + " " + l.name).join(" + ") ||
@@ -3299,8 +3243,14 @@ const WaterControl = createWaterControl({
   Header,
   Field,
   Submit,
-  PhotoButton,
   useResource,
+});
+const WaterReports = createWaterReports({
+  useApp,
+  Header,
+  usePeriod,
+  useResource,
+  PhotoButton,
 });
 const approvedPages = createApprovedPages({
   useApp,

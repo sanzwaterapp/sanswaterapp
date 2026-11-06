@@ -1,8 +1,35 @@
-# Verifikasi paket SansWater — 4 November 2026
+# Verifikasi paket SansWater — 5 November 2026
 
 ## Status
 
-Paket telah disiapkan untuk diunggah ke GitHub dan dibangun oleh Vercel. Build frontend dan bundel Functions berhasil; pengujian adapter dan integrasi database nyata lulus. **Deployment publik belum dibuat dari paket ini.** Domain akhir, environment di dashboard Vercel, kamera HP, reconnect melalui jaringan seluler dan kuota penggunaan tetap perlu diverifikasi setelah deployment.
+Paket telah disiapkan untuk diunggah ke GitHub dan dibangun oleh Vercel. Build frontend dan bundel Functions berhasil; pengujian adapter dan integrasi database nyata lulus. **Perubahan 5 November belum diterapkan pada deployment publik.** Domain akhir, environment di dashboard Vercel, kamera HP, reconnect melalui jaringan seluler dan kuota penggunaan tetap perlu diverifikasi setelah deployment.
+
+## Kontrol air per shift — 5 November 2026
+
+- Angka awal dan stok awal mengikuti penutupan shift terakhir, termasuk lintas tengah malam atau beberapa hari. Pencatatan pertama memakai awal operasional hari itu (00.00 WIB); staf mengisi angka meteran awal sekali.
+- Tombol **Tutup shift & simpan** menyimpan angka, tiga foto dan stok sekaligus, dengan pesan sukses serta tautan laporan. Isian tetap ada jika penyimpanan gagal. Perubahan jumlah stok karena transaksi lain tidak lagi menolak laporan; perubahan kapasitas/nama/kelompok produk tetap diperiksa.
+- Halaman `#waterreports`, dibuka dari tombol **Laporan** di Kontrol air, menyediakan filter tanggal/periode dan akun. Setiap catatan menyimpan identitas akun penutup, interval, jumlah pengantaran/depot, volume, stok, selisih, produk, dan ID foto. RO 1 + RO 2 digabung; Mineral terpisah. Selisih = meteran − (diserahkan + stok sisa − stok awal).
+- Foto tetap melalui GAS/Drive pada konfigurasi produksi. Pengujian form memakai server QA terpisah dan foto uji lokal; bukan pengujian kamera HP atau upload GAS nyata setelah deploy. Foto diuji dapat dibuka kembali setelah penyimpanan dan refresh.
+- Perbandingan meteran hanya mencakup produk RO/Mineral. Produk lain yang kapasitasnya aktif dicatat terpisah dan tidak mendistorsi selisih meteran.
+- Preview lokal berisi enam catatan contoh tanggal 3–5 November dengan penutup Dina, Farhan, Putra dan owner; angka stok/meteran dan foto contoh tersedia. Pengisian ini idempotent, tidak mengubah transaksi/katalog/akun, dan tidak dikirim ke Supabase produksi atau disertakan sebagai database dalam paket GitHub.
+- Ringkasan per periode hanya mengakumulasi shift baru; catatan harian lama ditandai terpisah agar tidak dijumlahkan ganda. Tanggal laporan adalah tanggal tutup shift di WIB. Identitas penutup merupakan snapshot sehingga penggantian nama akun tidak mengubah nama pada laporan lama.
+- Daftar laporan dibatasi 30 catatan per halaman; rincian dan metadata foto baru diambil saat dibuka. Tidak menambah polling. Penyimpanan memakai kolom JSON yang sudah ada, schema tetap 14; tidak ada migrasi Supabase atau environment tambahan.
+- Riwayat pengeluaran sudah menjadi dua baris, tanpa tanggal per card; periode multihari memakai dropdown per tanggal yang tertutup secara awal. Aksi Batalkan berupa tombol dan header per kas diperkuat warnanya. Catatan dan informasi pencatat tetap tersedia.
+
+## Pembaruan alur kerja — 5 November 2026
+
+Kode terbaru berada di folder SansWater; pembaruan ini belum diunggah ke GitHub atau deployment publik. Pratinjau pada localhost:3005 memakai database uji terpisah. Backup kode sebelumnya tersimpan di workspace pada backups/before-requests-20261105/SansWater. Data bisnis Supabase tidak diubah oleh perubahan fitur maupun pengujian ini.
+
+- Ongkir per produk dikalikan kuantitas dan diklasifikasikan ke kas produknya; diskon baru dibatasi pada RO/Mineral. Harga/ongkir yang sudah dibayar, snapshot kas lama, permintaan perangkat lama, dan perubahan kuantitas diuji.
+- Pembayaran tanpa daftar tagihan (termasuk array kosong) memakai FIFO dan mempertahankan sisa tagihan berikutnya. Nama pembeli depot opsional; hutang pembeli umum tetap ditolak.
+- Laporan kas hanya menampilkan dua sumber pemasukan, serta baris pengeluaran dengan keterangan dan arah panah. Detail pengeluaran dimuat maksimal 30 per halaman, per staff atau per kas hanya ketika dibuka. Penjualan/pembayaran hutang nol disembunyikan; baris sisa saldo tetap tampil. Keterangan pengeluaran memakai catatan yang diisi, atau nama pengeluaran jika catatan kosong. Tidak ditambah polling otomatis.
+- Transaksi pengantaran dikelompokkan per trip beserta tombol foto; periode multihari memiliki parent tanggal di atas trip. Transaksi depot langsung tampil tanpa parent trip tambahan. Nominal dan rincian biaya ditata ulang agar muat di layar HP. Periode Pengeluaran memakai chip Laporan dan form Pengeluaran dirapatkan. TV menampilkan pesanan aktif lintas hari, diurutkan berdasarkan durasi yang terlihat (terbesar dahulu, termasuk durasi yang berhenti saat berangkat); filter selesai/batal harian terpisah dan huruf besar memakai baris rapat.
+- Penyempurnaan tampilan: rincian per kas dan per akun memakai tinggi baris, padding, ukuran huruf dan latar selang-seling yang sama; card Tunai berlatar biru muda, QRIS lavender, dan header trip abu-abu gelap dengan teks putih. Riwayat pengeluaran berlatar lavender dan dipadatkan lagi (sekitar 84 px tanpa catatan pada viewport 375 px), diringkas dengan nama/nominal, chip kas, metode, akun dan waktu; catatan serta aksi tetap tersedia. Tampilan dan form pembatalan diperiksa pada preview tanpa menyimpan pembatalan.
+- Suite terbaru: 153 pengujian lulus, 0 gagal, 1 pengujian PostgreSQL integration dilewati pada run reguler. Build produksi Vite berhasil. Bundel resmi Vercel Node 24 berhasil dengan kedua modul backend tambahan ikut terkemas.
+- Laporan per kas dan laporan per akun memakai komponen rincian yang sama: pemasukan penjualan, pembayaran hutang, pengeluaran per keterangan dan saldo per metode. Sumber pemasukan per kas memakai alokasi pembayaran aktual; pembayaran sebagian dan pembayaran di hari berikutnya diuji. Tidak perlu migration SQL.
+- Pemeriksaan baca-saja sebelumnya ke Supabase nyata berhasil, foreign-key check bersih dan revisi tidak berubah. Schema tetap 14; tidak perlu migration SQL. Pengujian kamera HP/jaringan seluler dan pemakaian dua perangkat pada deployment publik tetap perlu setelah kode diunggah.
+
+Bagian di bawah mencatat verifikasi migrasi ke Vercel pada 4 November; angka revisi, record dan pengujian di bagian tersebut adalah snapshot historis.
 
 ## Backup sebelum perubahan
 

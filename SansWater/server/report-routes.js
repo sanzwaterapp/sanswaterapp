@@ -91,7 +91,10 @@ export function registerReportRoutes(route, d) {
     return { rows };
   });
   route("GET", "/api/report-transactions", "reports", (ctx) => {
-    const { where, args } = scope(ctx.query, 3),
+    const { where, args } = scope(
+        ctx.query,
+        ctx.query.get("trip") ? 3 : ctx.query.get("day") ? 2 : 1,
+      ),
       offset = integer(
         Number(ctx.query.get("offset") || 0),
         "Halaman",

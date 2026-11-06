@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import AppForm from "./AppForm.jsx";
 import AccountPopover from "./AccountPopover.jsx";
-import DepartureCamera from "./DepartureCamera.jsx";
+import { CaptureScreen } from "./DepartureCamera.jsx";
 import { api, dateLabel, timeLabel } from "./api.js";
 
 export function createAccountMenu({
@@ -172,20 +172,31 @@ export function createAccountMenu({
                 </small>
               </span>
             </div>
-            {!info.current && !camera && (
+            {!info.current && (
               <button
                 type="button"
-                className="rv-primary"
+                className={photo ? "rv-secondary" : "rv-primary"}
+                aria-haspopup="dialog"
                 onClick={() => {
                   setCamera(true);
                   setError("");
                 }}
               >
                 <Camera size={17} />
-                Absen masuk
+                {photo ? "Ubah foto absensi" : "Absen masuk"}
               </button>
             )}
             {!info.current && camera && (
+              <CaptureScreen
+                title="Foto absensi"
+                caption="Foto di depot"
+                facing="user"
+                photo={photo}
+                onUse={setPhoto}
+                onClose={() => setCamera(false)}
+              />
+            )}
+            {!info.current && photo && (
               <AppForm
                 className="rv-stack"
                 onSubmit={async (e) => {
@@ -203,13 +214,6 @@ export function createAccountMenu({
                   }
                 }}
               >
-                <DepartureCamera
-                  facing="user"
-                  photo={photo}
-                  onChange={setPhoto}
-                  caption="Foto di depot"
-                  alt="Foto absensi"
-                />
                 {error && (
                   <p className="rv-error" role="alert">
                     {error}

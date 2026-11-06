@@ -21,6 +21,13 @@ export function productFamily(name) {
   return "other";
 }
 
+export function isSaleReceipt(receipt) {
+  const metadata = JSON.parse(receipt.metadata || "{}");
+  return (
+    !!receipt.prepayment || metadata.origin === "sale" || !!receipt.immediate
+  );
+}
+
 export function salesBreakdown(db, start, end) {
   const totals = new Map(
     productFamilies.map(([key, label, unit]) => [
@@ -100,8 +107,7 @@ export function salesBreakdown(db, start, end) {
     .all(start, end);
   for (const receipt of receipts) {
     const metadata = JSON.parse(receipt.metadata || "{}");
-    const sale =
-      !!receipt.prepayment || metadata.origin === "sale" || !!receipt.immediate;
+    const sale = isSaleReceipt(receipt);
     const permissions = JSON.parse(receipt.permissions);
     const courier =
       receipt.courier_before_receipt ||

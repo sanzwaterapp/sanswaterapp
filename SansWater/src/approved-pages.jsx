@@ -1,5 +1,5 @@
 import AppForm from "./AppForm.jsx";
-import DepartureCamera from "./DepartureCamera.jsx";
+import DepartureCamera, { CameraScreenHeader } from "./DepartureCamera.jsx";
 import DebtStatement from "./debt-statement.jsx";
 import React, { useEffect, useRef, useState } from "react";
 import { groupTripsByNumber } from "./trip-groups.js";
@@ -9,9 +9,18 @@ import { periodDates } from "./period-range.js";
 import { menuItemsFor } from "./app-menu-items.js";
 import { canAccessPage } from "./page-access.js";
 import { createCashPage, FundSummary } from "./cash-pages.jsx";
-import { createReportExplorer } from "./report-explorer.jsx";
+import {
+  createReportExplorer,
+  createCashFlowList,
+  CashMethodDetails,
+} from "./report-explorer.jsx";
 import DurationChip from "./DurationChip.jsx";
 import { productChoiceLabel } from "./product-labels.js";
+import {
+  discountEligible,
+  hasItemShipping,
+  itemShipping,
+} from "./order-pricing.js";
 import { readableColor } from "./duration-settings.js";
 import { staffColor } from "./stock-history-display.js";
 import {
@@ -45,6 +54,8 @@ import {
   Minus,
   BadgeCheck,
   ArrowUpRight,
+  ArrowDown,
+  ArrowUp,
   Store,
   ContactRound,
   UsersRound,
@@ -69,8 +80,35 @@ import {
   filters,
   filterLabels,
   duration,
-  imageFile,
 } from "./api.js";
+
+const orderStatusChoices = [
+  ["active", "Aktif"],
+  ["done", "Selesai"],
+  ["cancel", "Batal"],
+];
+
+export function OrderStatusFilters({
+  value,
+  onChange,
+  label = "Filter status pesanan",
+  compact = false,
+}) {
+  return (
+    <div className={compact ? "rv-order-status-chips" : "rv-tv-filters"} role="group" aria-label={label}>
+      {orderStatusChoices.map(([key, text]) => (
+        <button
+          key={key}
+          type="button"
+          aria-pressed={value === key}
+          onClick={() => onChange(key)}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 // Komponen memakai struktur/class CSS pratinjau terakhir. Data dan aksi tetap API nyata.
 export function createApprovedPages(UI) {
@@ -570,107 +608,222 @@ export function createApprovedPages(UI) {
       </section>
     );
   }
-  function CashHolders({ rows = [], cash, qris }) {
+  const CashFlowList = createCashFlowList(UI);
+  function CashHolders({ rows = [], cash, qris, query }) {
+    const [opened, setOpened] = useState({});
     return (
       <section
         className="rv-card rv-cash-holders"
-        aria-label="Penerimaan pembayaran per akun"
+        aria-label="Laporan kas per akun"
       >
         <div className="rv-section-heading">
           <h3>
-            <Banknote size={15} /> Penerimaan pembayaran
+            <Banknote size={15} /> Laporan kas per akun
           </h3>
-          <strong>{money(cash + qris)}</strong>
+          <strong>
+            {money(
+              cash + qris - rows.reduce((sum, row) => sum + row.outgoing, 0),
+            )}
+          </strong>
         </div>
         {rows.map((row) => (
-          <details className="rv-cash-holder rv-finance-account" key={row.key}>
+          <details
+            className="rv-cash-holder rv-finance-account"
+            key={row.key}
+            onToggle={(event) => {
+              const open = event.currentTarget.open;
+              setOpened((previous) => ({ ...previous, [row.key]: open }));
+            }}
+          >
             <summary className="rv-cash-holder-toggle">
               <strong>
-                {row.channel === "delivery" ? (
-                  <Truck size={14} />
-                ) : (
-                  <Store size={14} />
-                )}
-                <span className="rv-cash-holder-name">
-                  {row.channel === "delivery"
-                    ? "Delivery " + row.name
-                    : "Depot / Take Away"}
-                </span>
+                <UserRound size={14} />
+                <span className="rv-cash-holder-name">{row.name}</span>
               </strong>
               <span className="rv-cash-holder-header-values">
-                <b aria-label={"Total diterima " + money(row.cash + row.qris)}>
-                  {money(row.cash + row.qris)}
+                <b aria-label={"Sisa kas " + money(row.net)}>
+                  {money(row.net)}
                 </b>
-                <small>
-                  {[
-                    [row.galon, "galon"],
-                    [row.tabung, "tabung"],
-                    [row.unit, "unit"],
-                  ]
-                    .filter(([qty]) => qty > 0)
-                    .map(
-                      ([qty, unit]) => qty.toLocaleString("id-ID") + " " + unit,
-                    )
-                    .join(" · ") || "0 galon"}
+                <small className="rv-cash-directions">
+                  <span aria-label={"Uang masuk " + money(row.cash + row.qris)}>
+                    <ArrowDown className="rv-cash-in" size={12} />
+                    {money(row.cash + row.qris)}
+                  </span>
+                  <span aria-label={"Uang keluar " + money(row.outgoing)}>
+                    <ArrowUp className="rv-cash-out" size={12} />
+                    {money(row.outgoing)}
+                  </span>
                 </small>
               </span>
               <ChevronDown size={16} />
             </summary>
-            <div className="rv-cash-holder-body">
-              {[
-                ["Tunai", row.saleCash, row.debtCash, row.cash],
-                ["QRIS", row.saleQris, row.debtQris, row.qris],
-              ].map(([label, sale, debt, total]) => (
-                <div className="rv-receipt-method" key={label}>
-                  <span className="rv-receipt-method-label">
-                    {label === "Tunai" ? (
-                      <Banknote size={12} />
-                    ) : (
-                      <ScanLine size={12} />
-                    )}
-                    {label}
-                  </span>
-                  <dl aria-label={label}>
-                    <div>
-                      <dt>Pesanan</dt>
-                      <dd>{money(sale || 0)}</dd>
-                    </div>
-                    <div>
-                      <dt>Bayar utang</dt>
-                      <dd>{money(debt || 0)}</dd>
-                    </div>
-                    <div>
-                      <dt>Total {label === "QRIS" ? label : "tunai"}</dt>
-                      <dd>{money(total || 0)}</dd>
-                    </div>
-                  </dl>
-                </div>
-              ))}
-              {row.channel === "counter" && row.actors.length > 0 && (
-                <small className="rv-cash-depot-actors">
-                  {row.actors.map((actor) => actor.name).join(" · ")}
-                </small>
-              )}
-            </div>
+            {opened[row.key] && (
+              <div className="rv-cash-holder-body">
+                <CashFlowList
+                  key={query + row.key}
+                  query={query}
+                  actor={row.key}
+                >
+                  {(expenses) => (
+                    <CashMethodDetails
+                      expenses={expenses}
+                      methods={[
+                        {
+                          method: "Tunai",
+                          sales: row.saleCash,
+                          debt: row.debtCash,
+                          net: row.cash - row.expenseCash,
+                        },
+                        {
+                          method: "QRIS",
+                          sales: row.saleQris,
+                          debt: row.debtQris,
+                          net: row.qris - row.expenseQris,
+                        },
+                      ]}
+                    />
+                  )}
+                </CashFlowList>
+              </div>
+            )}
           </details>
         ))}
       </section>
     );
   }
-  function SelectedProducts({
+  function ShippingRateField({ name, rate, onChange, disabled = false }) {
+    const presets = [0, 1000, 2000];
+    const [manual, setManual] = useState(!presets.includes(Number(rate || 0)));
+    const custom = manual || !presets.includes(Number(rate || 0));
+    return (
+      <label className="rv-shipping-dropdown">
+        <span>Ongkir / unit</span>
+        <select
+          aria-label={"Ongkir per unit " + name}
+          value={custom ? "manual" : String(rate || 0)}
+          disabled={disabled}
+          onChange={(event) => {
+            const selected = event.target.value;
+            setManual(selected === "manual");
+            if (selected !== "manual") onChange(Number(selected));
+          }}
+        >
+          <option value="0">Tanpa ongkir</option>
+          <option value="1000">Rp1.000</option>
+          <option value="2000">Rp2.000</option>
+          <option value="manual">Manual…</option>
+        </select>
+        {custom && (
+          <input
+            type="number"
+            inputMode="numeric"
+            min="0"
+            max="1000000"
+            step="1"
+            aria-label={"Ongkir manual " + name}
+            value={rate ?? ""}
+            disabled={disabled}
+            placeholder="Rp / unit"
+            onChange={(event) =>
+              onChange(
+                event.target.value === "" ? 0 : Number(event.target.value),
+              )
+            }
+          />
+        )}
+      </label>
+    );
+  }
+  function DiscountField({ name, value, max, onChange, disabled = false }) {
+    return (
+      <label className="rv-product-discount-field">
+        <span>Diskon (Rp)</span>
+        <input
+          type="number"
+          inputMode="numeric"
+          min="0"
+          max={max}
+          step="1"
+          placeholder="0"
+          aria-label={"Diskon " + name}
+          value={value || ""}
+          disabled={disabled}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      </label>
+    );
+  }
+  function ItemCharges({
     lines,
     onChange,
     discounts,
     onDiscountChange,
+    disabled = false,
+  }) {
+    return (
+      <div className="rv-item-charges">
+        {[...new Set(lines.map((line) => line.productId))].map((key) => {
+          const group = lines.filter((line) => line.productId === key),
+            qty = group.reduce((sum, line) => sum + line.qty, 0),
+            rate = group[0].shippingRate || 0;
+          const update = (rate) =>
+            onChange(
+              lines.map((line) =>
+                line.productId === key ? { ...line, shippingRate: rate } : line,
+              ),
+            );
+          return (
+            <div className="rv-item-charge rv-compact-charge" key={key}>
+              <div className="rv-item-charge-heading">
+                <span>
+                  {group[0].name} <small>· {qty} unit</small>
+                </span>
+                <strong>{money(qty * rate)}</strong>
+              </div>
+              <div className="rv-compact-product-fields">
+                <ShippingRateField
+                  name={group[0].name}
+                  rate={rate}
+                  onChange={update}
+                  disabled={disabled}
+                />
+                {onDiscountChange && discountEligible(group[0].name) && (
+                  <DiscountField
+                    name={group[0].name}
+                    value={discounts[key]}
+                    max={group.reduce(
+                      (sum, line) => sum + line.qty * line.price,
+                      0,
+                    )}
+                    onChange={(value) =>
+                      onDiscountChange({ ...discounts, [key]: value })
+                    }
+                    disabled={disabled}
+                  />
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  function SelectedProducts({
+    lines,
+    onChange,
+    discounts = {},
+    onDiscountChange,
     editable = true,
     compact = false,
+    shipping = true,
+    chargesDisabled = false,
   }) {
     const { data } = useApp();
     function lineLabel(line) {
       const product = [...data.products, ...(data.archivedProducts || [])].find(
-        (p) => p.id === line.productId,
-      );
-      const mode = product?.modes.find((m) => m.id === line.modeId);
+          (p) => p.id === line.productId,
+        ),
+        mode = product?.modes.find((m) => m.id === line.modeId);
       return product && mode
         ? productChoiceLabel(product, mode)
         : line.name.toUpperCase();
@@ -678,12 +831,36 @@ export function createApprovedPages(UI) {
     function changeQuantity(line, delta) {
       onChange(
         lines
-          .map((l) =>
-            l.modeId === line.modeId ? { ...l, qty: l.qty + delta } : l,
+          .map((item) =>
+            item.modeId === line.modeId
+              ? { ...item, qty: item.qty + delta }
+              : item,
           )
-          .filter((l) => l.qty > 0),
+          .filter((item) => item.qty > 0),
       );
     }
+    const quantity = (line) =>
+      editable ? (
+        <div className="rv-quantity-control">
+          <button
+            type="button"
+            aria-label={"Kurangi " + lineLabel(line)}
+            onClick={() => changeQuantity(line, -1)}
+          >
+            <Minus />
+          </button>
+          <strong>{line.qty}</strong>
+          <button
+            type="button"
+            aria-label={"Tambah " + lineLabel(line)}
+            onClick={() => changeQuantity(line, 1)}
+          >
+            <Plus />
+          </button>
+        </div>
+      ) : (
+        <span className="rv-selected-quantity">{line.qty} ×</span>
+      );
     if (!lines.length) return null;
     return (
       <section
@@ -694,82 +871,96 @@ export function createApprovedPages(UI) {
       >
         <div className="rv-selected-heading">
           <h4>Rincian pesanan</h4>
-          <span>{lines.reduce((n, l) => n + l.qty, 0)} item</span>
+          <span>{lines.reduce((sum, line) => sum + line.qty, 0)} item</span>
         </div>
-        {compact && onDiscountChange && (
-          <div className="rv-selected-column-labels" aria-hidden="true">
-            <span>Produk</span>
-            <span>Jumlah</span>
-            <span>Subtotal</span>
-            <span>Diskon (Rp)</span>
-          </div>
-        )}
-        {[...new Set(lines.map((l) => l.productId))].map((key) => {
-          const grouped = lines.filter((l) => l.productId === key);
-          const subtotal = grouped.reduce((n, l) => n + l.qty * l.price, 0);
+        {[...new Set(lines.map((line) => line.productId))].map((key) => {
+          const group = lines.filter((line) => line.productId === key),
+            subtotal = group.reduce(
+              (sum, line) => sum + line.qty * line.price,
+              0,
+            ),
+            fee = shipping ? itemShipping(group) : 0,
+            discount = Number(discounts[key] || 0),
+            eligible = !!onDiscountChange && discountEligible(group[0].name),
+            multiple = group.length > 1;
           return (
-            <div
-              className={
-                "rv-selected-product" +
-                (onDiscountChange ? " rv-selected-with-discount" : "")
-              }
-              key={key}
-            >
-              <div className="rv-selected-lines">
-                {grouped.map((line) => (
-                  <div className="rv-selected-line" key={line.modeId}>
-                    <span title={lineLabel(line)}>
-                      <strong>{lineLabel(line)}</strong>
-                    </span>
-                    {editable ? (
-                      <div className="rv-quantity-control">
-                        <button
-                          type="button"
-                          aria-label={"Kurangi " + lineLabel(line)}
-                          onClick={() => changeQuantity(line, -1)}
-                        >
-                          <Minus />
-                        </button>
-                        <strong>{line.qty}</strong>
-                        <button
-                          type="button"
-                          aria-label={"Tambah " + lineLabel(line)}
-                          onClick={() => changeQuantity(line, 1)}
-                        >
-                          <Plus />
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="rv-selected-quantity">{line.qty} ×</span>
-                    )}
-                    <strong className="rv-selected-subtotal">
-                      {money(line.qty * line.price)}
-                    </strong>
-                  </div>
-                ))}
+            <div className="rv-selected-product rv-compact-product" key={key}>
+              <div className="rv-compact-product-top">
+                <div className="rv-compact-product-identity">
+                  <strong
+                    className="rv-compact-product-name"
+                    title={multiple ? group[0].name : lineLabel(group[0])}
+                  >
+                    {multiple ? group[0].name : lineLabel(group[0])}
+                  </strong>
+                  {!multiple && <small>{money(group[0].price)} / unit</small>}
+                </div>
+                {!multiple && quantity(group[0])}
+                <strong
+                  className="rv-compact-product-total"
+                  aria-label={"Total " + group[0].name}
+                  title={
+                    "Produk " +
+                    money(subtotal) +
+                    " + ongkir " +
+                    money(fee) +
+                    " − diskon " +
+                    money(discount)
+                  }
+                >
+                  <small>Total</small>
+                  {money(subtotal + fee - discount)}
+                </strong>
               </div>
-              {onDiscountChange && (
-                <label className="rv-selected-discount">
-                  <span>Diskon (Rp)</span>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    aria-label={"Diskon " + grouped[0].name}
-                    title={
-                      grouped.length > 1
-                        ? "Diskon " + grouped[0].name + " untuk semua varian"
-                        : undefined
-                    }
-                    min="0"
-                    max={subtotal}
-                    step="1"
-                    placeholder="0"
-                    value={discounts[key] || ""}
-                    onChange={(e) =>
-                      onDiscountChange({ ...discounts, [key]: e.target.value })
-                    }
-                  />
-                </label>
+              {multiple && (
+                <div className="rv-compact-variants">
+                  {group.map((line) => (
+                    <div key={line.modeId}>
+                      <div className="rv-compact-product-identity">
+                        <span>{lineLabel(line)}</span>
+                        <small>{money(line.price)} / unit</small>
+                      </div>
+                      {quantity(line)}
+                      <strong>{money(line.qty * line.price)}</strong>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {(shipping || eligible) && (
+                <div
+                  className={
+                    "rv-compact-product-fields" +
+                    (shipping && eligible ? "" : " rv-one-field")
+                  }
+                >
+                  {shipping && (
+                    <ShippingRateField
+                      name={group[0].name}
+                      rate={group[0].shippingRate}
+                      disabled={chargesDisabled}
+                      onChange={(rate) =>
+                        onChange(
+                          lines.map((line) =>
+                            line.productId === key
+                              ? { ...line, shippingRate: rate }
+                              : line,
+                          ),
+                        )
+                      }
+                    />
+                  )}
+                  {eligible && (
+                    <DiscountField
+                      name={group[0].name}
+                      value={discounts[key]}
+                      max={subtotal}
+                      disabled={chargesDisabled}
+                      onChange={(value) =>
+                        onDiscountChange({ ...discounts, [key]: value })
+                      }
+                    />
+                  )}
+                </div>
               )}
             </div>
           );
@@ -784,6 +975,8 @@ export function createApprovedPages(UI) {
     discounts,
     onDiscountChange,
     compactSelected = false,
+    shipping = true,
+    chargesDisabled = false,
   }) {
     const { data } = useApp(),
       [category, setCategory] = useState(data.categories[0]?.id || "");
@@ -800,6 +993,9 @@ export function createApprovedPages(UI) {
                 mode: m.name,
                 price: m.price,
                 qty: 1,
+                shippingRate:
+                  lines.find((line) => line.productId === p.id)?.shippingRate ??
+                  0,
               },
             ]
           : lines
@@ -857,6 +1053,8 @@ export function createApprovedPages(UI) {
             discounts={discounts}
             onDiscountChange={onDiscountChange}
             compact={compactSelected}
+            shipping={shipping}
+            chargesDisabled={chargesDisabled}
           />
         )}
         {!data.products.length && (
@@ -869,7 +1067,11 @@ export function createApprovedPages(UI) {
     const { data, act, tick, refresh } = useApp(),
       [filter, setFilter] = useState(() => {
         const key = window.location.hash.split("?")[1]?.split("&")[0];
-        return key === "all" || filters[key] ? key : "orders";
+        return key === "all" ||
+          Object.hasOwn(filters, key) ||
+          orderStatusChoices.some(([value]) => value === key)
+          ? key
+          : "active";
       }),
       [scope] = useState(
         () => new URLSearchParams(window.location.hash.split("?")[1] || ""),
@@ -1017,25 +1219,24 @@ export function createApprovedPages(UI) {
             (selectedOrders.length ? " rv-has-selection" : "")
           }
         >
-          <div className="rv-filters">
-            {["all", ...Object.keys(filters)].map((key) => (
-              <button
-                className="rv-filter"
-                key={key}
-                aria-pressed={filter === key}
-                onClick={() => {
-                  setFilter(key);
-                  setMenu("");
-                  setProductEditor(null);
-                }}
-              >
-                {key === "all" ? "Semua" : filterLabels[key]}
-              </button>
-            ))}
-          </div>
+          <OrderStatusFilters
+            compact
+            value={filter}
+            onChange={(value) => {
+              setFilter(value);
+              setMenu("");
+              setProductEditor(null);
+              setCancelling(false);
+            }}
+          />
           <div className="rv-section-heading">
             <h3>
-              {shown.length} {filter === "failed" ? "gagal / batal" : "pesanan"}
+              {shown.length} pesanan
+              {!orderStatusChoices.some(([value]) => value === filter) &&
+                " · " +
+                  (filter === "failed"
+                    ? "Gagal / batal"
+                    : filterLabels[filter] || "Semua")}
             </h3>
             <span className="rv-note">
               {dateLabel(range.from)}
@@ -1249,6 +1450,7 @@ export function createApprovedPages(UI) {
                     </div>
                     <ProductPicker
                       compactSelected
+                      chargesDisabled={!!o.prepayment}
                       lines={productEditor.lines}
                       discounts={productEditor.discounts}
                       onDiscountChange={(discounts) =>
@@ -1410,28 +1612,20 @@ export function createApprovedPages(UI) {
           }).catch(() => {});
         }}
       >
-        <header className="rv-departure-top">
-          <span className="rv-departure-symbol">
-            <Truck size={22} />
-          </span>
-          <span className="rv-departure-title">
-            <strong>Keberangkatan trip</strong>
-            <small>
+        <CameraScreenHeader
+          title="Keberangkatan trip"
+          icon={Truck}
+          detail={
+            <>
               <b>Trip ke-{data.nextTripNumber ?? "…"}</b> · {orders.length}{" "}
               pesanan · {data.user.name}
-            </small>
-          </span>
-          <button
-            type="button"
-            className="rv-icon-button"
-            aria-label="Kembali ke pesanan"
-            onClick={() =>
-              go("orders?selected=" + encodeURIComponent(ids.join(",")))
-            }
-          >
-            <X size={22} />
-          </button>
-        </header>
+            </>
+          }
+          closeLabel="Kembali ke pesanan"
+          onClose={() =>
+            go("orders?selected=" + encodeURIComponent(ids.join(",")))
+          }
+        />
         {valid ? (
           <DepartureCamera photo={photo} onChange={setPhoto} />
         ) : (
@@ -1459,8 +1653,8 @@ export function createApprovedPages(UI) {
       [lines, setLines] = useState([]),
       [discounts, setDiscounts] = useState({}),
       [payNow, setPayNow] = useState(false),
-      [payMethod, setPayMethod] = useState(""),
-      [shipping, setShipping] = useState("");
+      [payMethod, setPayMethod] = useState("");
+    const shipping = itemShipping(lines);
     const orderDiscounts = Object.fromEntries(
       [...new Set(lines.map((line) => line.productId))].map((key) => [
         key,
@@ -1470,7 +1664,7 @@ export function createApprovedPages(UI) {
     const orderTotal =
       lines.reduce((sum, line) => sum + line.qty * line.price, 0) -
       Object.values(orderDiscounts).reduce((sum, value) => sum + value, 0) +
-      (payNow ? Number(shipping || 0) : 0);
+      shipping;
     const paymentSection = (
       <section className="rv-stack rv-payment-simple rv-new-order-payment">
         <div className="rv-payment-heading">
@@ -1514,12 +1708,6 @@ export function createApprovedPages(UI) {
                 <option>QRIS</option>
               </select>
             </Field>
-            <Currency
-              label="Ongkir (Rp)"
-              placeholder="0"
-              value={shipping}
-              onChange={setShipping}
-            />
           </div>
         )}
       </section>
@@ -1532,6 +1720,7 @@ export function createApprovedPages(UI) {
           onChange={setCustomer}
           guestName={guest}
           onGuestChange={setGuest}
+          optional={atDepot}
         />
         {can(data.user, "orders") && can(data.user, "counter") && (
           <div
@@ -1618,7 +1807,7 @@ export function createApprovedPages(UI) {
                       discounts: orderDiscounts,
                       paymentTiming: payNow ? "now" : "courier",
                       method: payNow ? payMethod : undefined,
-                      shipping: payNow ? Number(shipping || 0) : 0,
+                      shipping,
                     },
                   });
                   go("orders");
@@ -1647,6 +1836,7 @@ export function createApprovedPages(UI) {
   function OrderQuantityEditor({ order, onClose }) {
     const { act } = useApp(),
       [lines, setLines] = useState(order.items),
+      [discounts, setDiscounts] = useState(order.discounts || {}),
       [error, setError] = useState("");
     return (
       <AppForm
@@ -1657,7 +1847,15 @@ export function createApprovedPages(UI) {
           await act(async () => {
             await api("/orders/" + order.id + "/items", {
               method: "PATCH",
-              body: { version: order.version, items: lines },
+              body: {
+                version: order.version,
+                items: lines,
+                discounts: Object.fromEntries(
+                  [...new Set(lines.map((line) => line.productId))].map(
+                    (key) => [key, Number(discounts[key] || 0)],
+                  ),
+                ),
+              },
             });
             onClose();
           }).catch((err) => setError(err.message));
@@ -1680,7 +1878,14 @@ export function createApprovedPages(UI) {
           Isi jumlah akhir pesanan. Perubahan dan akun pengedit akan dicatat.
         </p>
         <ProductPicker lines={lines} onChange={setLines} showSelected={false} />
-        <SelectedProducts lines={lines} onChange={setLines} editable />
+        <SelectedProducts
+          lines={lines}
+          onChange={setLines}
+          discounts={discounts}
+          onDiscountChange={setDiscounts}
+          chargesDisabled={!!order.prepayment}
+          editable
+        />
         {error && <p className="rv-error">{error}</p>}
         <Submit disabled={!lines.length}>Simpan jumlah pesanan</Submit>
       </AppForm>
@@ -1714,7 +1919,7 @@ export function createApprovedPages(UI) {
       ),
       discounts = externalDiscounts || internalDiscounts,
       setDiscounts = onDiscountChange || setInternalDiscounts,
-      [shipping, setShipping] = useState(
+      [legacyShipping] = useState(
         String(
           order?.prepayment && !order.progress?.deliveredQty
             ? order.prepayment.shipping
@@ -1724,12 +1929,17 @@ export function createApprovedPages(UI) {
       [payment, setPayment] = useState({ method: "", paid: "0" }),
       [paidEdited, setPaidEdited] = useState(false),
       [outcome, setOutcome] = useState(""),
-      [reason, setReason] = useState(""),
-      [proofOpen, setProofOpen] = useState(false);
+      [reason, setReason] = useState("");
     const [payNow, setPayNow] = useState(false);
     const registered = counter ? !!customerId : !!order?.customer_id;
     const payLater = counter && registered && !payNow;
     const productIds = [...new Set(lines.map((l) => l.productId))],
+      shipping = counter
+        ? 0
+        : hasItemShipping(lines) &&
+            (!order?.prepayment || order.prepayment.itemShipping)
+          ? itemShipping(lines)
+          : Number(legacyShipping),
       total =
         lines.reduce((n, l) => n + l.qty * l.price, 0) -
         productIds.reduce((n, key) => n + Number(discounts[key] || 0), 0) +
@@ -1841,6 +2051,7 @@ export function createApprovedPages(UI) {
               discounts={discounts}
               onDiscountChange={prepaid ? undefined : setDiscounts}
               editable={counter}
+              shipping={false}
             />
           </div>
         )}
@@ -1955,35 +2166,20 @@ export function createApprovedPages(UI) {
                     )}
                   </div>
                   {!counter && (
-                    <div className="rv-two rv-trip-adjustment-fields">
-                      <Currency
-                        label="Ongkir (Rp)"
-                        value={shipping}
-                        onChange={setShipping}
+                    <div className="rv-trip-adjustment-fields">
+                      <ItemCharges
+                        lines={lines}
+                        onChange={setLines}
+                        discounts={discounts}
+                        onDiscountChange={setDiscounts}
                         disabled={!!order.prepayment}
                       />
-                      {productIds.map((productId) => (
-                        <Currency
-                          key={productId}
-                          label={
-                            "Diskon " +
-                            lines.find((line) => line.productId === productId)
-                              .name +
-                            " (Rp)"
-                          }
-                          value={discounts[productId] ?? "0"}
-                          onChange={(value) =>
-                            setDiscounts({ ...discounts, [productId]: value })
-                          }
-                          max={lines
-                            .filter((line) => line.productId === productId)
-                            .reduce(
-                              (sum, line) => sum + line.qty * line.price,
-                              0,
-                            )}
-                          disabled={!!order.prepayment}
-                        />
-                      ))}
+                      {!hasItemShipping(lines) && shipping > 0 && (
+                        <p className="rv-note">
+                          Ongkir sebelumnya {money(shipping)}. Pilih tarif per
+                          produk untuk menggantinya.
+                        </p>
+                      )}
                       {order.prepayment && (
                         <p className="rv-note">
                           Mengikuti pembayaran di muka yang sudah dicatat.
@@ -2022,25 +2218,12 @@ export function createApprovedPages(UI) {
                     </details>
                   )}
                   {!counter && payment.method === "QRIS" && (
-                    <>
-                      <button
-                        className="rv-text-button"
-                        type="button"
-                        onClick={() => setProofOpen(!proofOpen)}
-                      >
-                        Tambah bukti QRIS (opsional)
-                      </button>
-                      {proofOpen && (
-                        <input
-                          type="file"
-                          accept="image/*"
-                          aria-label="Bukti QRIS"
-                          onChange={async (e) =>
-                            set("proof", await imageFile(e.target.files[0]))
-                          }
-                        />
-                      )}
-                    </>
+                    <CameraCapture
+                      label="Bukti QRIS (opsional)"
+                      photo={payment.proof}
+                      onChange={(photo) => set("proof", photo)}
+                      allowFile
+                    />
                   )}
                 </>
               )}
@@ -2193,7 +2376,12 @@ export function createApprovedPages(UI) {
                       {money(
                         totals[entryKey] ??
                           row.total ??
-                          row.items.reduce((n, l) => n + l.qty * l.price, 0),
+                          row.items.reduce((n, l) => n + l.qty * l.price, 0) +
+                            itemShipping(row.items) -
+                            Object.values(o?.discounts || {}).reduce(
+                              (sum, value) => sum + Number(value),
+                              0,
+                            ),
                       )}
                     </strong>
                     {row.outcome === "done" && (
@@ -2336,7 +2524,6 @@ export function createApprovedPages(UI) {
                 </span>
                 <PhotoButton
                   id={latest.photo_id}
-                  frame="trip"
                   label={
                     "Muatan Trip " +
                     group.number +
@@ -2374,7 +2561,6 @@ export function createApprovedPages(UI) {
                       </span>
                       <PhotoButton
                         id={t.photo_id}
-                        frame="trip"
                         label={
                           "Muatan Trip " +
                           t.number +
@@ -2967,34 +3153,7 @@ export function createApprovedPages(UI) {
                 <strong>{money(total - Number(paid || 0))}</strong>
               </div>
               {method === "QRIS" && (
-                <Field label="Bukti QRIS (opsional)">
-                  <span className="rv-debt-proof-control">
-                    <input
-                      type="file"
-                      aria-label="Pilih bukti QRIS"
-                      accept="image/*"
-                      onChange={async (e) =>
-                        setProof(await imageFile(e.target.files[0]))
-                      }
-                    />
-                    <span className="rv-debt-proof-face">
-                      {proof ? (
-                        <img src={proof} alt="Bukti QRIS terpilih" />
-                      ) : (
-                        <Camera size={20} aria-hidden="true" />
-                      )}
-                      <span>
-                        <strong>
-                          {proof ? "Ubah bukti QRIS" : "Pilih bukti QRIS"}
-                        </strong>
-                        <small>
-                          {proof ? "Foto siap dilampirkan" : "Gambar atau foto"}
-                        </small>
-                      </span>
-                      <Plus size={16} aria-hidden="true" />
-                    </span>
-                  </span>
-                </Field>
+                <CameraCapture label="Bukti QRIS (opsional)" photo={proof} onChange={setProof} allowFile />
               )}
               <Submit>Simpan pembayaran</Submit>
             </AppForm>
@@ -3150,65 +3309,49 @@ export function createApprovedPages(UI) {
                 </section>
                 <section
                   className="rv-card rv-report-metric"
-                  aria-label="Uang masuk periode"
+                  aria-label="Laporan kas periode"
                 >
                   <header>
                     <Banknote size={15} />
-                    <h3>Uang masuk {periodLabel}</h3>
+                    <h3>Laporan kas {periodLabel}</h3>
                   </header>
                   <div className="rv-report-total">
                     <strong className="rv-report-metric-value">
-                      {money(report.receipts.total)}
+                      {money(report.cashFlow.net)}
                     </strong>
                     <p className="rv-report-explanation">
-                      Uang yang benar-benar diterima.
+                      Sisa kas: uang masuk dikurangi pengeluaran.
                     </p>
                   </div>
                   <dl className="rv-report-sources">
-                    <div>
-                      <dt title="Pembayaran penjualan yang selesai pada periode pilihan">
-                        <ShoppingBag size={12} aria-hidden="true" /> Dari
-                        penjualan periode ini
-                      </dt>
-                      <dd>{money(report.receipts.sales)}</dd>
-                    </div>
-                    <div>
-                      <dt title="Pembayaran tagihan yang berasal dari sebelum periode pilihan">
-                        <History size={12} aria-hidden="true" /> Pelunasan
-                        hutang lama
-                      </dt>
-                      <dd>{money(report.receipts.oldDebt)}</dd>
-                    </div>
+                    {report.cashFlow.sales > 0 && (
+                      <div>
+                        <dt>
+                          <ArrowDown
+                            size={13}
+                            className="rv-cash-in"
+                            aria-label="Uang masuk"
+                          />{" "}
+                          Penjualan
+                        </dt>
+                        <dd>{money(report.cashFlow.sales)}</dd>
+                      </div>
+                    )}
+                    {report.cashFlow.debt > 0 && (
+                      <div>
+                        <dt>
+                          <ArrowDown
+                            size={13}
+                            className="rv-cash-in"
+                            aria-label="Uang masuk"
+                          />{" "}
+                          Bayar hutang
+                        </dt>
+                        <dd>{money(report.cashFlow.debt)}</dd>
+                      </div>
+                    )}
                   </dl>
-                  {!!(
-                    report.receipts.advances + report.receipts.unallocated
-                  ) && (
-                    <details className="rv-report-other-receipts">
-                      <summary>
-                        <span>Penerimaan lain</span>
-                        <strong>
-                          {money(
-                            report.receipts.advances +
-                              report.receipts.unallocated,
-                          )}
-                        </strong>
-                      </summary>
-                      <dl>
-                        {!!report.receipts.advances && (
-                          <div>
-                            <dt>Pesanan belum selesai pada periode ini</dt>
-                            <dd>{money(report.receipts.advances)}</dd>
-                          </div>
-                        )}
-                        {!!report.receipts.unallocated && (
-                          <div>
-                            <dt>Belum dialokasikan</dt>
-                            <dd>{money(report.receipts.unallocated)}</dd>
-                          </div>
-                        )}
-                      </dl>
-                    </details>
-                  )}
+                  <CashFlowList key={query} query={query} />
                   <footer>
                     <dl className="rv-report-receipt-methods">
                       <div>
@@ -3231,11 +3374,17 @@ export function createApprovedPages(UI) {
                 <span>Saldo utang saat ini</span>
                 <strong>{money(report.stats.debt)}</strong>
               </div>
-              <FundSummary funds={report.funds} periodLabel={periodLabel} />
+              <FundSummary
+                funds={report.funds}
+                periodLabel={periodLabel}
+                query={query}
+                CashFlowList={CashFlowList}
+              />
               <CashHolders
-                rows={report.cashHolders}
+                rows={report.staffCash}
                 cash={report.stats.cash}
                 qris={report.stats.qris}
+                query={query}
               />
               <SearchField value={search} onChange={setSearch} />
               <ReportExplorer

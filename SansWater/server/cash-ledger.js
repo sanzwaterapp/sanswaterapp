@@ -4,6 +4,8 @@ import {
   inferCashFund,
   inferCategoryFund,
 } from "../src/cash-funds.js";
+import { hasItemShipping, itemShipping } from "../src/order-pricing.js";
+import { isSaleReceipt } from "./sales-breakdown.js";
 
 export function categoryFund(db, categoryId) {
   if (typeof categoryId !== "string") return null;
@@ -105,14 +107,17 @@ export function fundSnapshot(items, discounts, shipping) {
         productId: key,
         name: line.name,
         amount: 0,
+        shipping: 0,
         fund: Object.hasOwn(line, "fund")
           ? line.fund
           : inferCashFund(line.name),
       });
     products.get(key).amount += line.qty * line.price;
+    products.get(key).shipping += line.qty * Number(line.shippingRate || 0);
   }
   for (const row of products.values()) {
     row.amount -= discounts[row.productId] || 0;
+    if (hasItemShipping(items)) row.amount += row.shipping;
     const fund =
       typeof row.fund === "string" &&
       /^[a-zA-Z0-9_-]{1,80}$/.test(row.fund) &&
@@ -122,7 +127,9 @@ export function fundSnapshot(items, discounts, shipping) {
     amounts[fund] = (amounts[fund] || 0) + row.amount;
     if (fund === "unassigned" && row.amount) unresolved.push(row);
   }
-  amounts.operating += shipping;
+  amounts.operating += hasItemShipping(items)
+    ? shipping - itemShipping(items)
+    : shipping;
   return { amounts, unresolved };
 }
 
@@ -230,7 +237,11 @@ export function cashFundReport(db, start, end) {
   const receiptParts = new Map();
   const payments = db
     .prepare(
-      "SELECT p.*,op.order_id,op.items,op.discounts,op.shipping FROM payments p LEFT JOIN order_prepayments op ON op.payment_id=p.id ORDER BY p.created_at,p.rowid",
+      `SELECT p.*,op.order_id,op.items,op.discounts,op.shipping,op.payment_id prepayment,
+      (SELECT a.after_json FROM audit a WHERE a.object_id=p.id AND a.action='payment.create' ORDER BY a.created_at,a.id LIMIT 1) metadata,
+      EXISTS(SELECT 1 FROM invoices i JOIN audit a ON a.object_id=i.order_id AND a.action='order.complete'
+        WHERE i.id=json_extract(p.scope,'$[0]') AND json_extract(a.after_json,'$.paymentId')=p.id) immediate
+      FROM payments p LEFT JOIN order_prepayments op ON op.payment_id=p.id ORDER BY p.created_at,p.rowid`,
     )
     .all();
   const allocations = new Map();
@@ -269,6 +280,9 @@ export function cashFundReport(db, start, end) {
     key,
     name: funds.find((f) => f.key === key)?.name || "Belum dipetakan",
     sales: sales[key],
+    sources: Object.fromEntries(
+      CASH_METHODS.map((method) => [method, { sales: 0, debt: 0 }]),
+    ),
     methods: Object.fromEntries(
       CASH_METHODS.map((method) => [
         method,
@@ -288,7 +302,7 @@ export function cashFundReport(db, start, end) {
     if (date >= from && date <= to) row[field] += amount;
   }
   for (const p of payments)
-    for (const key of keys)
+    for (const key of keys) {
       movement(
         key,
         p.method,
@@ -296,6 +310,10 @@ export function cashFundReport(db, start, end) {
         "incoming",
         receiptParts.get(p.id)[key],
       );
+      if (p.created_at >= start && p.created_at < end)
+        lookup[key].sources[p.method][isSaleReceipt(p) ? "sales" : "debt"] +=
+          receiptParts.get(p.id)[key];
+    }
   for (const e of db
     .prepare("SELECT * FROM cash_entries WHERE voided_at IS NULL")
     .all()) {

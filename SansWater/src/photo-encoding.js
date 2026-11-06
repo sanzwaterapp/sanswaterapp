@@ -1,4 +1,4 @@
-export const MAX_PHOTO_BYTES = 600 * 1024;
+export const MAX_PHOTO_BYTES = 320 * 1024;
 export function photoBytes(data) {
   const encoded = data.slice(data.indexOf(",") + 1);
   return (

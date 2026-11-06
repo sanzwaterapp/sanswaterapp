@@ -7,6 +7,12 @@ import {
 } from "node:crypto";
 import { salesBreakdown } from "./sales-breakdown.js";
 import { reportReceipts } from "./report-receipts.js";
+import { cashFlowSummary } from "./cash-flow.js";
+import {
+  discountEligible,
+  hasItemShipping,
+  itemShipping,
+} from "../src/order-pricing.js";
 import { orderProgress, orderLineKey } from "../src/order-progress.js";
 import {
   cashFundReport,
@@ -189,21 +195,34 @@ export function createDomain(
         price: mode.price,
         fund: categoryFund(db, p.category_id),
         capacityLiters: p.capacityLiters,
+        ...(line.shippingRate !== undefined
+          ? {
+              shippingRate: integer(
+                line.shippingRate,
+                "Ongkir per unit",
+                0,
+                1000000,
+              ),
+            }
+          : {}),
       };
     });
   }
-  function customerInput(body) {
+  function customerInput(body, allowAnonymous = false) {
     if (body.customerId) {
       const c = find("customers", body.customerId);
       return { customerId: c.id, name: c.name, code: c.code };
     }
     return {
       customerId: null,
-      name: text(body.guestName, "Nama pembeli"),
+      name:
+        allowAnonymous && !String(body.guestName || "").trim()
+          ? "Pembeli umum"
+          : text(body.guestName, "Nama pembeli"),
       code: "",
     };
   }
-  function orderDiscounts(lines, input = {}) {
+  function orderDiscounts(lines, input = {}, previous = {}) {
     if (!input || typeof input !== "object" || Array.isArray(input))
       fail("Diskon belum benar.");
     const subtotals = {};
@@ -213,12 +232,17 @@ export function createDomain(
     return Object.fromEntries(
       Object.entries(input).map(([key, value]) => {
         if (!Object.hasOwn(subtotals, key)) fail("Diskon tidak sesuai produk.");
+        if (
+          Number(value) > Number(previous[key] || 0) &&
+          !discountEligible(lines.find((line) => line.productId === key).name)
+        )
+          fail("Diskon hanya tersedia untuk produk RO dan Mineral.");
         return [key, integer(value, "Diskon", 0, subtotals[key])];
       }),
     );
   }
   function order(user, body, kind = "delivery") {
-    const customer = customerInput(body),
+    const customer = customerInput(body, kind === "counter"),
       time = now();
     let received = time;
     if (kind === "delivery") {
@@ -261,7 +285,10 @@ export function createDomain(
         if (!lines.length) fail("Pilih produk sebelum membayar.");
         if (!["Tunai", "QRIS"].includes(body.method))
           fail("Pilih metode Tunai atau QRIS.");
-        const shipping = integer(body.shipping ?? 0, "Ongkir");
+        const shipping = integer(
+          hasItemShipping(lines) ? itemShipping(lines) : (body.shipping ?? 0),
+          "Ongkir",
+        );
         const amount = integer(
           lines.reduce((sum, line) => sum + line.qty * line.price, 0) -
             Object.values(discounts).reduce((sum, value) => sum + value, 0) +
@@ -309,9 +336,12 @@ export function createDomain(
     const total =
       lines.reduce((sum, line) => sum + line.qty * line.price, 0) -
       Object.values(discounts).reduce((sum, value) => sum + value, 0) +
-      row.shipping;
+      (hasItemShipping(JSON.parse(row.items))
+        ? itemShipping(lines)
+        : row.shipping);
     return {
       ...row,
+      itemShipping: hasItemShipping(JSON.parse(row.items)),
       items: lines,
       discounts,
       total,
@@ -439,7 +469,7 @@ export function createDomain(
       .map(invoice)
       .sort(
         (a, b) =>
-          a.recorded_at.localeCompare(b.recorded_at) ||
+          Date.parse(a.recorded_at) - Date.parse(b.recorded_at) ||
           a.id.localeCompare(b.id),
       );
     if (rows.reduce((n, r) => n + r.left, 0) < amount)
@@ -525,6 +555,16 @@ export function createDomain(
       !hasAdvance,
       previousLines.map((line) => line.productId),
     );
+    // Older open clients may omit the new field; never silently drop a stored rate.
+    lines = lines.map((line) => {
+      const previous = previousLines.find(
+        (old) => orderLineKey(old) === orderLineKey(line),
+      );
+      return line.shippingRate === undefined &&
+        previous?.shippingRate !== undefined
+        ? { ...line, shippingRate: previous.shippingRate }
+        : line;
+    });
     if (tripId) {
       const remaining = new Map(
         progress.remainingItems.map((line) => [orderLineKey(line), line]),
@@ -542,6 +582,8 @@ export function createDomain(
             409,
           );
         if (hasAdvance) {
+          if ((line.shippingRate || 0) !== (expected.shippingRate || 0))
+            fail("Ongkir per unit mengikuti pesanan yang sudah dibayar.", 409);
           const submitted = body.items.find(
             (item) => orderLineKey(item) === orderLineKey(line),
           );
@@ -562,6 +604,10 @@ export function createDomain(
         }
       }
     }
+    if (!tripId)
+      lines = lines.map((line) =>
+        line.shippingRate === undefined ? line : { ...line, shippingRate: 0 },
+      );
     const discounts = orderDiscounts(
       lines,
       body.discounts ??
@@ -570,6 +616,9 @@ export function createDomain(
           : typeof orderRow.discounts === "string"
             ? JSON.parse(orderRow.discounts)
             : orderRow.discounts),
+      typeof orderRow.discounts === "string"
+        ? JSON.parse(orderRow.discounts)
+        : orderRow.discounts,
     );
     const finalized = new Map(
       progress.deliveredItems.map((line) => [orderLineKey(line), { ...line }]),
@@ -586,7 +635,9 @@ export function createDomain(
     const finalOrderTotal =
       finalItems.reduce((sum, line) => sum + line.qty * line.price, 0) -
       Object.values(finalDiscounts).reduce((sum, value) => sum + value, 0) +
-      (prepayment?.shipping || 0);
+      (hasItemShipping(finalItems) && (!prepayment || prepayment.itemShipping)
+        ? itemShipping(finalItems)
+        : prepayment?.shipping || 0);
     if (prepayment && finalOrderTotal < prepayment.amount)
       fail(
         "Jumlah baru menimbulkan kelebihan pembayaran. Selesaikan koreksi pembayaran terlebih dahulu.",
@@ -599,9 +650,17 @@ export function createDomain(
     let discount = 0;
     for (const [key, subtotal] of Object.entries(subtotals))
       discount += integer(discounts[key] ?? 0, "Diskon", 0, subtotal);
-    const shipping = tripId ? integer(body.shipping ?? 0, "Ongkir") : 0;
+    const shipping = tripId
+      ? integer(
+          hasItemShipping(lines) && (!hasAdvance || prepayment.itemShipping)
+            ? itemShipping(lines)
+            : (body.shipping ?? 0),
+          "Ongkir",
+        )
+      : 0;
     if (
       hasAdvance &&
+      !prepayment.itemShipping &&
       !progress.deliveredQty &&
       shipping !== prepayment.shipping
     )
@@ -769,12 +828,14 @@ export function createDomain(
             " AND trip_id IS NOT NULL)",
           ...params,
         );
+    const breakdown = salesBreakdown(db, start, end);
     return {
       stats: { ...stats, cash, qris, debt },
       water,
-      ...salesBreakdown(db, start, end),
+      ...breakdown,
       funds: cashFundReport(db, start, end),
       receipts: reportReceipts(db, start, end, stats.sales),
+      ...cashFlowSummary(db, start, end, breakdown.cashHolders),
       ...(!summaryOnly && user.owner
         ? {
             deliveryPerformance: all(

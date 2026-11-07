@@ -1056,7 +1056,6 @@ function Customers() {
   function newCustomer(
     prefix = group || groupNames.keys().next().value || "A",
   ) {
-    setPhotoError("");
     setForm({
       code: prefix === "#" ? "A" : prefix,
       groupPrefix: prefix === "#" ? "A" : prefix,

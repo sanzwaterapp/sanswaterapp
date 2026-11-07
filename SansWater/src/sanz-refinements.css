@@ -1309,7 +1309,7 @@ html::-webkit-scrollbar {
   font-size: 10px;
 }
 
-/* Eight menu destinations remain visible together on the phone viewport. */
+/* Keep the menu destinations compact on the phone viewport. */
 #depot-order-payment-review .rv-side-menu-heading {
   padding: 12px 14px 7px;
 }
@@ -1323,8 +1323,8 @@ html::-webkit-scrollbar {
 #depot-order-payment-review .rv-side-menu-links { gap: 3px; padding: 0 10px 10px; }
 #depot-order-payment-review .rv-side-menu-links button {
   gap: 8px;
-  min-height: 54px;
-  padding: 7px 8px;
+  min-height: 49px;
+  padding: 5px 8px;
 }
 #depot-order-payment-review .rv-side-menu-links strong { font-size: 13px; line-height: 1.25; }
 #depot-order-payment-review .rv-side-menu-links small { font-size: 10px; line-height: 1.3; }

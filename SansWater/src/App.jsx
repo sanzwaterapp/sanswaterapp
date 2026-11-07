@@ -1,4 +1,5 @@
 import AppForm from "./AppForm.jsx";
+import OverlayDialog from "./OverlayDialog.jsx";
 import React, {
   createContext,
   useContext,
@@ -80,6 +81,7 @@ import { staffColor, stockMovementNote } from "./stock-history-display.js";
 import { formatLiters } from "./water-volume.js";
 import { createWaterControl } from "./water-control.jsx";
 import { createWaterReports } from "./water-reports.jsx";
+import { createPayroll } from "./report-explorer.jsx";
 import { createAccountMenu } from "./account-menu.jsx";
 import { connectLiveUpdates } from "./live-updates.js";
 import { coversVersion } from "./sync-version.js";
@@ -245,7 +247,9 @@ function PhotoPreview({ photo }) {
         </div>
       )}
       {status === "error" && (
-        <p className="rv-photo-loading" role="alert">Foto gagal dimuat.</p>
+        <p className="rv-photo-loading" role="alert">
+          Foto gagal dimuat.
+        </p>
       )}
       <img
         id="rv-photo-image"
@@ -530,7 +534,9 @@ export function App() {
   if (!session || (session.user && !data))
     return (
       <main className="auth rv-app-loading" aria-label="Memuat aplikasi">
-        <h1><BrandWordmark /></h1>
+        <h1>
+          <BrandWordmark />
+        </h1>
         <p role="status">Memuat…</p>
         <p className="rv-error">{error}</p>
         {error && (
@@ -548,6 +554,7 @@ export function App() {
     stockhistory: StockHistory,
     watercontrol: can(data.user, "waterControl") ? WaterControl : WaterReports,
     waterreports: WaterReports,
+    payroll: Payroll,
     attendance: Attendance,
     history: approvedPages.reports,
     staff: Staff,
@@ -558,7 +565,9 @@ export function App() {
     ...approvedPages,
   };
   const Page = pages[page] || approvedPages.home,
-    rootPage = ["home", "orders", "trips", "transactions", "debt"].includes(page)
+    rootPage = ["home", "orders", "trips", "transactions", "debt"].includes(
+      page,
+    )
       ? page
       : ["neworder", "counter"].includes(page)
         ? "orders"
@@ -827,6 +836,7 @@ function CustomerPicker({
     [focused, setFocused] = useState(false);
   const selected = data.customers.find((c) => c.id === value),
     suggestions = data.customers
+      .filter((c) => !c.archived)
       .filter((c) =>
         (c.code + " " + c.name).toLowerCase().includes(query.toLowerCase()),
       )
@@ -1005,7 +1015,9 @@ function PurchaseItems({ row }) {
   );
 }
 function Customers() {
-  const { data, act } = useApp(),
+  const { data, act, busy } = useApp(),
+    [showDeleted, setShowDeleted] = useState(false),
+    [deleteCustomer, setDeleteCustomer] = useState(null),
     [search, setSearch] = useState(""),
     [group, setGroup] = useState(""),
     [selected, setSelected] = useState(null),
@@ -1036,7 +1048,10 @@ function Customers() {
     const prefix = groupOf(c);
     if (!groupNames.has(prefix)) groupNames.set(prefix, "Kelompok " + prefix);
   }
-  const shown = data.customers.filter((c) =>
+  const visibleCustomers = data.customers.filter(
+    (c) => !!c.archived === showDeleted,
+  );
+  const shown = visibleCustomers.filter((c) =>
       (c.code + " " + c.name + " " + groupNames.get(groupOf(c)))
         .toLowerCase()
         .includes(search.toLowerCase()),
@@ -1132,6 +1147,52 @@ function Customers() {
   }
   return (
     <>
+      {deleteCustomer && (
+        <OverlayDialog
+          className="rv-customer-delete-confirm"
+          role="alertdialog"
+          aria-labelledby="rv-delete-customer-title"
+          aria-describedby="rv-delete-customer-description"
+          onClose={() => !busy && setDeleteCustomer(null)}
+        >
+          <div className="rv-customer-delete-icon">
+            <Trash2 size={19} />
+          </div>
+          <div>
+            <h3 id="rv-delete-customer-title">Hapus pelanggan?</h3>
+            <p id="rv-delete-customer-description">
+              {deleteCustomer.code} · {deleteCustomer.name}. Riwayat transaksi
+              dan hutang tetap tersimpan.
+            </p>
+          </div>
+          <div className="rv-two">
+            <button
+              className="rv-secondary"
+              disabled={busy}
+              autoFocus
+              onClick={() => setDeleteCustomer(null)}
+            >
+              Batal
+            </button>
+            <button
+              className="rv-primary rv-customer-delete-submit"
+              disabled={busy}
+              onClick={async () => {
+                await act(async () => {
+                  await api("/customers/" + deleteCustomer.id, {
+                    method: "DELETE",
+                    body: { confirmed: true },
+                  });
+                  setDeleteCustomer(null);
+                  setSelected(null);
+                }).catch(() => {});
+              }}
+            >
+              {busy ? "Menghapus…" : "Hapus pelanggan"}
+            </button>
+          </div>
+        </OverlayDialog>
+      )}
       <Header title="Pelanggan" icon={ContactRound}>
         {can(data.user, "customers") && (
           <button className="rv-header-button" onClick={() => newCustomer()}>
@@ -1259,7 +1320,11 @@ function Customers() {
                 <CameraCapture
                   label="Foto rumah (opsional)"
                   photo={form.photo}
-                  onChange={(photo) => setForm((current) => current ? { ...current, photo } : null)}
+                  onChange={(photo) =>
+                    setForm((current) =>
+                      current ? { ...current, photo } : null,
+                    )
+                  }
                   allowFile
                 />
               </div>
@@ -1273,14 +1338,35 @@ function Customers() {
                 <Users size={24} />
               </span>
               <span>
-                <strong>{data.customers.length} pelanggan</strong>
+                <strong>
+                  {data.customers.filter((c) => !c.archived).length} pelanggan
+                </strong>
                 <small>{groupNames.size} kelompok terdaftar</small>
               </span>
               <ContactRound size={52} aria-hidden="true" />
             </div>
             <SearchField value={search} onChange={setSearch} />
             <div className="rv-section-heading rv-customer-groups-heading">
-              <h3>Kelompok pelanggan</h3>
+              <h3>
+                {showDeleted ? "Pelanggan dihapus" : "Kelompok pelanggan"}
+              </h3>
+              {can(data.user, "customers") &&
+                data.customers.some((c) => c.archived) && (
+                  <button
+                    className="rv-text-button"
+                    aria-pressed={showDeleted}
+                    onClick={() => {
+                      setShowDeleted(!showDeleted);
+                      setSelected(null);
+                    }}
+                  >
+                    {showDeleted
+                      ? "Kembali"
+                      : "Dihapus (" +
+                        data.customers.filter((c) => c.archived).length +
+                        ")"}
+                  </button>
+                )}
               {can(data.user, "customers") && (
                 <button
                   type="button"
@@ -1531,13 +1617,47 @@ function Customers() {
                                   {c.whatsapp}
                                 </span>
                                 {can(data.user, "customers") && (
-                                  <button
-                                    className="rv-text-button"
-                                    onClick={() => setForm(c)}
-                                  >
-                                    <SquarePen size={12} />
-                                    Ubah data
-                                  </button>
+                                  <span className="rv-customer-contact-actions">
+                                    {!c.archived && (
+                                      <>
+                                        <button
+                                          className="rv-text-button"
+                                          onClick={() => setForm(c)}
+                                        >
+                                          <SquarePen size={12} />
+                                          Ubah data
+                                        </button>
+                                        <button
+                                          className="rv-text-button rv-customer-delete-button"
+                                          aria-label={
+                                            "Hapus pelanggan " + c.name
+                                          }
+                                          onClick={() => setDeleteCustomer(c)}
+                                        >
+                                          <Trash2 size={12} />
+                                          Hapus
+                                        </button>
+                                      </>
+                                    )}
+                                    {!!c.archived && (
+                                      <button
+                                        className="rv-text-button"
+                                        disabled={busy}
+                                        onClick={async () => {
+                                          await act(async () => {
+                                            await api(
+                                              "/customers/" + c.id + "/restore",
+                                              { method: "POST", body: {} },
+                                            );
+                                            setSelected(null);
+                                            setShowDeleted(false);
+                                          }).catch(() => {});
+                                        }}
+                                      >
+                                        Pulihkan
+                                      </button>
+                                    )}
+                                  </span>
                                 )}
                               </div>
                               {c.photo_id && (
@@ -2479,7 +2599,10 @@ function Staff() {
         <>
           <Field label="Peran akun">
             <select
-              value={form.role || (form.permissions.includes("reports") ? "manager" : "staff")}
+              value={
+                form.role ||
+                (form.permissions.includes("reports") ? "manager" : "staff")
+              }
               onChange={(e) => {
                 const role = e.target.value;
                 setForm({
@@ -2487,7 +2610,9 @@ function Staff() {
                   role,
                   permissions: form.id
                     ? [
-                        ...form.permissions.filter((permission) => permission !== "reports"),
+                        ...form.permissions.filter(
+                          (permission) => permission !== "reports",
+                        ),
                         ...(role === "manager" ? ["reports"] : []),
                       ]
                     : presets[role],
@@ -2660,7 +2785,9 @@ function Staff() {
                         <strong>{u.name}</strong>
                         <span className="rv-note">
                           {u.username}
-                          {u.permissions.includes("reports") ? " · Manager" : " · Staff"}
+                          {u.permissions.includes("reports")
+                            ? " · Manager"
+                            : " · Staff"}
                           {!u.active ? " · Nonaktif" : ""}
                         </span>
                       </span>
@@ -3286,19 +3413,28 @@ const WaterReports = createWaterReports({
   useResource,
   PhotoButton,
 });
-const { OrderStatusButton, OrderStatusPanel, ...approvedPages } = createApprovedPages({
+const Payroll = createPayroll({
   useApp,
   Header,
-  Field,
-  Currency,
-  Submit,
-  PhotoButton,
-  CameraCapture,
-  Identity,
-  Empty,
-  CustomerPicker,
-  useResource,
   usePeriod,
-  Period,
-  SearchField,
+  useResource,
+  Field,
+  Submit,
 });
+const { OrderStatusButton, OrderStatusPanel, ...approvedPages } =
+  createApprovedPages({
+    useApp,
+    Header,
+    Field,
+    Currency,
+    Submit,
+    PhotoButton,
+    CameraCapture,
+    Identity,
+    Empty,
+    CustomerPicker,
+    useResource,
+    usePeriod,
+    Period,
+    SearchField,
+  });

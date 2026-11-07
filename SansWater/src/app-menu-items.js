@@ -7,6 +7,7 @@ import {
   Settings2,
   Wallet,
   Droplets,
+  Calculator,
 } from "lucide-react";
 import { can } from "./api.js";
 
@@ -47,6 +48,7 @@ const menuItems = [
     Droplets,
     "waterControl|reports",
   ],
+  ["payroll", "Payroll", "Galon dan gaji per staf", Calculator, "reports"],
   [
     "expenses",
     "Pengeluaran",

@@ -211,6 +211,13 @@ export function createDomain(
   function customerInput(body, allowAnonymous = false) {
     if (body.customerId) {
       const c = find("customers", body.customerId);
+      if (
+        get(
+          "SELECT value FROM settings WHERE key=?",
+          "customer.archived:" + c.id,
+        )
+      )
+        fail("Pelanggan ini sudah dihapus. Pulihkan terlebih dahulu.");
       return { customerId: c.id, name: c.name, code: c.code };
     }
     return {
@@ -478,7 +485,9 @@ export function createDomain(
   function transactionCash(query) {
     const { start, end } = period(query);
     const { cashHolders } = salesBreakdown(db, start, end);
-    return cashFlowSummary(db, start, end, cashHolders, { includeActive: true });
+    return cashFlowSummary(db, start, end, cashHolders, {
+      includeActive: true,
+    });
   }
   function allocate(paymentId, invoiceIds, amount) {
     let remaining = amount;

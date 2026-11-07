@@ -12,6 +12,7 @@ export const PAGE_PERMISSIONS = {
   watercontrol: ["waterControl", "reports"],
   waterreports: ["waterControl", "reports"],
   reports: ["reports"],
+  payroll: ["reports"],
   expenses: ["expenses", "reports"],
   history: ["reports"],
   staff: ["staff"],

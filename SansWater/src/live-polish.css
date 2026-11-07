@@ -707,3 +707,331 @@
   padding: 8px 10px;
   font-size: 11px;
 }
+/* Payroll keeps production meters and delivery in separate columns. */
+#depot-order-payment-review .rv-phone .rv-payroll-body {
+  display: grid;
+  gap: 12px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-note {
+  margin: -4px 0 0;
+  font-size: 11px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-body > .rv-section-heading {
+  margin: 0;
+}
+#depot-order-payment-review
+  .rv-phone
+  .rv-payroll-body
+  > .rv-section-heading
+  select {
+  width: 46%;
+  min-width: 0;
+}
+#depot-order-payment-review
+  .rv-phone
+  :is(.rv-payroll-summary, .rv-payroll-staff) {
+  overflow: hidden;
+  padding: 0;
+}
+#depot-order-payment-review
+  .rv-phone
+  .rv-payroll-summary
+  > .rv-section-heading {
+  margin: 0;
+  padding: 12px;
+  color: white;
+  background: #4434ff;
+}
+#depot-order-payment-review
+  .rv-phone
+  .rv-payroll-summary
+  > .rv-section-heading
+  h3 {
+  color: inherit;
+  font-size: 14px;
+}
+#depot-order-payment-review
+  .rv-phone
+  .rv-payroll-summary
+  > .rv-section-heading
+  > span {
+  font-size: 11px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-volumes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-volume {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 8px 4px;
+  border-radius: 9px;
+  background: #eef0ff;
+  color: #303b83;
+  text-align: center;
+  min-width: 0;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-volume > span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 700;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-volume > strong {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-volume > strong small {
+  display: inline;
+  font-size: 11px;
+  font-weight: 500;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-volume > small {
+  font-size: 13px;
+  font-weight: 600;
+  color: #637091;
+  overflow-wrap: anywhere;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-mineralShift1,
+#depot-order-payment-review .rv-phone .rv-payroll-mineralShift2 {
+  background: #eaf6f2;
+  color: #266b5b;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-delivery {
+  grid-column: 1 / -1;
+  background: #fff1e2;
+  color: #925b2d;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-editable .rv-payroll-volume {
+  padding: 10px 8px;
+  gap: 5px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-product-heading {
+  margin: -10px -8px 2px;
+  padding: 8px 4px;
+  background: #dce0ff;
+  color: #303b83;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 700;
+}
+#depot-order-payment-review .rv-phone :is(.rv-payroll-mineralShift1,.rv-payroll-mineralShift2) .rv-payroll-product-heading {
+  background: #cbe9df;
+  color: #266b5b;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-volume > .rv-payroll-liter-chip {
+  justify-self: center;
+  padding: 3px 10px;
+  border: 1px solid #c6cdeb;
+  border-radius: 99px;
+  background: #ffffffb8;
+  color: inherit;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-shift-block {
+  grid-column: 1 / -1;
+  border: 1px solid #ddd8fb;
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+  padding: 0;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-ro-description {
+  font-size: 10px;
+  font-weight: 500;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-delivery-block > h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-driver-cards {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 7px;
+  padding: 7px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-driver-cards > .rv-payroll-driver-variable {
+  grid-column: auto;
+  margin: 0;
+  border: 1px solid #efddc5;
+  overflow: hidden;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-driver-cards > :only-child {
+  grid-column: 1 / -1;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-delivery .rv-payroll-product-heading {
+  background: #f2ddc4;
+  color: #895526;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-shift-block h4 {
+  margin: 0;
+  padding: 9px 11px;
+  background: #5a4be7;
+  color: white;
+  font-size: 13px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-shift-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  padding: 6px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-variable-fields {
+  display: grid;
+  gap: 7px;
+  text-align: left;
+  margin-top: 5px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-variable-fields .rv-field {
+  min-width: 0;
+  font-size: 10px;
+  gap: 4px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-variable-fields input,
+#depot-order-payment-review .rv-phone .rv-payroll-variable-fields select {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  font-size: 12px;
+  min-height: 37px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-variable-result {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px;
+  padding-top: 7px;
+  margin-top: 3px;
+  border-top: 1px solid #d9def0;
+  font-size: 11px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-variable-result strong {
+  font-size: 13px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-driver-variable {
+  border-radius: 8px;
+  background: #fffaf4;
+  padding: 9px;
+  margin-top: 5px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-driver-rate .rv-field {
+  text-align: left;
+  font-size: 11px;
+  margin-top: 7px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-driver-rate input {
+  padding: 8px;
+  min-height: 37px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-driver-variable .rv-section-heading {
+  margin: 0;
+  font-size: 12px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-salary-summary {
+  padding: 0;
+  overflow: hidden;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-salary-summary > .rv-section-heading {
+  background: #4433ee;
+  color: white;
+  padding: 12px;
+  margin: 0;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-salary-summary h3 {
+  margin: 0;
+  font-size: 14px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-salary-summary dl {
+  margin: 0;
+  padding: 4px 12px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-salary-summary dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #ebe6ff;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-salary-summary dd {
+  margin: 0;
+  color: #4932b7;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 7px;
+  width: 28px;
+  height: 28px;
+  background: #f9eaf0;
+  color: #b44c69;
+  cursor: pointer;
+}
+#depot-order-payment-review .rv-phone .rv-customer-contact-actions {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+#depot-order-payment-review .rv-phone .rv-customer-delete-button {
+  color: #ba4560;
+}
+#depot-order-payment-review .rv-phone dialog.rv-customer-delete-confirm {
+  position: fixed;
+  inset: auto 12px 80px;
+  width: min(365px, calc(100vw - 24px));
+  max-height: calc(100dvh - 100px);
+  margin: 0 auto;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid #e3dbfa;
+  box-shadow: 0 12px 48px #28204433;
+  background: #fff;
+  color: #273c69;
+}
+dialog.rv-customer-delete-confirm h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+dialog.rv-customer-delete-confirm p {
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0 0 14px;
+}
+dialog.rv-customer-delete-confirm .rv-customer-delete-icon {
+  display: inline-flex;
+  padding: 8px;
+  border-radius: 10px;
+  background: #fcebf0;
+  color: #ba4560;
+  margin-bottom: 10px;
+}
+#depot-order-payment-review .rv-phone dialog.rv-customer-delete-confirm button {
+  border: 0;
+  padding: 10px 8px;
+  border-radius: 11px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+#depot-order-payment-review .rv-phone dialog.rv-customer-delete-confirm .rv-secondary {
+  background: #ede9ff;
+  color: #55449b;
+}
+#depot-order-payment-review .rv-phone dialog.rv-customer-delete-confirm .rv-customer-delete-submit {
+  background: #b83f60;
+  color: #fff;
+}
+

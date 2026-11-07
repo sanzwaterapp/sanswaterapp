@@ -402,7 +402,9 @@ export function createApp(options = {}) {
         d.get("SELECT value FROM settings WHERE key='simulation'")?.value ===
         "1",
       settings: Object.fromEntries(
-        d.all("SELECT * FROM settings").map((r) => [r.key, r.value]),
+        d
+          .all("SELECT * FROM settings WHERE key NOT LIKE 'payroll.%'")
+          .map((r) => [r.key, r.value]),
       ),
       today,
       nextTripNumber: has(u, "trips")
@@ -450,7 +452,7 @@ export function createApp(options = {}) {
           : [],
       customers: operational
         ? d.all(
-            "SELECT * FROM customers ORDER BY code COLLATE NOCASE LIMIT 2000",
+            "SELECT c.*,EXISTS(SELECT 1 FROM settings s WHERE s.key='customer.archived:'||c.id) archived FROM customers c ORDER BY c.code COLLATE NOCASE LIMIT 2000",
           )
         : [],
       customerGroups: operational
@@ -974,6 +976,35 @@ export function createApp(options = {}) {
       previous.id,
     );
     d.audit(ctx.user, "customer.update", previous.id, previous, c);
+    return { ok: true };
+  });
+  route("DELETE", "/api/customers/:id", "customers", (ctx) => {
+    const customer = d.find("customers", ctx.params.id);
+    if (ctx.body.confirmed !== true)
+      fail("Konfirmasi penghapusan pelanggan terlebih dahulu.");
+    d.run(
+      "INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO NOTHING",
+      "customer.archived:" + customer.id,
+      d.now(),
+    );
+    d.audit(ctx.user, "customer.archive", customer.id, customer, {
+      archived: true,
+    });
+    return { ok: true };
+  });
+  route("POST", "/api/customers/:id/restore", "customers", (ctx) => {
+    const customer = d.find("customers", ctx.params.id);
+    d.run(
+      "DELETE FROM settings WHERE key=?",
+      "customer.archived:" + customer.id,
+    );
+    d.audit(
+      ctx.user,
+      "customer.restore",
+      customer.id,
+      { archived: true },
+      customer,
+    );
     return { ok: true };
   });
   route("POST", "/api/orders", "orders", (ctx) => {

@@ -9,6 +9,7 @@ import {
   Plus,
 } from "lucide-react";
 import AppForm from "./AppForm.jsx";
+import { LoadingState } from "./OverlayDialog.jsx";
 import { CaptureScreen } from "./DepartureCamera.jsx";
 import { api } from "./api.js";
 import { formatLiters } from "./water-volume.js";
@@ -36,7 +37,8 @@ export function createWaterControl({
       [message, setMessage] = useState(""),
       [success, setSuccess] = useState("");
     const waiting = info && info.nextShiftDate > info.today;
-    const activeMeter = !waiting && info?.meters.find((meter) => meter.id === cameraMeter);
+    const activeMeter =
+      !waiting && info?.meters.find((meter) => meter.id === cameraMeter);
     useEffect(() => {
       if (!success) return;
       const timer = setTimeout(() => setSuccess(""), 2000);
@@ -139,7 +141,7 @@ export function createWaterControl({
               {error || message}
             </p>
           )}
-          {!info && !error && <p className="rv-note">Memuat kontrol air…</p>}
+          {!info && !error && <LoadingState />}
           {info && (
             <>
               <section

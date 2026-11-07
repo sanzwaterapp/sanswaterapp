@@ -20,6 +20,20 @@ const menuItems = [
     "customers",
   ],
   [
+    "expenses",
+    "Pengeluaran",
+    "Catatan pengeluaran per kas",
+    Wallet,
+    "expenses|reports",
+  ],
+  [
+    "watercontrol",
+    "Kontrol air",
+    "Meteran dan volume penjualan",
+    Droplets,
+    "waterControl|reports",
+  ],
+  [
     "products",
     "Produk & stok",
     "Harga dan stok masuk",
@@ -41,21 +55,7 @@ const menuItems = [
     "reports",
   ],
   ["display", "Tampilan TV", "Pantau antrean pesanan", TvMinimal, "display"],
-  [
-    "watercontrol",
-    "Kontrol air",
-    "Meteran dan volume penjualan",
-    Droplets,
-    "waterControl|reports",
-  ],
   ["payroll", "Payroll", "Galon dan gaji per staf", Calculator, "reports"],
-  [
-    "expenses",
-    "Pengeluaran",
-    "Catatan pengeluaran per kas",
-    Wallet,
-    "expenses|reports",
-  ],
   ["settings", "Pengaturan", "Durasi dan tampilan aplikasi", Settings2],
 ];
 

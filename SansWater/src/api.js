@@ -4,15 +4,31 @@ const uncertain = new Map();
 let lastMutationVersion = null;
 export const mutationVersion = () => lastMutationVersion;
 export async function api(path, { method = "GET", body, signal } = {}) {
-  const fingerprint = method + path + JSON.stringify(body ?? {});
   const mutation = method !== "GET";
   const serialized = mutation ? JSON.stringify(body ?? {}) : undefined;
-  if (serialized && new TextEncoder().encode(serialized).length > 4_000_000)
+  const encoded = mutation ? new TextEncoder().encode(serialized) : null;
+  if (encoded && encoded.length > 4_000_000)
     throw new Error(
       "Data terlalu besar. Kurangi ukuran foto lalu coba kembali.",
     );
-  if (mutation && !uncertain.has(fingerprint))
+  // Keep only a fixed-size digest, never a photo's base64 body, between retries.
+  const tracked = mutation && !["/login", "/logout", "/setup"].includes(path);
+  const fingerprint = tracked
+    ? method +
+      path +
+      ":" +
+      Array.from(
+        new Uint8Array(await crypto.subtle.digest("SHA-256", encoded)),
+        (byte) => byte.toString(16).padStart(2, "0"),
+      ).join("")
+    : null;
+  if (tracked && !uncertain.has(fingerprint)) {
+    if (uncertain.size >= 256)
+      throw new Error(
+        "Terlalu banyak hasil simpan yang belum pasti. Periksa kembali permintaan sebelumnya sebelum membuat yang baru.",
+      );
     uncertain.set(fingerprint, crypto.randomUUID());
+  }
   let response;
   try {
     response = await fetch("/api" + path, {
@@ -22,14 +38,19 @@ export async function api(path, { method = "GET", body, signal } = {}) {
       headers: mutation
         ? {
             "Content-Type": "application/json",
-            "Idempotency-Key": uncertain.get(fingerprint),
+            "Idempotency-Key": tracked
+              ? uncertain.get(fingerprint)
+              : crypto.randomUUID(),
           }
         : undefined,
       body: serialized,
     });
-  } catch {
+  } catch (error) {
+    if (signal?.aborted) throw error;
     throw new Error(
-      "Koneksi terputus. Hasil simpan belum dapat dipastikan. Pertahankan isian lalu coba Simpan lagi untuk memeriksa tanpa menggandakan data.",
+      mutation
+        ? "Koneksi terputus. Hasil simpan belum dapat dipastikan. Pertahankan isian lalu coba Simpan lagi untuk memeriksa tanpa menggandakan data."
+        : "Data belum dapat dimuat. Periksa koneksi dan coba kembali.",
     );
   }
   let result;

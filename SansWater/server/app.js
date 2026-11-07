@@ -395,7 +395,7 @@ export function createApp(options = {}) {
             `SELECT c.id,c.code,c.name,SUM(i.net+i.shipping-COALESCE(a.paid,0)) total,COUNT(*) count FROM invoices i JOIN customers c ON c.id=i.customer_id LEFT JOIN (SELECT invoice_id,SUM(amount) paid FROM allocations GROUP BY invoice_id) a ON a.invoice_id=i.id WHERE i.net+i.shipping>COALESCE(a.paid,0) GROUP BY c.id ORDER BY total DESC`,
           )
         : [];
-    return {
+    const snapshot = {
       user: u,
       authProvider: supabaseAuth ? "supabase" : "local",
       simulation:
@@ -492,6 +492,46 @@ export function createApp(options = {}) {
           operational && d.get("SELECT COUNT(*) n FROM customers").n > 2000,
       },
     };
+    let known = {};
+    const encodedKnown = ctx.query.get("known");
+    if (encodedKnown) {
+      if (encodedKnown.length > 2000) fail("Versi tampilan belum benar.");
+      try {
+        known = JSON.parse(encodedKnown);
+      } catch {
+        fail("Versi tampilan belum benar.");
+      }
+      if (!known || typeof known !== "object" || Array.isArray(known))
+        fail("Versi tampilan belum benar.");
+    }
+    const parts = [
+      "settings",
+      "permissions",
+      "cashFunds",
+      "categories",
+      "products",
+      "archivedProducts",
+      "customers",
+      "customerGroups",
+      "orders",
+      "dailyCounts",
+      "trips",
+      "attendance",
+      "debts",
+      "staff",
+    ];
+    snapshot.partVersions = Object.fromEntries(
+      parts.map((key) => [
+        key,
+        hash(JSON.stringify(snapshot[key])).slice(0, 32),
+      ]),
+    );
+    if (encodedKnown) {
+      snapshot.partial = true;
+      for (const key of parts)
+        if (known[key] === snapshot.partVersions[key]) delete snapshot[key];
+    }
+    return snapshot;
   });
   route("GET", "/api/display", "display", (ctx) => {
     const filter = ctx.query.get("filter") || "active";
@@ -939,6 +979,37 @@ export function createApp(options = {}) {
         typeof body.location === "string" ? body.location.slice(0, 300) : "",
     };
   }
+  route("GET", "/api/customer-search", "login", (ctx) => {
+    if (
+      !["orders", "trips", "customers", "counter", "debts", "reports"].some(
+        (p) => has(ctx.user, p),
+      )
+    )
+      fail("Akun ini tidak memiliki akses pelanggan.", 403);
+    const customerId = ctx.query.get("id");
+    const q = (ctx.query.get("q") || "").trim();
+    if (q.length > 120 || (customerId && customerId.length > 100))
+      fail("Pencarian pelanggan belum benar.");
+    if (!q && !customerId) return { rows: [], hasMore: false };
+    const select =
+      "SELECT c.id,c.code,c.name,c.whatsapp,c.location,EXISTS(SELECT 1 FROM settings s WHERE s.key='customer.archived:'||c.id) archived FROM customers c ";
+    if (customerId)
+      return {
+        rows: d.all(select + "WHERE c.id=?", customerId),
+        hasMore: false,
+      };
+    const escaped = q.replace(/[\\%_]/g, "\\$&");
+    const rows = d.all(
+      select +
+        "WHERE NOT EXISTS(SELECT 1 FROM settings s WHERE s.key='customer.archived:'||c.id) AND (c.code LIKE ? ESCAPE '\\' OR c.name LIKE ? ESCAPE '\\' OR c.whatsapp LIKE ? ESCAPE '\\') ORDER BY CASE WHEN c.code=? COLLATE NOCASE THEN 0 WHEN c.code LIKE ? ESCAPE '\\' THEN 1 ELSE 2 END,c.code COLLATE NOCASE,c.id LIMIT 11",
+      "%" + escaped + "%",
+      "%" + escaped + "%",
+      "%" + escaped + "%",
+      q,
+      escaped + "%",
+    );
+    return { rows: rows.slice(0, 10), hasMore: rows.length > 10 };
+  });
   route("POST", "/api/customers", "customers", (ctx) => {
     const c = customerData(ctx.body),
       customerId = id(),
@@ -1750,12 +1821,13 @@ export function createApp(options = {}) {
       )
     )
       fail("Akun staf sudah dihapus dari daftar.", 409);
-    if (typeof b.active !== "boolean") fail("Status akun belum benar.");
+    if (b.active !== undefined && b.active !== true)
+      fail("Gunakan Hapus staf untuk menghapus akun dari daftar.");
     const permissions = perms(b.permissions, b.role);
     d.run(
       "UPDATE users SET name=?,active=?,permissions=?,username=? WHERE id=?",
       text(b.name, "Nama staf"),
-      b.active ? 1 : 0,
+      1,
       permissions,
       b.username === undefined ? previous.username : username(b.username),
       previous.id,
@@ -1764,7 +1836,7 @@ export function createApp(options = {}) {
     d.audit(ctx.user, "staff.update", previous.id, safeUser(previous), {
       name: b.name,
       username: b.username || previous.username,
-      active: b.active,
+      active: true,
       permissions: JSON.parse(permissions),
     });
     return { ok: true };
@@ -2030,28 +2102,65 @@ export function createApp(options = {}) {
         const fingerprint = hash(
           req.method + url.pathname + JSON.stringify(body),
         );
-        result = transaction(db, () => {
-          const previous = d.get(
-            "SELECT * FROM idempotency WHERE user_id=? AND key=?",
-            user.id,
-            key,
-          );
-          if (previous) {
-            if (previous.fingerprint !== fingerprint)
-              fail("Kunci penyimpanan sudah digunakan untuk isian lain.", 409);
-            return JSON.parse(previous.response);
+        const execute = () =>
+          transaction(db, () => {
+            const previous = d.get(
+              "SELECT * FROM idempotency WHERE user_id=? AND key=?",
+              user.id,
+              key,
+            );
+            if (previous) {
+              if (previous.fingerprint !== fingerprint)
+                fail(
+                  "Kunci penyimpanan sudah digunakan untuk isian lain.",
+                  409,
+                );
+              return JSON.parse(previous.response);
+            }
+            const value = match.handler(ctx);
+            d.run(
+              "INSERT INTO idempotency VALUES(?,?,?,?,?)",
+              user.id,
+              key,
+              fingerprint,
+              JSON.stringify(value),
+              d.now(),
+            );
+            return value;
+          });
+        if (cloudScope) {
+          let captured;
+          // Validate everything, including permissions, stock and prior shift,
+          // without committing a draft while its photos are still uploading.
+          db.exec("SAVEPOINT photo_preflight");
+          try {
+            captured = photoStorage.capture(
+              user.id + ":" + key + ":" + fingerprint,
+              execute,
+            );
+            if (captured.photos.length) db.exec("ROLLBACK TO photo_preflight");
+            db.exec("RELEASE photo_preflight");
+          } catch (error) {
+            db.exec("ROLLBACK TO photo_preflight; RELEASE photo_preflight");
+            throw error;
           }
-          const value = match.handler(ctx);
-          d.run(
-            "INSERT INTO idempotency VALUES(?,?,?,?,?)",
-            user.id,
-            key,
-            fingerprint,
-            JSON.stringify(value),
-            d.now(),
-          );
-          return value;
-        });
+          result = captured.value;
+          if (captured.photos.length) {
+            await cloudScope.rollback();
+            cloudScope = null;
+            await photoStorage.uploadPrepared(captured.photos);
+            cloudScope = await options.cloud.begin();
+            const freshUser = await userByToken(req, headers);
+            if (!freshUser || freshUser.id !== user.id)
+              fail("Silakan masuk kembali.", 401);
+            if (match.permission !== "login")
+              requireAccess(freshUser, match.permission);
+            ctx.user = freshUser;
+            // Re-run against fresh authoritative data; a concurrent commit can
+            // change stock, revoke access, close a shift or complete this key.
+            result = photoStorage.reuse(captured.photos, execute);
+          }
+        } else result = execute();
       } else result = await match.handler(ctx);
       let committedVersion;
       if (cloudScope) {

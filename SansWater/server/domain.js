@@ -145,7 +145,7 @@ export function createDomain(
           : bytes.toString("ascii", 0, 4) === "RIFF" &&
             bytes.toString("ascii", 8, 12) === "WEBP";
     if (!valid) fail("Isi berkas foto tidak sesuai formatnya.");
-    const photoId = id();
+    const photoId = photoStorage?.allocateId?.() || id();
     run(
       "INSERT INTO photos VALUES(?,?,?,?,?,?)",
       photoId,

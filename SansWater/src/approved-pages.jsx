@@ -1,4 +1,5 @@
 import AppForm from "./AppForm.jsx";
+import { LoadingState } from "./OverlayDialog.jsx";
 import DepartureCamera, { CameraScreenHeader } from "./DepartureCamera.jsx";
 import DebtStatement from "./debt-statement.jsx";
 import PaymentReceipt, { ReceiptButton } from "./PaymentReceipt.jsx";
@@ -96,7 +97,11 @@ export function OrderStatusFilters({
   compact = false,
 }) {
   return (
-    <div className={compact ? "rv-order-status-chips" : "rv-tv-filters"} role="group" aria-label={label}>
+    <div
+      className={compact ? "rv-order-status-chips" : "rv-tv-filters"}
+      role="group"
+      aria-label={label}
+    >
       {orderStatusChoices.map(([key, text]) => (
         <button
           key={key}
@@ -144,7 +149,9 @@ export function createApprovedPages(UI) {
         </span>
       );
     if (["done", "failed", "cancel"].includes(order.status))
-      return <span className="rv-terminal-label">{statuses[order.status]}</span>;
+      return (
+        <span className="rv-terminal-label">{statuses[order.status]}</span>
+      );
     return (
       <button
         type="button"
@@ -163,7 +170,10 @@ export function createApprovedPages(UI) {
     const { data, act, busy } = useApp();
     const [cancelling, setCancelling] = useState(false);
     const [error, setError] = useState("");
-    if (!can(data.user, "orders") || !["new", "pickup", "fill", "partial"].includes(order.status))
+    if (
+      !can(data.user, "orders") ||
+      !["new", "pickup", "fill", "partial"].includes(order.status)
+    )
       return null;
     async function changeStatus(status, reason) {
       setError("");
@@ -217,7 +227,9 @@ export function createApprovedPages(UI) {
           </AppForm>
         )}
         {inlineError && error && (
-          <p className="rv-error" role="alert">{error}</p>
+          <p className="rv-error" role="alert">
+            {error}
+          </p>
         )}
       </div>
     );
@@ -397,6 +409,8 @@ export function createApprovedPages(UI) {
               </button>
             )}
           </>
+        ) : !orders && !error ? (
+          <LoadingState compact />
         ) : (
           <p className="rv-delivery-empty">
             {orders
@@ -407,9 +421,7 @@ export function createApprovedPages(UI) {
                   periodLabel +
                   "."
                 : "Belum ada pengantaran selesai " + periodLabel + "."
-              : error
-                ? "Daftar pengantaran belum dapat dimuat."
-                : "Memuat daftar pengantaran…"}
+              : "Daftar pengantaran belum dapat dimuat."}
           </p>
         )}
       </section>
@@ -691,7 +703,7 @@ export function createApprovedPages(UI) {
             </tbody>
           </table>
         ) : (
-          <p className="rv-note">Memuat jumlah produk…</p>
+          <LoadingState compact />
         )}
       </section>
     );
@@ -728,50 +740,61 @@ export function createApprovedPages(UI) {
             },
           ];
           return (
-          <details
-            className="rv-cash-holder rv-finance-account"
-            key={row.key}
-            onToggle={(event) => {
-              const open = event.currentTarget.open;
-              setOpened((previous) => ({ ...previous, [row.key]: open }));
-            }}
-          >
-            <summary className="rv-cash-holder-toggle">
-              <strong>
-                <UserRound size={14} />
-                <span className="rv-cash-holder-name">{row.name}</span>
-              </strong>
-              <span className="rv-cash-holder-header-values">
-                <b aria-label={"Sisa kas " + money(row.net)}>
-                  {money(row.net)}
-                </b>
-                <small className="rv-cash-directions">
-                  <span aria-label={"Uang masuk " + money(row.cash + row.qris)}>
-                    <ArrowDown className="rv-cash-in" size={12} />
-                    {money(row.cash + row.qris)}
-                  </span>
-                  <span aria-label={"Uang keluar " + money(row.outgoing)}>
-                    <ArrowUp className="rv-cash-out" size={12} />
-                    {money(row.outgoing)}
-                  </span>
-                </small>
-              </span>
-              <ChevronDown size={16} />
-            </summary>
-            {opened[row.key] && (
-              <div className="rv-cash-holder-body">
-                {summaryOnly ? (
-                  <div className="rv-cash-expense-list">
-                    <CashMethodDetails expenses={[]} methods={methods} />
-                  </div>
-                ) : (
-                  <CashFlowList key={query + row.key} query={query} actor={row.key}>
-                    {(expenses) => <CashMethodDetails expenses={expenses} methods={methods} />}
-                  </CashFlowList>
-                )}
-              </div>
-            )}
-          </details>
+            <details
+              className="rv-cash-holder rv-finance-account"
+              key={row.key}
+              onToggle={(event) => {
+                const open = event.currentTarget.open;
+                setOpened((previous) => ({ ...previous, [row.key]: open }));
+              }}
+            >
+              <summary className="rv-cash-holder-toggle">
+                <strong>
+                  <UserRound size={14} />
+                  <span className="rv-cash-holder-name">{row.name}</span>
+                </strong>
+                <span className="rv-cash-holder-header-values">
+                  <b aria-label={"Sisa kas " + money(row.net)}>
+                    {money(row.net)}
+                  </b>
+                  <small className="rv-cash-directions">
+                    <span
+                      aria-label={"Uang masuk " + money(row.cash + row.qris)}
+                    >
+                      <ArrowDown className="rv-cash-in" size={12} />
+                      {money(row.cash + row.qris)}
+                    </span>
+                    <span aria-label={"Uang keluar " + money(row.outgoing)}>
+                      <ArrowUp className="rv-cash-out" size={12} />
+                      {money(row.outgoing)}
+                    </span>
+                  </small>
+                </span>
+                <ChevronDown size={16} />
+              </summary>
+              {opened[row.key] && (
+                <div className="rv-cash-holder-body">
+                  {summaryOnly ? (
+                    <div className="rv-cash-expense-list">
+                      <CashMethodDetails expenses={[]} methods={methods} />
+                    </div>
+                  ) : (
+                    <CashFlowList
+                      key={query + row.key}
+                      query={query}
+                      actor={row.key}
+                    >
+                      {(expenses) => (
+                        <CashMethodDetails
+                          expenses={expenses}
+                          methods={methods}
+                        />
+                      )}
+                    </CashFlowList>
+                  )}
+                </div>
+              )}
+            </details>
           );
         })}
       </section>
@@ -1317,11 +1340,7 @@ export function createApprovedPages(UI) {
             </span>
           </div>
           {periodError && <span className="rv-error">{periodError}</span>}
-          {!periodOrders && !periodError && (
-            <p className="rv-note" role="status">
-              Memuat pesanan…
-            </p>
-          )}
+          {!periodOrders && !periodError && <LoadingState />}
           <div className="rv-list">
             {shown.map((o) => (
               <article className="rv-order" key={o.id}>
@@ -1537,9 +1556,9 @@ export function createApprovedPages(UI) {
               </article>
             ))}
             {periodOrders && !shown.length && (
-              <div className="rv-card rv-note">
+              <p className="rv-orders-empty">
                 Belum ada pesanan pada tanggal dan status ini.
-              </div>
+              </p>
             )}
           </div>
           {(navigation.index > 0 || periodOrders?.hasMore) && (
@@ -1956,7 +1975,10 @@ export function createApprovedPages(UI) {
     const registered = counter ? !!customerId : !!order?.customer_id;
     const payLater = counter && registered && !payNow;
     const productIds = [...new Set(lines.map((l) => l.productId))],
-      discount = productIds.reduce((n, key) => n + Number(discounts[key] || 0), 0),
+      discount = productIds.reduce(
+        (n, key) => n + Number(discounts[key] || 0),
+        0,
+      ),
       shipping = counter
         ? 0
         : hasItemShipping(lines) &&
@@ -1965,7 +1987,8 @@ export function createApprovedPages(UI) {
           : Number(legacyShipping),
       total =
         lines.reduce((n, l) => n + l.qty * l.price, 0) -
-        discount + Number(shipping);
+        discount +
+        Number(shipping);
     const advanceUsed = counter
       ? 0
       : Math.min(order?.prepayment?.available || 0, total);
@@ -2033,11 +2056,13 @@ export function createApprovedPages(UI) {
           },
         );
         if (counter) {
-          setReceipt(result.receipt ?? {
-            ...result.invoice,
-            received_at: result.invoice.recorded_at,
-            methods: result.invoice.paid ? [payment.method] : [],
-          });
+          setReceipt(
+            result.receipt ?? {
+              ...result.invoice,
+              received_at: result.invoice.recorded_at,
+              methods: result.invoice.paid ? [payment.method] : [],
+            },
+          );
         } else onSaved();
       }).catch(() => {});
     }
@@ -2271,20 +2296,22 @@ export function createApprovedPages(UI) {
                 className="rv-outcome-chip"
                 data-outcome-kind="receipt"
                 disabled={!lines.length || total < 0}
-                onClick={() => setReceipt({
-                  kind: "request",
-                  id: order.id,
-                  customer_name: order.name,
-                  customer_code: order.code,
-                  received_at: order.received_at,
-                  source: order.source,
-                  items: lines,
-                  shipping,
-                  discount,
-                  total,
-                  paid: advanceUsed,
-                  methods: advanceUsed > 0 ? [order.prepayment.method] : [],
-                })}
+                onClick={() =>
+                  setReceipt({
+                    kind: "request",
+                    id: order.id,
+                    customer_name: order.name,
+                    customer_code: order.code,
+                    received_at: order.received_at,
+                    source: order.source,
+                    items: lines,
+                    shipping,
+                    discount,
+                    total,
+                    paid: advanceUsed,
+                    methods: advanceUsed > 0 ? [order.prepayment.method] : [],
+                  })
+                }
               >
                 <ReceiptText size={14} /> Nota
               </button>
@@ -2686,7 +2713,9 @@ export function createApprovedPages(UI) {
     return <NewOrder initialCounter />;
   }
   function DebtPaymentReceipt({ id, depotName, onClose }) {
-    const [payment, error] = useResource("/debt-payments/" + encodeURIComponent(id));
+    const [payment, error] = useResource(
+      "/debt-payments/" + encodeURIComponent(id),
+    );
     return (
       <PaymentReceipt
         receipt={payment}
@@ -2753,11 +2782,7 @@ export function createApprovedPages(UI) {
               {error}
             </p>
           )}
-          {!history && !error && (
-            <p className="rv-note" role="status">
-              Memuat pembayaran…
-            </p>
-          )}
+          {!history && !error && <LoadingState />}
           <div className="rv-list">
             {history?.rows.map((row) => (
               <article
@@ -3236,7 +3261,12 @@ export function createApprovedPages(UI) {
                 <strong>{money(total - Number(paid || 0))}</strong>
               </div>
               {method === "QRIS" && (
-                <CameraCapture label="Bukti QRIS (opsional)" photo={proof} onChange={setProof} allowFile />
+                <CameraCapture
+                  label="Bukti QRIS (opsional)"
+                  photo={proof}
+                  onChange={setProof}
+                  allowFile
+                />
               )}
               <Submit>Simpan pembayaran</Submit>
             </AppForm>
@@ -3283,7 +3313,9 @@ export function createApprovedPages(UI) {
     );
   }
   const ReportExplorer = createReportExplorer(UI);
-  const TransactionExplorer = createReportExplorer(UI, { transactionsOnly: true });
+  const TransactionExplorer = createReportExplorer(UI, {
+    transactionsOnly: true,
+  });
   function TransactionsPage() {
     const { data } = useApp();
     const [period, setPeriod, query] = usePeriod();
@@ -3296,10 +3328,21 @@ export function createApprovedPages(UI) {
           title="Transaksi"
           icon={ReceiptText}
           className="rv-reports-header"
-          filters={<PeriodFilters value={period} onChange={setPeriod} today={data.today} label="Periode transaksi" />}
+          filters={
+            <PeriodFilters
+              value={period}
+              onChange={setPeriod}
+              today={data.today}
+              label="Periode transaksi"
+            />
+          }
         />
         <main className="rv-body rv-feature rv-reports-body">
-          {error && <p className="rv-error" role="alert">{error}</p>}
+          {error && (
+            <p className="rv-error" role="alert">
+              {error}
+            </p>
+          )}
           {report && (
             <CashHolders
               rows={report.staffCash}
@@ -3309,7 +3352,12 @@ export function createApprovedPages(UI) {
             />
           )}
           <SearchField value={search} onChange={setSearch} />
-          <TransactionExplorer query={query} search={search} multiDay={dates.from !== dates.to} day={dates.from} />
+          <TransactionExplorer
+            query={query}
+            search={search}
+            multiDay={dates.from !== dates.to}
+            day={dates.from}
+          />
         </main>
       </>
     );

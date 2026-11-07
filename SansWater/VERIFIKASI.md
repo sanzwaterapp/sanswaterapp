@@ -1,4 +1,20 @@
-# Verifikasi paket SansWater — 5 November 2026
+# Verifikasi paket SansWater — diperbarui 8 November 2026
+
+## Verifikasi pembaruan stabilitas 8 November
+
+- Regresi workflow: 161 tes lulus, 0 gagal; 1 integrasi PostgreSQL opt-in tidak dijalankan ulang pada run ini.
+- Adapter Vercel: 16 tes lulus, 0 gagal. Total kedua suite: 177 lulus, 1 dilewati.
+- Build Vite dan lint frontend yang diubah: berhasil.
+- Bootstrap Supabase asli diuji hanya-baca dengan batch 25: 274 record pada 8 entitas dimuat melalui 11 halaman; jumlah proyeksi cocok dengan data primer. Query penulisan ditolak oleh pembungkus verifikasi. Angka ini adalah snapshot saat pengujian.
+- Bootstrap dan delta lokal menguji pagination, penanda penghapusan, pertukaran unique key, penghapusan record, versi yang sama dan pergantian store.
+- Unggah foto lambat, kegagalan GAS, retry dengan ID tetap, dua permintaan dengan kunci sama, dan pencabutan sesi selama unggahan lulus. Pengujian unggah menggunakan GAS tiruan, tanpa menambah foto ke Drive produksi.
+- Pencarian pelanggan di luar 2.000 data awal, karakter wildcard literal, akun tanpa izin, fetch ID dan pemilihan melalui UI lulus pada lingkungan sementara.
+- State bersyarat diuji untuk kelompok sama/berubah dan kompatibilitas respons penuh. Pada fixture 2.100 pelanggan, respons penuh 393.483 byte; respons tanpa perubahan 1.058 byte ditambah query hash 837 byte. Ini ukuran JSON Vercel-ke-browser, bukan egress Supabase atau angka tagihan bulanan.
+- Pemulihan stream diam dan cleanup saat tab tersembunyi diuji dengan timer virtual. Sinyal versi yang sama tidak memuat ulang state.
+
+Perubahan tersedia dalam source paket dan live server lokal. Deployment publik belum diperbarui oleh pengujian ini. Uji hidup 8–24 jam dan pengukuran produksi belum dilakukan. Seluruh histori aktif masih direkonstruksi pada cold start, walaupun kini bertahap dan tanpa tombstone. Audit/idempotensi belum memiliki retensi otomatis; file Drive yang lolos upload tetapi ditolak validasi akhir belum dibersihkan otomatis. Tidak ada janji egress selalu di bawah kuota.
+
+Bagian di bawah merekam hasil verifikasi deployment sebelumnya.
 
 ## Status
 

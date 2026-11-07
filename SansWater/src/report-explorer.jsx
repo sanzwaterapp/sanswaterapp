@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { api, money, dateLabel, timeLabel } from "./api.js";
 import AppForm from "./AppForm.jsx";
+import { LoadingState } from "./OverlayDialog.jsx";
 import PeriodFilters from "./period-filters.jsx";
 import { formatLiters } from "./water-volume.js";
 import PaymentReceipt, {
@@ -42,12 +43,13 @@ export function createPayroll({
     const [error, setError] = useState("");
     const [notice, setNotice] = useState("");
     const drivers = result.rows.filter(
-      (row) => row.components.delivery.liters > 0,
+      (row) =>
+        row.components.delivery.liters > 0 || row.components.delivery.items > 0,
     );
     const totals = new Map();
-    function amount(item, liters, listed = true) {
+    function amount(item, units, listed = true) {
       const total = item?.actor
-        ? Math.round((liters / 19) * Number(item.rate || 0))
+        ? Math.round(units * Number(item.rate || 0))
         : 0;
       if (item?.actor && listed)
         totals.set(item.actor, (totals.get(item.actor) || 0) + total);
@@ -56,7 +58,7 @@ export function createPayroll({
     const meterAmounts = Object.fromEntries(
       components.map(([key]) => [
         key,
-        amount(draft.meters[key], result.summary[key].liters),
+        amount(draft.meters[key], result.summary[key].liters / 19),
       ]),
     );
     const driverAmounts = Object.fromEntries(
@@ -64,7 +66,8 @@ export function createPayroll({
         driver.id,
         amount(
           { actor: driver.id, rate: draft.drivers[driver.id]?.rate || 0 },
-          driver.components.delivery.liters,
+          driver.components.delivery.liters / 19 +
+            (driver.components.delivery.items || 0),
           Object.hasOwn(draft.drivers, driver.id),
         ),
       ]),
@@ -248,17 +251,12 @@ export function createPayroll({
                   <header className="rv-payroll-product-heading">
                     <strong>{driver.name}</strong>
                   </header>
-                  <strong>
-                    {number(driver.components.delivery.gallons)}{" "}
-                    <small>galon</small>
-                  </strong>
-                  <small className="rv-payroll-liter-chip">
-                    {formatLiters(driver.components.delivery.liters, 3)}
-                  </small>
                   <div className="rv-payroll-driver-rate">
                     <Field
-                      label="Rp / galon"
-                      aria-label={"Antar " + driver.name + " · Rp per galon"}
+                      label="Rp / galon atau item"
+                      aria-label={
+                        "Antar " + driver.name + " · Rp per galon atau item"
+                      }
                       type="number"
                       inputMode="numeric"
                       min="0"
@@ -280,8 +278,12 @@ export function createPayroll({
                       }
                     />
                   </div>
-                  <div className="rv-payroll-variable-result">
-                    <span>Gaji</span>
+                  <div className="rv-payroll-delivery-formula">
+                    <span>
+                      {number(driver.components.delivery.gallons)} galon +{" "}
+                      {number(driver.components.delivery.items || 0)} item
+                    </span>
+                    <span>=</span>
                     <strong>{money(driverAmounts[driver.id])}</strong>
                   </div>
                 </article>
@@ -370,7 +372,7 @@ export function createPayroll({
               {error}
             </p>
           )}
-          {!result && !error && <p role="status">Memuat…</p>}
+          {!result && !error && <LoadingState />}
           {result && <Editor key={query} result={result} />}
         </main>
       </>
@@ -466,13 +468,12 @@ export function createCashFlowList({ useResource }) {
           (fund ? "&fund=" + encodeURIComponent(fund) : ""),
       );
     if (!result)
-      return (
-        <p
-          className={error ? "rv-error" : "rv-note"}
-          role={error ? "alert" : "status"}
-        >
-          {error || "Memuat…"}
+      return error ? (
+        <p className="rv-error" role="alert">
+          {error}
         </p>
+      ) : (
+        <LoadingState compact />
       );
     return (
       <div className="rv-cash-expense-list">
@@ -511,13 +512,12 @@ export function createReportExplorer(UI, { transactionsOnly = false } = {}) {
   const encoded = (query, values) =>
     query + "&" + new URLSearchParams(values).toString();
   function Pending({ error }) {
-    return (
-      <p
-        className={error ? "rv-error" : "rv-note"}
-        role={error ? "alert" : "status"}
-      >
-        {error || "Memuat…"}
+    return error ? (
+      <p className="rv-error" role="alert">
+        {error}
       </p>
+    ) : (
+      <LoadingState compact />
     );
   }
   function Detail({

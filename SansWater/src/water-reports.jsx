@@ -13,6 +13,7 @@ import { can, dateLabel, timeLabel } from "./api.js";
 import { formatLiters } from "./water-volume.js";
 import PeriodFilters from "./period-filters.jsx";
 import { periodDates } from "./period-range.js";
+import { LoadingState } from "./OverlayDialog.jsx";
 
 export function WaterMenu({ current, canRecord = true }) {
   return (
@@ -165,13 +166,12 @@ export function createWaterReports({
       "/water-reports/" + encodeURIComponent(id),
     );
     if (!check)
-      return (
-        <p
-          className={error ? "rv-error" : "rv-note"}
-          role={error ? "alert" : "status"}
-        >
-          {error || "Memuat…"}
+      return error ? (
+        <p className="rv-error" role="alert">
+          {error}
         </p>
+      ) : (
+        <LoadingState compact />
       );
     return (
       <div className="rv-water-report-detail">
@@ -350,12 +350,7 @@ export function createWaterReports({
           {error}
         </p>
       );
-    if (!report)
-      return (
-        <p className="rv-note" role="status">
-          Memuat…
-        </p>
-      );
+    if (!report) return <LoadingState compact />;
     return <ShiftList report={report} onPage={setOffset} daily />;
   }
 
@@ -423,11 +418,7 @@ export function createWaterReports({
               {error}
             </p>
           )}
-          {!report && !error && (
-            <p className="rv-note" role="status">
-              Memuat…
-            </p>
-          )}
+          {!report && !error && <LoadingState />}
           {report && (
             <>
               <div className="rv-section-heading">

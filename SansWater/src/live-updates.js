@@ -13,11 +13,13 @@ export function connectLiveUpdates({
   probe = () => api("/sync-version"),
   setTimer = setTimeout,
   clearTimer = clearTimeout,
+  watchdogMs = 75000,
 }) {
   let stopped = false,
     source = null,
     retry = null,
     scheduled = null,
+    watchdog = null,
     requested = null,
     delay = 5000;
   const visible = () => documentImpl.visibilityState !== "hidden";
@@ -26,6 +28,21 @@ export function connectLiveUpdates({
     source = null;
     clearTimer(retry);
     retry = null;
+    clearTimer(watchdog);
+    watchdog = null;
+  }
+  function watch() {
+    clearTimer(watchdog);
+    if (stopped || !visible() || watchdogMs <= 0) return;
+    watchdog = setTimer(() => {
+      watchdog = null;
+      if (stopped || !visible()) return;
+      disconnect();
+      onStatus("reconnecting");
+      lightweightProbe();
+      retry = setTimer(connect, delay);
+      delay = Math.min(60000, delay * 2);
+    }, watchdogMs);
   }
   function queue(version) {
     if (stopped || !visible()) return;
@@ -70,6 +87,7 @@ export function connectLiveUpdates({
     }
     const current = new EventSourceImpl("/api/events");
     source = current;
+    watch();
     function signal(event) {
       if (source !== current || stopped) return;
       try {
@@ -77,6 +95,7 @@ export function connectLiveUpdates({
         if (typeof value.version !== "string" || typeof value.day !== "string")
           return;
         delay = 5000;
+        watch();
         notice(value, event.type === "available");
       } catch {
         /* Ignore incomplete signals. */
@@ -85,7 +104,10 @@ export function connectLiveUpdates({
     for (const name of ["ready", "change", "pulse", "available"])
       current.addEventListener(name, signal);
     current.addEventListener("unavailable", () => {
-      if (source === current) onStatus("offline");
+      if (source === current) {
+        watch();
+        onStatus("offline");
+      }
     });
     current.addEventListener("auth", () => {
       if (source === current) {

@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import { X, CheckCircle2, Download } from "lucide-react";
 import { ReceiptFooter } from "./PaymentReceipt.jsx";
-import OverlayDialog from "./OverlayDialog.jsx";
+import OverlayDialog, { LoadingState } from "./OverlayDialog.jsx";
 import { money, timeLabel } from "./api.js";
 import { debtStatement } from "./debt-statement.js";
 
@@ -111,9 +111,7 @@ export default function DebtStatement({
           </button>
         </div>
       ) : !statement ? (
-        <p className="rv-statement-loading" role="status">
-          Menyiapkan nota…
-        </p>
+        <LoadingState compact />
       ) : (
         <article
           ref={paper}
@@ -125,7 +123,9 @@ export default function DebtStatement({
               <span>RINCIAN TAGIHAN PELANGGAN</span>
               <h2 id="rv-statement-title">
                 Nota utang
-                <span>{statement.remaining > 0 ? "Belum dibayar" : "Lunas"}</span>
+                <span>
+                  {statement.remaining > 0 ? "Belum dibayar" : "Lunas"}
+                </span>
               </h2>
             </div>
           </header>
@@ -207,7 +207,10 @@ export default function DebtStatement({
                 </li>
               )}
             </ul>
-            <ReceiptFooter depotName={depotName} outstanding={statement.remaining > 0} />
+            <ReceiptFooter
+              depotName={depotName}
+              outstanding={statement.remaining > 0}
+            />
           </div>
         </article>
       )}

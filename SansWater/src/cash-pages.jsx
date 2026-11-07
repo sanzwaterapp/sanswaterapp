@@ -10,6 +10,7 @@ import {
   CalendarDays,
 } from "lucide-react";
 import AppForm from "./AppForm.jsx";
+import { LoadingState } from "./OverlayDialog.jsx";
 import { api, money, dateLabel, timeLabel, can } from "./api.js";
 import { CASH_METHODS } from "./cash-funds.js";
 import PeriodFilters from "./period-filters.jsx";
@@ -310,6 +311,7 @@ export function createCashPage(UI) {
           )}
         </Header>
         <main className="rv-body rv-feature rv-expenses-body">
+          {!ledger && !error && <LoadingState />}
           {form && (
             <AppForm
               className="rv-card rv-stack rv-cash-form"

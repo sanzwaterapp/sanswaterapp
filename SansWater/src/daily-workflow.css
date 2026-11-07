@@ -237,6 +237,30 @@
   width: clamp(92px, 18vw, 138px);
   height: auto;
 }
+#depot-order-payment-review .rv-phone:has(.rv-orders-empty) {
+  min-height: 100dvh;
+}
+#depot-order-payment-review .rv-orders-body:has(.rv-orders-empty) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+#depot-order-payment-review .rv-orders-body .rv-list:has(> .rv-orders-empty) {
+  display: grid;
+  place-items: center;
+  flex: 1;
+}
+#depot-order-payment-review .rv-orders-empty {
+  max-width: 280px;
+  margin: 0;
+  padding: 24px 16px;
+  color: #8171ae;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.7;
+  text-align: center;
+  text-wrap: balance;
+}
 #depot-order-payment-review .rv-orders-body .rv-order-status-chips {
   display: flex;
   flex-wrap: wrap;

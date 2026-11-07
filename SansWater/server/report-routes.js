@@ -37,6 +37,21 @@ function registerPayroll(route, d) {
           AND i.rowid<=w.invoice_cursor
         ORDER BY w.rowid LIMIT 1) shift_id
     FROM invoices i JOIN trips t ON t.id=i.trip_id
+  ), delivery_lines AS (
+    -- Classify frozen invoice names, matching waterGroup's RO/Mineral word boundary.
+    -- Branded water and other goods count as items even if they have a capacity.
+    SELECT i.id,json_extract(line.value,'$.qty') qty,
+      json_extract(line.value,'$.capacityLiters') capacity,
+      lower(trim(COALESCE(json_extract(line.value,'$.name'),''))) name
+    FROM assigned i,json_each(i.items) line
+  ), classified_lines AS (
+    SELECT *,name IN ('ro','mineral') OR name GLOB 'ro[^a-z0-9_]*'
+      OR name GLOB 'mineral[^a-z0-9_]*' is_water FROM delivery_lines
+  ), delivery_totals AS (
+    SELECT id,SUM(CASE WHEN is_water THEN COALESCE(capacity,0)*qty ELSE 0 END) liters,
+      SUM(CASE WHEN is_water THEN 0 ELSE qty END) items,
+      MAX(is_water AND (capacity IS NULL OR capacity<=0)) missing_capacity
+    FROM classified_lines GROUP BY id
   ), meter_readings AS (
     SELECT w.actor_id,w.id,
       COALESCE(json_extract(w.comparison_snapshot,'$.shiftDate'),substr(datetime(w.created_at,'+7 hours'),1,10)) day,
@@ -50,27 +65,27 @@ function registerPayroll(route, d) {
     WHERE json_extract(w.comparison_snapshot,'$.scope')='shift'
   ), raw_activities AS (
     SELECT ro_actor actor_id,day,shift_id,shift_number,closed_at,ro1,ro2,0 mineral,
-      0 delivery,0 delivery_orders,0 missing_capacity FROM meter_readings
+      0 delivery,0 delivery_items,0 delivery_orders,0 missing_capacity FROM meter_readings
     UNION ALL
     SELECT mineral_actor,day,shift_id,shift_number,closed_at,0,0,mineral,
-      0,0,0 FROM meter_readings
+      0,0,0,0 FROM meter_readings
     UNION ALL
     SELECT i.courier_id,
       COALESCE(json_extract(w.comparison_snapshot,'$.shiftDate'),substr(datetime(i.recorded_at,'+7 hours'),1,10)) day,
       w.id,${shiftNumberSql},w.created_at,0,0,0,
-      COALESCE((SELECT SUM(COALESCE(json_extract(line.value,'$.capacityLiters'),0)*json_extract(line.value,'$.qty')) FROM json_each(i.items) line),0),
-      1,EXISTS(SELECT 1 FROM json_each(i.items) line WHERE json_type(line.value,'$.capacityLiters') IS NULL)
+      COALESCE(v.liters,0),COALESCE(v.items,0),1,COALESCE(v.missing_capacity,0)
     FROM assigned i LEFT JOIN water_checks w ON w.id=i.shift_id
+      LEFT JOIN delivery_totals v ON v.id=i.id
   ), activities AS (
     SELECT actor_id,day,shift_id,shift_number,closed_at,
       CASE WHEN shift_number=1 THEN ro1+ro2 ELSE 0 END roShift1,
       CASE WHEN shift_number=1 THEN mineral ELSE 0 END mineralShift1,
       CASE WHEN shift_number=2 THEN ro1+ro2 ELSE 0 END roShift2,
       CASE WHEN shift_number=2 THEN mineral ELSE 0 END mineralShift2,
-      delivery,delivery_orders,missing_capacity
+      delivery,delivery_items,delivery_orders,missing_capacity
     FROM raw_activities
   ) `;
-  const totalsSql = components
+  const totalsSql = [...components, "delivery_items"]
     .map((key) => "COALESCE(SUM(" + key + "),0) " + key)
     .join(",");
   const rounded = (number) => Math.round(number * 1e6) / 1e6;
@@ -87,15 +102,20 @@ function registerPayroll(route, d) {
   }
   function measures(row, rates) {
     const amounts = Object.fromEntries(
-      components.map((key) => [
-        key,
-        {
-          liters: rounded(row[key]),
-          gallons: rounded(row[key] / 19),
-          rate: rates[key],
-          amount: Math.round((row[key] / 19) * rates[key]),
-        },
-      ]),
+      components.map((key) => {
+        const items = key === "delivery" ? row.delivery_items || 0 : 0;
+        const units = row[key] / 19 + items;
+        return [
+          key,
+          {
+            liters: rounded(row[key]),
+            gallons: rounded(row[key] / 19),
+            rate: rates[key],
+            ...(key === "delivery" ? { items, units: rounded(units) } : {}),
+            amount: Math.round(units * rates[key]),
+          },
+        ];
+      }),
     );
     const amount = Object.values(amounts).reduce(
       (sum, item) => sum + item.amount,
@@ -327,6 +347,7 @@ function registerPayroll(route, d) {
     const summary = Object.fromEntries(
       components.map((key) => [key, { liters: 0, gallons: 0, amount: 0 }]),
     );
+    summary.delivery.items = 0;
     const rows = actors
       .filter(
         (user) =>
@@ -339,6 +360,7 @@ function registerPayroll(route, d) {
           Object.fromEntries(components.map((key) => [key, 0]));
         const rates = ratesFor(user.id);
         const measured = measures(totals, rates);
+        summary.delivery.items += measured.components.delivery.items;
         for (const key of components) {
           summary[key].liters += measured.components[key].liters;
           summary[key].amount += measured.components[key].amount;
@@ -356,6 +378,9 @@ function registerPayroll(route, d) {
       summary[key].liters = rounded(summary[key].liters);
       summary[key].gallons = rounded(summary[key].liters / 19);
     }
+    summary.delivery.units = rounded(
+      summary.delivery.liters / 19 + summary.delivery.items,
+    );
     return {
       from: period.from,
       to: period.to,

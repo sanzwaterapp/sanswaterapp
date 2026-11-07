@@ -1,5 +1,5 @@
 import AppForm from "./AppForm.jsx";
-import OverlayDialog from "./OverlayDialog.jsx";
+import OverlayDialog, { LoadingState } from "./OverlayDialog.jsx";
 import React, {
   createContext,
   useContext,
@@ -50,6 +50,7 @@ import {
   Palette,
   Type,
   Rows3,
+  KeyRound,
 } from "lucide-react";
 import DurationChip from "./DurationChip.jsx";
 import DurationCategoryEditor from "./DurationCategoryEditor.jsx";
@@ -422,8 +423,18 @@ export function App() {
       return value;
     }
     const pending = { epoch, promise: null };
-    pending.promise = api("/state")
-      .then((value) => {
+    const base = dataRef.current;
+    const known = base?.partVersions;
+    pending.promise = api(
+      "/state" +
+        (known ? "?known=" + encodeURIComponent(JSON.stringify(known)) : ""),
+    )
+      .then(async (response) => {
+        const value = response.partial
+          ? base?.user?.id === response.user?.id
+            ? { ...base, ...response }
+            : await api("/state")
+          : response;
         if (epoch === sessionEpoch.current) {
           dataRef.current = value;
           setData(value);
@@ -438,6 +449,7 @@ export function App() {
   };
   const load = async () => {
     const epoch = ++sessionEpoch.current;
+    dataRef.current = null;
     const value = await api("/session");
     if (epoch !== sessionEpoch.current) return;
     setSession(value);
@@ -833,14 +845,59 @@ function CustomerPicker({
 }) {
   const { data } = useApp(),
     [query, setQuery] = useState(guestName || ""),
-    [focused, setFocused] = useState(false);
-  const selected = data.customers.find((c) => c.id === value),
-    suggestions = data.customers
-      .filter((c) => !c.archived)
-      .filter((c) =>
-        (c.code + " " + c.name).toLowerCase().includes(query.toLowerCase()),
-      )
-      .slice(0, 5);
+    [focused, setFocused] = useState(false),
+    [remote, setRemote] = useState(null),
+    [search, setSearch] = useState(null),
+    [searchError, setSearchError] = useState("");
+  const local = data.customers.find((c) => c.id === value);
+  useEffect(() => {
+    if (!value || local) return;
+    const controller = new AbortController();
+    api("/customer-search?id=" + encodeURIComponent(value), {
+      signal: controller.signal,
+    })
+      .then((result) => {
+        if (!controller.signal.aborted) setRemote(result.rows[0] || null);
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setSearchError(error.message);
+      });
+    return () => controller.abort();
+  }, [value, local?.id]);
+  useEffect(() => {
+    if (!focused || value || !query.trim()) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      api("/customer-search?q=" + encodeURIComponent(query.trim()), {
+        signal: controller.signal,
+      })
+        .then((result) => {
+          if (!controller.signal.aborted) {
+            setSearch({ query, rows: result.rows });
+            setSearchError("");
+          }
+        })
+        .catch((error) => {
+          if (!controller.signal.aborted) setSearchError(error.message);
+        });
+    }, 220);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query, focused, value]);
+  const selected = local || (remote?.id === value ? remote : null),
+    suggestions = (
+      search?.query === query
+        ? search.rows
+        : data.customers
+            .filter((c) => !c.archived)
+            .filter((c) =>
+              (c.code + " " + c.name)
+                .toLowerCase()
+                .includes(query.toLowerCase()),
+            )
+    ).slice(0, 5);
   return (
     <div
       className="rv-stack rv-customer-search"
@@ -861,6 +918,7 @@ function CustomerPicker({
           onChange={(e) => {
             onChange("");
             setQuery(e.target.value);
+            setSearchError("");
             onGuestChange(e.target.value);
           }}
           onFocus={() => setFocused(true)}
@@ -875,6 +933,7 @@ function CustomerPicker({
               type="button"
               onPointerDown={(e) => e.preventDefault()}
               onClick={() => {
+                setRemote(c);
                 onChange(c.id);
                 setQuery("");
                 onGuestChange("");
@@ -893,6 +952,11 @@ function CustomerPicker({
             </button>
           ))}
         </div>
+      )}
+      {focused && searchError && (
+        <small className="rv-error" role="alert">
+          {searchError}
+        </small>
       )}
     </div>
   );
@@ -1871,11 +1935,7 @@ function StockHistory() {
             {error}
           </p>
         )}
-        {!history && !error && (
-          <p className="rv-note" role="status">
-            Memuat riwayat…
-          </p>
-        )}
+        {!history && !error && <LoadingState />}
         {history && (
           <>
             <div className="rv-section-heading">
@@ -2515,7 +2575,8 @@ const staffPages = [
 ];
 function Staff() {
   const { data, act } = useApp(),
-    [form, setForm] = useState(null);
+    [form, setForm] = useState(null),
+    [passwordAccount, setPasswordAccount] = useState(null);
   const presets = {
     staff: ["orders", "trips", "customers", "counter", "debts"],
     manager: [...new Set(staffPages.flatMap(([, keys]) => keys)), "reports"],
@@ -2539,7 +2600,7 @@ function Staff() {
         await act(async () => {
           await api(form.id ? "/staff/" + form.id : "/staff", {
             method: form.id ? "PATCH" : "POST",
-            body: form,
+            body: { ...form, active: undefined },
           });
           setForm(null);
         }).catch(() => {});
@@ -2556,14 +2617,27 @@ function Staff() {
               ? "Atur akses"
               : "Akun staf baru"}
         </h3>
-        <button
-          className="rv-icon-button"
-          type="button"
-          aria-label="Tutup akun"
-          onClick={() => setForm(null)}
-        >
-          <X size={16} />
-        </button>
+        <div className="rv-staff-editor-actions">
+          {form.id && (
+            <button
+              type="button"
+              className="rv-staff-password-trigger"
+              aria-haspopup="dialog"
+              onClick={() => setPasswordAccount(form)}
+              aria-label={"Ubah sandi " + form.name}
+            >
+              <KeyRound size={15} aria-hidden="true" /> Ubah sandi
+            </button>
+          )}
+          <button
+            className="rv-icon-button"
+            type="button"
+            aria-label="Tutup akun"
+            onClick={() => setForm(null)}
+          >
+            <X size={16} />
+          </button>
+        </div>
       </div>
       <div className="rv-two rv-staff-identity-fields">
         <Field
@@ -2651,16 +2725,6 @@ function Staff() {
             />
             Koreksi pembayaran sendiri
           </label>
-          {form.id && (
-            <label className="check-line">
-              <input
-                type="checkbox"
-                checked={form.active}
-                onChange={(e) => setForm({ ...form, active: e.target.checked })}
-              />
-              Akun aktif
-            </label>
-          )}
         </>
       )}
       <Submit>Simpan akun</Submit>
@@ -2678,7 +2742,6 @@ function Staff() {
               password: "",
               preset: "staff",
               permissions: presets.staff,
-              active: true,
             })
           }
         >
@@ -2697,10 +2760,7 @@ function Staff() {
               </span>
               <span>
                 <strong>{data.staff.length} akun</strong>
-                <small>
-                  {data.staff.filter((u) => !u.owner && u.active).length} staf
-                  aktif
-                </small>
+                <small>{data.staff.filter((u) => !u.owner).length} staf</small>
               </span>
               <ShieldCheck size={36} aria-hidden="true" />
             </div>
@@ -2748,27 +2808,12 @@ function Staff() {
                       <SquarePen size={17} />
                     </button>
                     {form?.id === u.id && (
-                      <div className="rv-data-panel">
-                        {staffEditor}
-                        <details className="rv-extra">
-                          <summary>
-                            Ubah sandi
-                            <ChevronDown />
-                          </summary>
-                          <AccountPasswordForm
-                            endpoint={"/staff/" + u.id + "/password"}
-                          />
-                        </details>
-                      </div>
+                      <div className="rv-data-panel">{staffEditor}</div>
                     )}
                   </div>
                 ) : (
                   <div
-                    className={
-                      "rv-staff-card rv-staff-tone-" +
-                      (index % 3) +
-                      (!u.active ? " rv-staff-inactive" : "")
-                    }
+                    className={"rv-staff-card rv-staff-tone-" + (index % 3)}
                     key={u.id}
                   >
                     <button
@@ -2788,7 +2833,6 @@ function Staff() {
                           {u.permissions.includes("reports")
                             ? " · Manager"
                             : " · Staff"}
-                          {!u.active ? " · Nonaktif" : ""}
                         </span>
                       </span>
                       <span className="rv-stock-badge rv-stock-unlimited">
@@ -2824,37 +2868,6 @@ function Staff() {
                           <Trash2 size={15} />
                           Hapus staf
                         </button>
-                        <details className="rv-extra">
-                          <summary>
-                            Reset kata sandi
-                            <ChevronDown />
-                          </summary>
-                          <AppForm
-                            className="rv-stack"
-                            onSubmit={async (e) => {
-                              e.preventDefault();
-                              const password = new FormData(
-                                e.currentTarget,
-                              ).get("password");
-                              await act(async () => {
-                                await api("/staff/" + u.id + "/password", {
-                                  method: "POST",
-                                  body: { password },
-                                });
-                                setForm(null);
-                              }).catch(() => {});
-                            }}
-                          >
-                            <Field
-                              label="Kata sandi baru"
-                              name="password"
-                              type="password"
-                              autoComplete="new-password"
-                              required
-                            />
-                            <Submit>Simpan kata sandi</Submit>
-                          </AppForm>
-                        </details>
                       </div>
                     )}
                   </div>
@@ -2863,6 +2876,37 @@ function Staff() {
           </>
         )}
       </main>
+      {passwordAccount && (
+        <OverlayDialog
+          className="rv-staff-password-dialog"
+          aria-labelledby="rv-staff-password-title"
+          onClose={() => setPasswordAccount(null)}
+        >
+          <header className="rv-staff-password-heading">
+            <span className="rv-staff-password-symbol">
+              <KeyRound size={20} />
+            </span>
+            <div>
+              <h3 id="rv-staff-password-title">Ubah sandi</h3>
+              <small>{passwordAccount.name}</small>
+            </div>
+            <button
+              type="button"
+              className="rv-icon-button"
+              aria-label="Tutup ubah sandi"
+              onClick={() => setPasswordAccount(null)}
+            >
+              <X size={17} />
+            </button>
+          </header>
+          <div className="rv-staff-password-content">
+            <AccountPasswordForm
+              key={passwordAccount.id}
+              endpoint={"/staff/" + passwordAccount.id + "/password"}
+            />
+          </div>
+        </OverlayDialog>
+      )}
     </>
   );
 }
@@ -2921,6 +2965,7 @@ function Corrections() {
       <Header title="Koreksi pembayaran" icon={SquarePen} back="settings" />
       <main className="rv-body">
         <p className="rv-error">{error}</p>
+        {!rows && !error && <LoadingState />}
         {rows?.map((p) => (
           <section className="rv-card rv-stack" key={p.id}>
             <button
@@ -3242,6 +3287,7 @@ function Audit() {
       <Header title="Riwayat perubahan" icon={ShieldCheck} back="settings" />
       <main className="rv-body">
         <p className="rv-error">{error}</p>
+        {!rows && !error && <LoadingState />}
         {rows?.map((row) => (
           <details className="rv-card audit-row" key={row.id}>
             <summary>
@@ -3328,6 +3374,7 @@ function Display() {
       </header>
       <main className="rv-body rv-display-body">
         <p className="rv-error">{error}</p>
+        {!state && !error && <LoadingState />}
         <div className="display-table">
           <table>
             <thead>

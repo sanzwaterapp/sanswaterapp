@@ -12,6 +12,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import AppForm from "./AppForm.jsx";
+import { LoadingState } from "./OverlayDialog.jsx";
 import AccountPopover from "./AccountPopover.jsx";
 import { CaptureScreen } from "./DepartureCamera.jsx";
 import { api, dateLabel, timeLabel } from "./api.js";
@@ -149,7 +150,7 @@ export function createAccountMenu({
             {loadError}
           </p>
         )}
-        {!info && !loadError && <p>Memuat absensi…</p>}
+        {!info && !loadError && <LoadingState compact />}
         {info && (
           <>
             <div

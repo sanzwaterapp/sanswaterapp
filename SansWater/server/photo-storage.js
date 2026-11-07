@@ -56,12 +56,43 @@ export function createPhotoStorage(db, options = {}) {
             })
           : null);
   const reads = new Map();
+  let preparation = null;
   let timer = null,
     maintenanceTimer = null,
     running = null,
     stopped = true;
   function queue(photo) {
     if (!enabled) return;
+    if (preparation) {
+      const signature = photoHash(photo.bytes);
+      if (preparation.reuse) {
+        const saved = preparation.photos[preparation.cursor++];
+        if (
+          !saved ||
+          saved.id !== photo.id ||
+          saved.mime !== photo.mime ||
+          saved.sha256 !== signature ||
+          !saved.remote
+        )
+          throw Object.assign(
+            new Error("Bukti foto berubah. Coba simpan kembali."),
+            { status: 409 },
+          );
+        db.prepare(
+          "INSERT INTO photo_storage(photo_id,status,sha256,byte_size,file_id,uploaded_at) VALUES(?,'uploaded',?,?,?,?)",
+        ).run(
+          photo.id,
+          signature,
+          photo.bytes.length,
+          saved.remote.fileId,
+          new Date(clock()).toISOString(),
+        );
+        db.prepare("UPDATE photos SET bytes=X'' WHERE id=?").run(photo.id);
+        return;
+      }
+      preparation.photos.push({ ...photo, sha256: signature });
+      preparation.cursor++;
+    }
     db.prepare(
       "INSERT OR IGNORE INTO photo_storage(photo_id,status,sha256,byte_size) VALUES(?,'pending',?,?)",
     ).run(photo.id, photoHash(photo.bytes), photo.bytes.length);
@@ -150,14 +181,86 @@ export function createPhotoStorage(db, options = {}) {
     queue,
     queueExisting,
     syncOnce,
+    allocateId() {
+      if (!preparation) return null;
+      if (preparation.reuse)
+        return preparation.photos[preparation.cursor]?.id || null;
+      // Stable across retries and instances, distinct for each photo in a save.
+      const hex = photoHash(
+        Buffer.from(preparation.key + ":" + preparation.cursor),
+      ).slice(0, 32);
+      return [
+        hex.slice(0, 8),
+        hex.slice(8, 12),
+        hex.slice(12, 16),
+        hex.slice(16, 20),
+        hex.slice(20),
+      ].join("-");
+    },
+    capture(key, work) {
+      const previous = preparation;
+      preparation = { key, cursor: 0, photos: [] };
+      try {
+        const value = work();
+        return { value, photos: preparation.photos };
+      } finally {
+        preparation = previous;
+      }
+    },
+    reuse(photos, work) {
+      const previous = preparation;
+      preparation = { reuse: true, photos, cursor: 0 };
+      try {
+        return work();
+      } finally {
+        preparation = previous;
+      }
+    },
+    async uploadPrepared(photos) {
+      // No business DB reads/writes while remote I/O is in flight.
+      for (let index = 0; index < photos.length; index += 3) {
+        const results = await Promise.allSettled(
+          photos.slice(index, index + 3).map(async (photo) => {
+            const remote = await client.put(photo);
+            const verified = await client.get(remote);
+            if (
+              remote.photoId !== photo.id ||
+              remote.sha256 !== photo.sha256 ||
+              remote.size !== photo.bytes.length ||
+              remote.mime !== photo.mime ||
+              verified.mime !== photo.mime ||
+              photoHash(verified.binary) !== photo.sha256
+            )
+              throw new Error("Foto tidak lolos verifikasi.");
+            cache?.put(remote, verified);
+            photo.remote = remote;
+          }),
+        );
+        if (results.some((result) => result.status === "rejected"))
+          throw Object.assign(
+            new Error("Foto belum tersimpan di GAS. Coba simpan kembali."),
+            { status: 503 },
+          );
+      }
+    },
     async flushPending() {
       if (!enabled)
         throw new Error("Penyimpanan Supabase memerlukan foto GAS.");
       // Every acknowledged photo is already in Drive. No photo bytes enter PG.
-      for (let batch = pendingPhotos(3); batch.length; batch = pendingPhotos(3)) {
+      for (
+        let batch = pendingPhotos(3);
+        batch.length;
+        batch = pendingPhotos(3)
+      ) {
         // Wait for every in-flight upload before the caller can roll back its scope.
-        const results = await Promise.allSettled(batch.map((row) => processOne(row)));
-        if (results.some((result) => result.status === "rejected" || !result.value.ok))
+        const results = await Promise.allSettled(
+          batch.map((row) => processOne(row)),
+        );
+        if (
+          results.some(
+            (result) => result.status === "rejected" || !result.value.ok,
+          )
+        )
           throw Object.assign(
             new Error("Foto belum tersimpan di GAS. Coba simpan kembali."),
             { status: 503 },

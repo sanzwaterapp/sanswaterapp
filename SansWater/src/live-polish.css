@@ -922,6 +922,17 @@
   padding: 9px;
   margin-top: 5px;
 }
+#depot-order-payment-review .rv-phone .rv-payroll-delivery-formula {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  border-top: 1px solid #efddc5;
+  padding-top: 8px;
+  margin-top: 4px;
+  font-size: 12px;
+}
 #depot-order-payment-review .rv-phone .rv-payroll-driver-rate .rv-field {
   text-align: left;
   font-size: 11px;
@@ -1035,3 +1046,75 @@ dialog.rv-customer-delete-confirm .rv-customer-delete-icon {
   color: #fff;
 }
 
+
+/* Lightweight text feedback, centered within its content area. */
+#depot-order-payment-review .rv-loading-state {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  min-block-size: clamp(200px, calc(100dvh - 300px), 600px);
+  padding: 24px 16px;
+  color: #8171ae;
+  text-align: center;
+}
+#depot-order-payment-review .rv-loading-state.rv-loading-compact {
+  min-block-size: 132px;
+  padding: 20px 12px;
+}
+#depot-order-payment-review .rv-loading-label {
+  font-size: 13px;
+  font-weight: 500;
+}
+#depot-order-payment-review .rv-staff-editor-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+#depot-order-payment-review .rv-staff-password-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 9px;
+  border: 1px solid #d9d0fc;
+  border-radius: 10px;
+  background: #ede7ff;
+  color: #5840bc;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#depot-order-payment-review .rv-staff-password-trigger:hover { background: #e1d8ff; }
+#depot-order-payment-review .rv-overlay-dialog.rv-staff-password-dialog {
+  width: min(340px, calc(100vw - 32px));
+  padding: 0;
+  margin: 90px auto auto;
+  border: 1px solid #dfd7fb;
+  border-radius: 20px;
+  background: #fff;
+  color: #343356;
+  overflow: hidden;
+}
+#depot-order-payment-review .rv-staff-password-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px;
+  background: #f0ebff;
+  border-bottom: 1px solid #e1d9fc;
+}
+#depot-order-payment-review .rv-staff-password-heading h3 { margin: 0; font-size: 16px; }
+#depot-order-payment-review .rv-staff-password-heading small { color: #7b6e9d; font-size: 12px; }
+#depot-order-payment-review .rv-staff-password-heading > button { margin-left: auto; }
+#depot-order-payment-review .rv-staff-password-symbol {
+  display: grid;
+  place-items: center;
+  width: 37px;
+  height: 37px;
+  border-radius: 12px;
+  background: #ded4ff;
+  color: #6041c4;
+}
+#depot-order-payment-review .rv-staff-password-content { padding: 16px; }

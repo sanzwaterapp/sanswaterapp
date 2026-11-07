@@ -109,6 +109,7 @@ export async function createCloudStore(
     schema = "depot_private",
     ownsPool = false,
     queueTimeoutMs = 20000,
+    bootstrapBatchSize = 1000,
   } = {},
 ) {
   const namespace = identifier(schema);
@@ -118,6 +119,42 @@ export async function createCloudStore(
   }
   const tables = businessTables(db),
     tableSet = new Set(tables);
+  if (
+    !Number.isInteger(bootstrapBatchSize) ||
+    bootstrapBatchSize < 1 ||
+    bootstrapBatchSize > 5000
+  )
+    throw new Error("Invalid bootstrap batch size");
+  const columnsFor = new Map(
+    tables.map((table) => [
+      table,
+      db
+        .prepare(`PRAGMA table_info(${identifier(table)})`)
+        .all()
+        .map((row) => row.name),
+    ]),
+  );
+  const deletes = new Map(
+    tables.map((table) => [
+      table,
+      db.prepare(`DELETE FROM ${identifier(table)} WHERE rowid=?`),
+    ]),
+  );
+  const inserts = new Map(
+    tables.map((table) => {
+      const columns = columnsFor.get(table);
+      return [
+        table,
+        db.prepare(
+          `INSERT INTO ${identifier(table)}(rowid,${columns.map(identifier).join(",")}) VALUES(${Array(
+            columns.length + 1,
+          )
+            .fill("?")
+            .join(",")})`,
+        ),
+      ];
+    }),
+  );
   const version = db.prepare("PRAGMA user_version").get().user_version;
   db.exec(`CREATE TABLE IF NOT EXISTS _cloud_state(id INTEGER PRIMARY KEY CHECK(id=1),store_id TEXT NOT NULL,revision INTEGER NOT NULL);
     CREATE TEMP TABLE _cloud_dirty(entity TEXT NOT NULL,row_id INTEGER NOT NULL,PRIMARY KEY(entity,row_id));`);
@@ -167,9 +204,7 @@ export async function createCloudStore(
         !Number.isSafeInteger(Number(row.row_id))
       )
         throw new Error("Versi data Supabase belum didukung.");
-      db.prepare(`DELETE FROM ${identifier(row.entity)} WHERE rowid=?`).run(
-        Number(row.row_id),
-      );
+      deletes.get(row.entity).run(Number(row.row_id));
     }
     for (const row of rows) {
       if (
@@ -177,30 +212,19 @@ export async function createCloudStore(
         !Number.isSafeInteger(Number(row.row_id))
       )
         throw new Error("Versi data Supabase belum didukung.");
-      const name = identifier(row.entity),
-        rowId = Number(row.row_id);
+      const rowId = Number(row.row_id);
       if (!row.payload) continue;
       const payload = { ...row.payload };
       if (row.entity === "photos") payload.bytes = Buffer.alloc(0);
-      const expected = db
-        .prepare(`PRAGMA table_info(${name})`)
-        .all()
-        .map((x) => x.name);
+      const expected = columnsFor.get(row.entity);
       if (
         Object.keys(payload).length !== expected.length ||
         expected.some((key) => !Object.hasOwn(payload, key))
       )
         throw new Error("Struktur data Supabase berbeda; perbarui aplikasi.");
-      const columns = expected.map(identifier).join(",");
-      // Delete first handles changed unique keys and composite business keys.
-      db.prepare(`DELETE FROM ${name} WHERE rowid=?`).run(rowId);
-      db.prepare(
-        `INSERT INTO ${name}(rowid,${columns}) VALUES(${Array(
-          expected.length + 1,
-        )
-          .fill("?")
-          .join(",")})`,
-      ).run(rowId, ...expected.map((key) => payload[key]));
+      inserts
+        .get(row.entity)
+        .run(rowId, ...expected.map((key) => payload[key]));
     }
   }
   function changes() {
@@ -255,7 +279,7 @@ export async function createCloudStore(
       const state = (
         await client.query(
           `SELECT s.*, COALESCE((SELECT jsonb_agg(jsonb_build_object('entity',r.entity,'row_id',r.row_id,'payload',r.payload) ORDER BY r.entity,r.row_id)
-        FROM ${namespace}.records r WHERE r.revision > CASE WHEN s.store_id=$1 AND $2<=s.revision THEN $2 ELSE -1 END),'[]'::jsonb) AS records
+        FROM ${namespace}.records r WHERE s.store_id=$1 AND $2<=s.revision AND r.revision > $2),'[]'::jsonb) AS records
         FROM ${namespace}.state s WHERE singleton=true`,
           [local?.store_id || null, local?.revision ?? -1],
         )
@@ -274,6 +298,25 @@ export async function createCloudStore(
       db.exec("BEGIN IMMEDIATE");
       localOpen = true;
       applyRemote(rows, full);
+      if (full) {
+        // Cold instances still reconstruct the authoritative projection, but
+        // never aggregate all history in one JSON/heap allocation. Tombstones
+        // are unnecessary after a full clear and are excluded on this path.
+        let cursor = null;
+        for (;;) {
+          const batch = (
+            await client.query(
+              `SELECT entity,row_id,payload FROM ${namespace}.records
+             WHERE payload IS NOT NULL AND ($1::text IS NULL OR (entity,row_id)>($1::text,$2::bigint))
+             ORDER BY entity,row_id LIMIT $3`,
+              [cursor?.entity ?? null, cursor?.row_id ?? 0, bootstrapBatchSize],
+            )
+          ).rows;
+          applyRemote(batch, false);
+          if (batch.length < bootstrapBatchSize) break;
+          cursor = batch.at(-1);
+        }
+      }
       db.prepare(
         "INSERT INTO _cloud_state VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET store_id=excluded.store_id,revision=excluded.revision",
       ).run(state.store_id, Number(state.revision));

@@ -54,3 +54,17 @@ TV mempertahankan seluruh pesanan aktif lintas hari, tertua lebih dahulu. Filter
 Rincian produk memakai kartu compact: nama, jumlah dan total pada baris atas, dropdown ongkir serta diskon pada baris bawah. Pilihan ongkir adalah Tanpa ongkir, Rp1.000, Rp2.000 dan Manual. Input manual hanya ditampilkan saat dipilih; total kartu sudah termasuk ongkir dikali unit dan dikurangi diskon.
 
 Kontrol air menyimpan tanggal operasional dan nomor shift yang dipilih. Angka awal tetap diambil dari penutupan terakhir; memilih tanggal tidak mengubah transaksi yang dihitung untuk shift tersebut. Laporan mengikuti tanggal operasional, termasuk jika shift ditutup lewat tengah malam. Detail menunjukkan perhitungan RO dan Mineral serta pemakaian liter per meteran. Catatan shift lama yang belum bernomor ditampilkan berurutan tanpa mengubah data aslinya.
+
+## Pembaruan stabilitas 8 November 2026
+
+Pencarian pada pemilih pelanggan menggunakan server dengan jeda 220 ms, maksimal 10 hasil, pembatalan pencarian lama, dan pengambilan pelanggan terpilih menurut ID. Daftar awal tetap dibatasi 2.000; pelanggan di luar daftar itu tetap dapat dipilih.
+
+Pembaruan state mengirim hash untuk 14 kelompok data. Browser mengirim hash yang sudah dimiliki, sehingga server hanya mengembalikan kelompok yang berubah. Refresh bersamaan tetap digabung dan hasil sesi lama ditolak. Ini menghemat transfer ke browser; bukan penghapusan seluruh kebutuhan transfer dari Supabase.
+
+Koneksi SSE yang diam lebih dari 75 detik diperiksa dan disambungkan kembali dengan backoff. Dalam kondisi normal, sinyal versi yang sama tetap tidak mengunduh ulang state. Tab tersembunyi menghentikan koneksi dan timer pemantau.
+
+Saat mutasi menyertakan foto, validasi awal dibatalkan dahulu, lalu upload dan verifikasi GAS berjalan di luar lock transaksi bisnis. Sesudah itu sesi, izin dan aturan bisnis diperiksa kembali pada data Supabase terbaru sebelum commit. Kegagalan upload tidak mengakui transaksi berhasil. ID foto stabil untuk permintaan yang sama, termasuk saat retry lintas instance. Jika upload berhasil tetapi validasi akhir ditolak, file privat yang belum direferensikan dapat tertinggal di Drive; pembersihan file tersebut belum otomatis.
+
+Bootstrap instance baru membaca record aktif dalam batch 1.000 dan melewati penanda penghapusan. Ini mengurangi puncak alokasi memori, tetapi seluruh histori aktif masih direkonstruksi. Untuk histori sangat besar, migrasi menuju query PostgreSQL langsung yang dibatasi periode/halaman masih diperlukan. Catatan idempotensi dan audit tidak dipangkas otomatis.
+
+Antrean retry browser menyimpan digest SHA-256 dan kunci permintaan, bukan isi foto. Batas 256 hasil simpan yang belum pasti menahan pertumbuhan antrean tanpa membuang kunci replay; login/logout tetap dapat digunakan.

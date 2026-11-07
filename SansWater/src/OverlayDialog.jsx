@@ -1,5 +1,18 @@
 import React, { useEffect, useRef } from "react";
 
+export function LoadingState({ compact = false }) {
+  return (
+    <div
+      className={"rv-loading-state" + (compact ? " rv-loading-compact" : "")}
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <span className="rv-loading-label">Memuat…</span>
+    </div>
+  );
+}
+
 export default function OverlayDialog({
   onClose,
   children,

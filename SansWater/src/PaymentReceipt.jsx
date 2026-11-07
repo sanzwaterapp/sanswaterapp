@@ -7,7 +7,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import OverlayDialog from "./OverlayDialog.jsx";
+import OverlayDialog, { LoadingState } from "./OverlayDialog.jsx";
 import { isSanzBrand } from "./BrandWordmark.jsx";
 import { dateLabel, money, timeLabel } from "./api.js";
 
@@ -310,11 +310,14 @@ export default function PaymentReceipt({ receipt, depotName, onClose, error }) {
           Gambar nota gagal dibuat. Ketuk Unduh gambar untuk mencoba lagi.
         </p>
       )}
-      {content || (
-        <p className="rv-statement-loading" role={error ? "alert" : "status"}>
-          {error || "Menyiapkan nota…"}
-        </p>
-      )}
+      {content ||
+        (error ? (
+          <p className="rv-statement-loading rv-error" role="alert">
+            {error}
+          </p>
+        ) : (
+          <LoadingState compact />
+        ))}
     </OverlayDialog>
   );
 }

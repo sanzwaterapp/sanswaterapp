@@ -1,4 +1,5 @@
 import AppForm from "./AppForm.jsx";
+import { browserId } from "./api.js";
 import React, { useState } from "react";
 import { Plus, X, Check, Timer } from "lucide-react";
 import {
@@ -126,7 +127,7 @@ export default function DurationCategoryEditor({ settings, onSave, busy }) {
           setBands([
             ...bands,
             {
-              id: crypto.randomUUID(),
+              id: browserId(),
               name: `Kategori ${bands.length + 1}`,
               from: Math.min(1440, Math.max(...bands.map((b) => b.from)) + 30),
               color: "#7059c9",

@@ -10,11 +10,13 @@ export function groupTripsByNumber(trips, day) {
   return [...groups.values()]
     .map((group) => ({
       ...group,
-      trips: group.trips.toSorted(
-        (a, b) =>
-          b.departed_at.localeCompare(a.departed_at) ||
-          a.id.localeCompare(b.id),
-      ),
+      trips: group.trips
+        .slice()
+        .sort(
+          (a, b) =>
+            b.departed_at.localeCompare(a.departed_at) ||
+            a.id.localeCompare(b.id),
+        ),
       active: group.trips.some((trip) => !trip.closed_at),
       orderCount: group.trips.reduce((n, trip) => n + trip.orders.length, 0),
     }))

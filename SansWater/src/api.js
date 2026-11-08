@@ -3,6 +3,23 @@ import { encodePhoto } from "./photo-encoding.js";
 const uncertain = new Map();
 let lastMutationVersion = null;
 export const mutationVersion = () => lastMutationVersion;
+export function browserId() {
+  const source = globalThis.crypto;
+  if (typeof source?.randomUUID === "function") return source.randomUUID();
+  if (typeof source?.getRandomValues !== "function")
+    throw new Error(
+      "Perbarui Android System WebView atau browser untuk melanjutkan.",
+    );
+  // Older WebViews have secure random bytes but do not expose randomUUID.
+  // Keep UUID v4 entropy and format; never substitute Math.random().
+  const bytes = source.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 export async function api(path, { method = "GET", body, signal } = {}) {
   const mutation = method !== "GET";
   const serialized = mutation ? JSON.stringify(body ?? {}) : undefined;
@@ -27,30 +44,29 @@ export async function api(path, { method = "GET", body, signal } = {}) {
       throw new Error(
         "Terlalu banyak hasil simpan yang belum pasti. Periksa kembali permintaan sebelumnya sebelum membuat yang baru.",
       );
-    uncertain.set(fingerprint, crypto.randomUUID());
+    uncertain.set(fingerprint, browserId());
   }
+  const headers = mutation ? { "Content-Type": "application/json" } : undefined;
+  // Login/logout/setup do not use server replay keys. In particular, login
+  // must not depend on a browser UUID API before its request can be sent.
+  if (tracked) headers["Idempotency-Key"] = uncertain.get(fingerprint);
   let response;
   try {
     response = await fetch("/api" + path, {
       method,
       signal,
       credentials: "same-origin",
-      headers: mutation
-        ? {
-            "Content-Type": "application/json",
-            "Idempotency-Key": tracked
-              ? uncertain.get(fingerprint)
-              : crypto.randomUUID(),
-          }
-        : undefined,
+      headers,
       body: serialized,
     });
   } catch (error) {
     if (signal?.aborted) throw error;
     throw new Error(
-      mutation
-        ? "Koneksi terputus. Hasil simpan belum dapat dipastikan. Pertahankan isian lalu coba Simpan lagi untuk memeriksa tanpa menggandakan data."
-        : "Data belum dapat dimuat. Periksa koneksi dan coba kembali.",
+      path === "/login"
+        ? "Login belum dapat terhubung ke server. Periksa koneksi internet, lalu coba Masuk lagi."
+        : mutation
+          ? "Koneksi terputus. Hasil simpan belum dapat dipastikan. Pertahankan isian lalu coba Simpan lagi untuk memeriksa tanpa menggandakan data."
+          : "Data belum dapat dimuat. Periksa koneksi dan coba kembali.",
     );
   }
   let result;
@@ -58,9 +74,11 @@ export async function api(path, { method = "GET", body, signal } = {}) {
     result = await response.json();
   } catch {
     const error = new Error(
-      response.status === 413
-        ? "Data terlalu besar. Kurangi ukuran foto dan coba kembali."
-        : "Respons server belum lengkap. Pertahankan isian dan coba tombol yang sama untuk memeriksa hasil simpan.",
+      path === "/login"
+        ? "Respons login belum dapat dibaca. Coba Masuk lagi atau perbarui Android System WebView."
+        : response.status === 413
+          ? "Data terlalu besar. Kurangi ukuran foto dan coba kembali."
+          : "Respons server belum lengkap. Pertahankan isian dan coba tombol yang sama untuk memeriksa hasil simpan.",
     );
     error.status = response.ok ? 502 : response.status;
     if (response.status === 413) uncertain.delete(fingerprint);

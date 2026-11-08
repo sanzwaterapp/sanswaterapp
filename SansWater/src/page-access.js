@@ -24,7 +24,7 @@ export function canAccessPage(user, page) {
   return (
     !!user &&
     (!!user?.owner ||
-      !Object.hasOwn(PAGE_PERMISSIONS, page) ||
+      !Object.prototype.hasOwnProperty.call(PAGE_PERMISSIONS, page) ||
       PAGE_PERMISSIONS[page].some((key) => user?.permissions?.includes(key)))
   );
 }

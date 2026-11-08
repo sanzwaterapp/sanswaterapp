@@ -68,7 +68,7 @@ export function createPayroll({
           { actor: driver.id, rate: draft.drivers[driver.id]?.rate || 0 },
           driver.components.delivery.liters / 19 +
             (driver.components.delivery.items || 0),
-          Object.hasOwn(draft.drivers, driver.id),
+          Object.prototype.hasOwnProperty.call(draft.drivers, driver.id),
         ),
       ]),
     );

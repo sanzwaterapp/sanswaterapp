@@ -1,4 +1,5 @@
 import AppForm from "../AppForm.jsx";
+import { browserId } from "../api.js";
 import React, { useEffect, useRef, useState } from "react";
 import {
   MousePointer2,
@@ -186,7 +187,7 @@ export function ReviewToolbar({ page, simulation, owner }) {
     if (!comment.trim()) return;
     const row = {
         ...draft,
-        id: crypto.randomUUID(),
+        id: browserId(),
         comment: comment.trim(),
         createdAt: new Date().toISOString(),
       },

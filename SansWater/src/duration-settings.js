@@ -82,10 +82,10 @@ export function durationCategories(settings) {
 }
 
 export function durationBand(minutes, settings) {
-  return (
-    durationCategories(settings).findLast((band) => minutes >= band.from) ||
-    durationCategories(settings)[0]
-  );
+  const bands = durationCategories(settings);
+  for (let index = bands.length - 1; index >= 0; index--)
+    if (minutes >= bands[index].from) return bands[index];
+  return bands[0];
 }
 
 export function bandRange(bands, id) {

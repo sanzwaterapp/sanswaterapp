@@ -1177,7 +1177,7 @@ export function createApprovedPages(UI) {
       [filter, setFilter] = useState(() => {
         const key = window.location.hash.split("?")[1]?.split("&")[0];
         return key === "all" ||
-          Object.hasOwn(filters, key) ||
+          Object.prototype.hasOwnProperty.call(filters, key) ||
           orderStatusChoices.some(([value]) => value === key)
           ? key
           : "active";
@@ -1208,9 +1208,9 @@ export function createApprovedPages(UI) {
           .sort();
         if (
           days.length &&
-          (days[0] !== data.today || days.at(-1) !== data.today)
+          (days[0] !== data.today || days.slice(-1)[0] !== data.today)
         )
-          return { kind: "range", from: days[0], to: days.at(-1) };
+          return { kind: "range", from: days[0], to: days.slice(-1)[0] };
         return { kind: "today", from: data.today, to: data.today };
       }),
       [search, setSearch] = useState(""),
@@ -3022,9 +3022,15 @@ export function createApprovedPages(UI) {
             {!r.left ? (
               <>
                 Lunas
-                {(r.settled_at || r.payments?.at(-1)?.created_at) && (
-                  <time dateTime={r.settled_at || r.payments.at(-1).created_at}>
-                    {debtDate(r.settled_at || r.payments.at(-1).created_at)}
+                {(r.settled_at || r.payments?.slice(-1)[0]?.created_at) && (
+                  <time
+                    dateTime={
+                      r.settled_at || r.payments.slice(-1)[0].created_at
+                    }
+                  >
+                    {debtDate(
+                      r.settled_at || r.payments.slice(-1)[0].created_at,
+                    )}
                   </time>
                 )}
               </>
@@ -3074,17 +3080,17 @@ export function createApprovedPages(UI) {
         ) : (
           <div className="rv-bill-total">
             {r.left > 0 && <span>Tagihan</span>}
-            {!r.left && r.payments?.at(-1)?.method && (
+            {!r.left && r.payments?.slice(-1)[0]?.method && (
               <span
                 className="rv-bill-settlement-method"
                 title="Metode pelunasan"
               >
-                {r.payments.at(-1).method === "Tunai" ? (
+                {r.payments.slice(-1)[0].method === "Tunai" ? (
                   <Banknote size={13} />
                 ) : (
                   <ScanLine size={13} />
                 )}
-                {r.payments.at(-1).method}
+                {r.payments.slice(-1)[0].method}
               </span>
             )}
             <strong className="rv-bill-amount">{money(r.total)}</strong>

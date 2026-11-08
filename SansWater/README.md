@@ -14,7 +14,8 @@ Mulai dari **[DEPLOY-VERCEL.md](DEPLOY-VERCEL.md)**. Hasil pemeriksaan, arsitekt
 - `vercel.json`: build Vite, routing API, header keamanan, region dan durasi Functions.
 - `setup.sql`: tambahan tabel privat untuk pembatasan login antar-instance.
 - `.env.production.example`: nama environment yang perlu diisi pada Vercel, tanpa nilai rahasia.
-- `MANIFEST.sha256`: daftar hash berkas paket.
+
+Paket sumber untuk GitHub berisi **99 berkas**, termasuk berkas konfigurasi tersembunyi. Folder `dist` adalah hasil build lokal dan tidak disertakan; Vercel membuatnya kembali melalui `npm run build`. Jika menjalankan build di komputer, jangan ikut mengunggah folder `dist` yang muncul. Berkas pemeriksaan hash paket lama disimpan terpisah di backup pengembangan.
 
 ## Deploy singkat
 

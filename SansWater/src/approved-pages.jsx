@@ -1,5 +1,5 @@
 import AppForm from "./AppForm.jsx";
-import { LoadingState } from "./OverlayDialog.jsx";
+import OverlayDialog, { LoadingState } from "./OverlayDialog.jsx";
 import DepartureCamera, { CameraScreenHeader } from "./DepartureCamera.jsx";
 import DebtStatement from "./debt-statement.jsx";
 import PaymentReceipt, { ReceiptButton } from "./PaymentReceipt.jsx";
@@ -71,6 +71,7 @@ import {
   SquarePen,
   History,
   ReceiptText,
+  Trash2,
 } from "lucide-react";
 import {
   api,
@@ -169,6 +170,7 @@ export function createApprovedPages(UI) {
   function OrderStatusPanel({ order, onClose, inlineError = false }) {
     const { data, act, busy } = useApp();
     const [cancelling, setCancelling] = useState(false);
+    const [deleting, setDeleting] = useState(false);
     const [error, setError] = useState("");
     if (
       !can(data.user, "orders") ||
@@ -181,6 +183,16 @@ export function createApprovedPages(UI) {
         await api("/orders/" + order.id + "/status", {
           method: "PATCH",
           body: { version: order.version, status, reason },
+        });
+        onClose();
+      }).catch((err) => setError(err.message));
+    }
+    async function deleteOrder() {
+      setError("");
+      await act(async () => {
+        await api("/orders/" + order.id, {
+          method: "DELETE",
+          body: { confirmed: true, version: order.version },
         });
         onClose();
       }).catch((err) => setError(err.message));
@@ -208,7 +220,67 @@ export function createApprovedPages(UI) {
           >
             Batal
           </button>
+          {data.user.owner && (
+            <button
+              type="button"
+              className="rv-status-choice rv-delete-order-choice"
+              disabled={busy}
+              aria-label={"Hapus pesanan " + order.name}
+              onClick={() => {
+                setError("");
+                setCancelling(false);
+                setDeleting(true);
+              }}
+            >
+              <Trash2 size={14} /> Hapus pesanan
+            </button>
+          )}
         </div>
+        {deleting && data.user.owner && (
+          <OverlayDialog
+            className="rv-customer-delete-confirm"
+            role="alertdialog"
+            aria-labelledby="rv-delete-order-title"
+            aria-describedby="rv-delete-order-description"
+            onClose={() => !busy && setDeleting(false)}
+            onCancel={(event) => busy && event.preventDefault()}
+          >
+            <div className="rv-customer-delete-icon">
+              <Trash2 size={19} />
+            </div>
+            <div>
+              <h3 id="rv-delete-order-title">Hapus pesanan?</h3>
+              <p id="rv-delete-order-description">
+                {order.code ? order.code + " · " : ""}
+                {order.name}. Pesanan akan dihapus dari daftar.
+              </p>
+            </div>
+            {error && (
+              <p className="rv-error" role="alert">
+                {error}
+              </p>
+            )}
+            <div className="rv-two">
+              <button
+                type="button"
+                className="rv-secondary"
+                disabled={busy}
+                autoFocus
+                onClick={() => setDeleting(false)}
+              >
+                Kembali
+              </button>
+              <button
+                type="button"
+                className="rv-primary rv-customer-delete-submit"
+                disabled={busy}
+                onClick={deleteOrder}
+              >
+                {busy ? "Menghapus…" : "Hapus pesanan"}
+              </button>
+            </div>
+          </OverlayDialog>
+        )}
         {cancelling && (
           <AppForm
             className="rv-stack"
@@ -226,7 +298,7 @@ export function createApprovedPages(UI) {
             <Submit>Catat batal</Submit>
           </AppForm>
         )}
-        {inlineError && error && (
+        {inlineError && error && !deleting && (
           <p className="rv-error" role="alert">
             {error}
           </p>

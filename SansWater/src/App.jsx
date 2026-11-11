@@ -3219,6 +3219,7 @@ function Audit() {
   const [rows, error] = useResource("/audit");
   const labels = {
     "order.create": "Pesanan baru",
+    "order.delete": "Pesanan dihapus",
     "order.status": "Status pesanan",
     "order.items": "Produk pesanan",
     "trip.depart": "Keberangkatan",

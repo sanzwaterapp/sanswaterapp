@@ -69,3 +69,9 @@ Saat mutasi menyertakan foto, validasi awal dibatalkan dahulu, lalu upload dan v
 Bootstrap instance baru membaca record aktif dalam batch 1.000 dan melewati penanda penghapusan. Ini mengurangi puncak alokasi memori, tetapi seluruh histori aktif masih direkonstruksi. Untuk histori sangat besar, migrasi menuju query PostgreSQL langsung yang dibatasi periode/halaman masih diperlukan. Catatan idempotensi dan audit tidak dipangkas otomatis.
 
 Antrean retry browser menyimpan digest SHA-256 dan kunci permintaan, bukan isi foto. Batas 256 hasil simpan yang belum pasti menahan pertumbuhan antrean tanpa membuang kunci replay; login/logout tetap dapat digunakan.
+
+## Hapus pesanan — 10 November 2026
+
+Akun Owner (admin) memiliki opsi **Hapus pesanan** pada dropdown status pesanan yang masih dapat diubah, termasuk dropdown pada tampilan TV. Konfirmasi menampilkan nama pelanggan sebelum menghapus. Staff dan Manager tidak melihat opsi tersebut dan ditolak bila memanggil API penghapusan secara langsung.
+
+Penghapusan berlaku untuk pesanan pengantaran yang belum terkait trip, invoice atau pembayaran. Pesanan yang sudah terkait catatan tersebut tidak dihapus melalui menu ini agar riwayat transaksi, hutang, stok dan pengantaran tetap konsisten. Server memeriksa versi terbaru untuk mencegah penghapusan data yang telah berubah di perangkat lain. Penghapusan dicatat dalam audit dan memakai perlindungan retry yang sama dengan penyimpanan lainnya.

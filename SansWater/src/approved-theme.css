@@ -254,6 +254,7 @@
 #depot-order-payment-review .rv-status-choices{gap:3px}
 #depot-order-payment-review .rv-status-choice{min-height:28px;padding:5px 8px;justify-content:flex-start;font-size:12px}
 #depot-order-payment-review .rv-cancel-choice{color:#a15b7d;background:#f5e3f1}
+#depot-order-payment-review .rv-delete-order-choice{color:#be3e5e;background:#ffe8ef;gap:6px;border-top:1px solid #edc4d0;margin-top:3px}
 #depot-order-payment-review .rv-trip-entry .rv-trip-order>.rv-trip-right{flex:0 0 auto;display:grid;justify-items:end;gap:3px;color:#625083}
 #depot-order-payment-review .rv-trip-right>strong{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.3px}
 #depot-order-payment-review .rv-inline-panel .rv-discount-field{width:66px;flex-basis:66px}

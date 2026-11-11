@@ -1082,6 +1082,35 @@ export function createApp(options = {}) {
     const order = d.order(ctx.user, ctx.body);
     return orderWithPayment(d.find("orders", order.id));
   });
+  route("DELETE", "/api/orders/:id", "login", (ctx) => {
+    if (!ctx.user.owner)
+      fail("Hanya admin (Owner) yang dapat menghapus pesanan.", 403);
+    const row = d.find("orders", ctx.params.id);
+    if (ctx.body.confirmed !== true)
+      fail("Konfirmasi penghapusan pesanan terlebih dahulu.");
+    if (row.version !== ctx.body.version)
+      fail("Pesanan sudah berubah. Muat ulang sebelum menghapus.", 409);
+    if (
+      row.kind !== "delivery" ||
+      d.get("SELECT id FROM invoices WHERE order_id=? LIMIT 1", row.id) ||
+      d.get("SELECT order_id FROM order_prepayments WHERE order_id=?", row.id)
+    )
+      fail(
+        "Pesanan sudah memiliki catatan transaksi atau pembayaran dan tidak dapat dihapus.",
+        409,
+      );
+    if (
+      row.current_trip_id ||
+      d.get("SELECT order_id FROM trip_orders WHERE order_id=? LIMIT 1", row.id)
+    )
+      fail(
+        "Pesanan sudah masuk trip dan tidak dapat dihapus dari daftar pesanan.",
+        409,
+      );
+    d.audit(ctx.user, "order.delete", row.id, row, { deleted: true });
+    d.run("DELETE FROM orders WHERE id=?", row.id);
+    return { ok: true, id: row.id };
+  });
   route("PATCH", "/api/orders/:id/items", "login", (ctx) => {
     const row = d.find("orders", ctx.params.id);
     if (!has(ctx.user, "orders")) {

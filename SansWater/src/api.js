@@ -163,6 +163,7 @@ export function duration(order, now = Date.now()) {
 export function sortDisplayOrders(orders, now = Date.now()) {
   return [...orders].sort(
     (a, b) =>
+      Number(a.status === "delivery") - Number(b.status === "delivery") ||
       duration(b, now) - duration(a, now) ||
       Date.parse(a.received_at) - Date.parse(b.received_at) ||
       String(a.id).localeCompare(String(b.id)),

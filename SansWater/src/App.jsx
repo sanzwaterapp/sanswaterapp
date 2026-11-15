@@ -2578,7 +2578,7 @@ function Staff() {
     [form, setForm] = useState(null),
     [passwordAccount, setPasswordAccount] = useState(null);
   const presets = {
-    staff: ["orders", "trips", "customers", "counter", "debts"],
+    staff: ["orders", "trips", "customers", "counter", "debts", "payroll"],
     manager: [...new Set(staffPages.flatMap(([, keys]) => keys)), "reports"],
   };
   function setPermission(key, checked) {
@@ -2717,14 +2717,6 @@ function Staff() {
               </label>
             ))}
           </div>
-          <label className="check-line">
-            <input
-              type="checkbox"
-              checked={form.permissions.includes("correct")}
-              onChange={(e) => setPermission("correct", e.target.checked)}
-            />
-            Koreksi pembayaran sendiri
-          </label>
         </>
       )}
       <Submit>Simpan akun</Submit>
@@ -2913,44 +2905,95 @@ function Staff() {
 function Attendance() {
   const { data, act } = useApp(),
     [photo, setPhoto] = useState(""),
-    own = data.attendance.find((a) => a.user_id === data.user.id);
+    [offset, setOffset] = useState(0),
+    [period, setPeriod, query] = usePeriod();
+  const [report, error] = useResource(
+    "/attendance?" + query + "&offset=" + offset,
+  );
   return (
     <>
-      <Header title="Absensi" icon={Camera} back="other" />
-      <main className="rv-body rv-feature">
-        {own ? (
-          <section className="rv-card rv-my-attendance">
-            <span className="rv-menu-icon rv-mint">
-              <CheckCircle2 />
-            </span>
-            <span>
-              <strong>{data.user.name} sudah absen</strong>
-              <span>
-                {dateLabel(own.created_at)} · {timeLabel(own.created_at)} WIB
-              </span>
-            </span>
-            <PhotoButton id={own.photo_id} label="Foto absensi saya" />
-          </section>
-        ) : (
-          <AppForm
-            className="rv-card rv-stack"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              await act(() =>
-                api("/attendance", { method: "POST", body: { photo } }),
-              ).catch(() => {});
+      <Header
+        title="Absensi"
+        icon={Camera}
+        back="other"
+        filters={
+          <PeriodFilters
+            value={period}
+            onChange={(v) => {
+              setPeriod(v);
+              setOffset(0);
             }}
-          >
-            <h3>Absen masuk</h3>
-            <CameraCapture
-              facing="user"
-              label="Foto di depot"
-              photo={photo}
-              onChange={setPhoto}
-            />
-            <Submit disabled={!photo}>Catat kehadiran</Submit>
-          </AppForm>
-        )}
+            today={data.today}
+          />
+        }
+      />
+      <main className="rv-body rv-feature">
+        <AppForm
+          className="rv-card rv-stack"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            await act(() =>
+              api("/attendance", { method: "POST", body: { photo } }),
+            )
+              .then(() => setPhoto(""))
+              .catch(() => {});
+          }}
+        >
+          <h3>Catat kehadiran</h3>
+          <CameraCapture
+            facing="user"
+            label="Foto di depot"
+            photo={photo}
+            onChange={setPhoto}
+          />
+          <Submit disabled={!photo}>Catat kehadiran</Submit>
+        </AppForm>
+        {error && <p className="rv-error">{error}</p>}
+        <section className="rv-card rv-stack">
+          <div className="rv-section-heading">
+            <h3>Rekap absensi</h3>
+            <span>{report?.total || 0} catatan</span>
+          </div>
+          {report?.summary.map((row) => (
+            <div className="rv-line" key={row.user_id}>
+              <strong>{row.name}</strong>
+              <span>
+                {row.days} hari · {row.entries} kali absen
+              </span>
+            </div>
+          ))}
+          {report?.rows.map((row) => (
+            <div className="rv-attendance-row" key={row.id}>
+              <strong>{row.name}</strong>
+              <span>
+                {dateLabel(row.day)} · {timeLabel(row.created_at)}
+              </span>
+              <PhotoButton
+                id={row.photo_id}
+                label={"Foto absensi " + row.name}
+              />
+            </div>
+          ))}
+          {report && !report.rows.length && (
+            <p className="rv-note">Belum ada absensi pada periode ini.</p>
+          )}
+          {!!(offset || report?.hasMore) && (
+            <div className="rv-two">
+              <button
+                disabled={!offset}
+                onClick={() => setOffset(Math.max(0, offset - 50))}
+              >
+                Sebelumnya
+              </button>
+              <button
+                disabled={!report?.hasMore}
+                onClick={() => setOffset(offset + 50)}
+              >
+                Berikutnya
+              </button>
+            </div>
+          )}
+        </section>
       </main>
     </>
   );
@@ -3149,7 +3192,7 @@ function SettingsPage() {
             <ChevronDown />
           </summary>
           <div className="rv-stack">
-            {can(data.user, "correct") && (
+            {data.user.owner && (
               <button
                 className="rv-card menu-item"
                 onClick={() => navigate("corrections")}

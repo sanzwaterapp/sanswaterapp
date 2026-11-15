@@ -1,4 +1,16 @@
-# Verifikasi paket SansWater — diperbarui 8 November 2026
+# Verifikasi paket SansWater — diperbarui 15 November 2026
+
+## Revisi 2 — 15 November 2026
+
+- Seluruh suite regresi diperbarui mengikuti brief terbaru: 214 tes, 213 lulus, 0 gagal, 1 integrasi PostgreSQL opt-in dilewati. Tidak ada koneksi tulis ke produksi pada pengujian ini. Tes lama untuk absensi sekali sehari, riwayat berisi penerimaan langsung, dan RO gabungan diganti sesuai perilaku baru; salinan sebelumnya disimpan di backup pengembangan.
+- Tujuh belas skenario baru menguji koreksi/hapus penjualan berbayar dan prabayar, bagian pembayaran gabungan, referensi scope tanpa alokasi, diskon dan ongkir per produk, pemulihan stok termasuk stok minus, rollback saat audit gagal, versi usang, FIFO, absensi berulang/idempotensi/migrasi, batas tanggal staff, privasi payroll, rantai koreksi meteran, perhitungan ulang penjualan air, cursor invoice dan filter trip.
+- Pemeriksaan tampilan terpisah menguji split RO1/RO2, menu Payroll untuk staf, tampilan baca saja dan penyembunyian kontrol Owner. Pratinjau browser 375×641 memverifikasi penyimpanan koreksi transaksi, tampilan koreksi meteran, filter trip kemarin dan rekap absensi berulang; tidak ada error console pada pemeriksaan tersebut. Preview memakai database sementara di memori, bukan Supabase produksi.
+- Build Vite produksi berhasil. Bundler resmi Vercel menghasilkan Functions Node 24 dengan seluruh modul backend/sertifikat yang diperlukan. Paket sumber tetap 99 berkas; hasil build, pengujian dan backup berada di luar folder deploy.
+- Koreksi menggunakan transaksi atomik, audit alasan/pelaku, pemeriksaan versi serta replay key. Pembatalan invoice menghapus kontribusinya dari laporan kas/air dan membatalkan bagian pembayaran terkait, tanpa menghapus bagian pembayaran tagihan lain. ID baris invoice baru tidak memakai ulang cursor yang telah ditutup.
+- Selisih air = (dijual + stok sisa − stok awal) − meteran. Nilai lama dinormalisasi saat dibaca. Koreksi meteran mempertahankan foto asli dan memperbarui awal/pemakaian shift berikutnya; koreksi yang melampaui akhir shift berikutnya ditolak.
+- API Transaksi dan Payroll menolak periode staf di luar hari ini/kemarin. Payroll staf hanya memuat identitas, penugasan meter dan pengantaran akun sendiri. Laporan penuh hanya Owner/Manager; perubahan keuangan, meteran dan konfigurasi payroll hanya Owner.
+- Absensi mempertahankan struktur kolom Supabase yang sama. Constraint sekali sehari pada proyeksi SQLite lama dilepas otomatis dengan rowid, ID dan referensi foto tetap. Tidak ada schema atau environment Supabase tambahan dan tidak ada polling penuh baru. Rincian dimuat saat dibuka; daftar absensi/trip tetap berhalaman.
+- **Belum dideploy ke GitHub/Vercel oleh perubahan lokal ini.** Pengujian kamera HP/STB, unggah GAS nyata dan dua perangkat pada deployment publik tetap memerlukan uji setelah deploy.
 
 ## Verifikasi pembaruan stabilitas 8 November
 
@@ -24,7 +36,7 @@ Paket telah disiapkan untuk diunggah ke GitHub dan dibangun oleh Vercel. Build f
 
 - Angka awal dan stok awal mengikuti penutupan shift terakhir, termasuk lintas tengah malam atau beberapa hari. Pencatatan pertama memakai awal operasional hari itu (00.00 WIB); staf mengisi angka meteran awal sekali.
 - Tombol **Tutup shift & simpan** menyimpan angka, tiga foto dan stok sekaligus, dengan pesan sukses serta tautan laporan. Isian tetap ada jika penyimpanan gagal. Perubahan jumlah stok karena transaksi lain tidak lagi menolak laporan; perubahan kapasitas/nama/kelompok produk tetap diperiksa.
-- Halaman `#waterreports`, dibuka dari tombol **Laporan** di Kontrol air, menyediakan filter tanggal/periode dan akun. Setiap catatan menyimpan identitas akun penutup, interval, jumlah pengantaran/depot, volume, stok, selisih, produk, dan ID foto. RO 1 + RO 2 digabung; Mineral terpisah. Selisih = meteran − (diserahkan + stok sisa − stok awal).
+- Halaman `#waterreports`, dibuka dari tombol **Laporan** di Kontrol air, menyediakan filter tanggal/periode dan akun. Setiap catatan menyimpan identitas akun penutup, interval, jumlah pengantaran/depot, volume, stok, selisih, produk, dan ID foto. RO 1 + RO 2 digabung; Mineral terpisah. Rumus selisih terbaru: (dijual + stok sisa − stok awal) − meteran.
 - Foto tetap melalui GAS/Drive pada konfigurasi produksi. Pengujian form memakai server QA terpisah dan foto uji lokal; bukan pengujian kamera HP atau upload GAS nyata setelah deploy. Foto diuji dapat dibuka kembali setelah penyimpanan dan refresh.
 - Perbandingan meteran hanya mencakup produk RO/Mineral. Produk lain yang kapasitasnya aktif dicatat terpisah dan tidak mendistorsi selisih meteran.
 - Preview lokal berisi enam catatan contoh tanggal 3–5 November dengan penutup Dina, Farhan, Putra dan owner; angka stok/meteran dan foto contoh tersedia. Pengisian ini idempotent, tidak mengubah transaksi/katalog/akun, dan tidak dikirim ke Supabase produksi atau disertakan sebagai database dalam paket GitHub.

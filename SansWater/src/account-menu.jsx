@@ -173,7 +173,7 @@ export function createAccountMenu({
                 </small>
               </span>
             </div>
-            {!info.current && (
+            {
               <button
                 type="button"
                 className={photo ? "rv-secondary" : "rv-primary"}
@@ -184,10 +184,14 @@ export function createAccountMenu({
                 }}
               >
                 <Camera size={17} />
-                {photo ? "Ubah foto absensi" : "Absen masuk"}
+                {photo
+                  ? "Ubah foto absensi"
+                  : info.current
+                    ? "Absen lagi"
+                    : "Absen masuk"}
               </button>
-            )}
-            {!info.current && camera && (
+            }
+            {camera && (
               <CaptureScreen
                 title="Foto absensi"
                 caption="Foto di depot"
@@ -197,7 +201,7 @@ export function createAccountMenu({
                 onClose={() => setCamera(false)}
               />
             )}
-            {!info.current && photo && (
+            {photo && (
               <AppForm
                 className="rv-stack"
                 onSubmit={async (e) => {

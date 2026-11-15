@@ -14,6 +14,7 @@ import { createCashPage, FundSummary } from "./cash-pages.jsx";
 import {
   createReportExplorer,
   createCashFlowList,
+  createFinancialActions,
   CashMethodDetails,
 } from "./report-explorer.jsx";
 import DurationChip from "./DurationChip.jsx";
@@ -83,6 +84,7 @@ import {
   filters,
   filterLabels,
   duration,
+  sortDisplayOrders,
 } from "./api.js";
 
 const orderStatusChoices = [
@@ -135,6 +137,7 @@ export function createApprovedPages(UI) {
     Period,
     SearchField,
   } = UI;
+  const FinancialActions = createFinancialActions(UI);
   const go = (page) => {
     window.location.hash = page;
   };
@@ -325,31 +328,58 @@ export function createApprovedPages(UI) {
       </div>
     );
   }
-  function AttendanceList() {
-    const { data } = useApp();
+  function AttendanceList({ query }) {
+    const [offset, setOffset] = useState(0);
+    useEffect(() => setOffset(0), [query]);
+    const [attendance, error] = useResource(
+      "/attendance?" + query + "&offset=" + offset,
+      { resetKey: query, keepPrevious: true },
+    );
+    const rows = attendance?.rows || [];
     return (
       <div className="rv-card rv-attendance">
         <div className="rv-section-heading">
           <h3>
-            <Camera size={14} /> Absensi hari ini
+            <Camera size={14} /> Absensi periode ini
           </h3>
           <span className="rv-attendance-count">
-            {data.attendance.length} masuk
+            {attendance?.total || 0} masuk
           </span>
         </div>
         <div className="rv-attendance-list">
-          {data.attendance.map((a) => (
+          {rows.map((a) => (
             <div className="rv-attendance-row" key={a.id}>
               <span className="rv-attendance-name">
                 <span className="rv-staff-dot">{a.name[0]}</span>
                 <strong>{a.name}</strong>
               </span>
-              <time>{timeLabel(a.created_at)}</time>
+              <time>
+                {dateLabel(a.created_at)} · {timeLabel(a.created_at)}
+              </time>
               <PhotoButton id={a.photo_id} label={"Foto absensi " + a.name} />
             </div>
           ))}
-          {!data.attendance.length && (
-            <span className="rv-note">Belum ada absensi hari ini.</span>
+          {error && <span className="rv-error">{error}</span>}
+          {(offset > 0 || attendance?.hasMore) && (
+            <div className="rv-report-pagination">
+              <button
+                type="button"
+                disabled={!offset}
+                onClick={() => setOffset(Math.max(0, offset - 50))}
+              >
+                Sebelumnya
+              </button>
+              <button
+                type="button"
+                disabled={!attendance?.hasMore}
+                onClick={() => setOffset(offset + 50)}
+              >
+                Berikutnya
+              </button>
+            </div>
+          )}
+          {!rows.length && (
+            <span className="rv-note">Belum ada absensi pada periode ini.</span>
           )}
         </div>
       </div>
@@ -705,7 +735,7 @@ export function createApprovedPages(UI) {
               error={error}
             />
           )}
-          <AttendanceList />
+          <AttendanceList query={query} />
           {can(data.user, "stock") && (
             <details className="rv-card rv-extra rv-home-extra">
               <summary>
@@ -1353,9 +1383,7 @@ export function createApprovedPages(UI) {
           : previous.filter((id) => eligible.has(id)),
       );
     }, [data.orders]);
-    const shown = [...(periodOrders?.orders || [])].sort(
-      (a, b) => duration(b, tick) - duration(a, tick),
-    );
+    const shown = sortDisplayOrders(periodOrders?.orders || [], tick);
     return (
       <>
         <Header
@@ -2432,8 +2460,18 @@ export function createApprovedPages(UI) {
       [open, setOpen] = useState(null),
       [expanded, setExpanded] = useState(""),
       [editingOrder, setEditingOrder] = useState(""),
-      [totals, setTotals] = useState({});
-    const groups = groupTripsByNumber(data.trips, data.today),
+      [totals, setTotals] = useState({}),
+      [period, setPeriod, query] = usePeriod(),
+      [offset, setOffset] = useState(0),
+      [result, error] = useResource("/trips?" + query + "&offset=" + offset);
+    const trips = result?.trips || [],
+      days = [...new Set(trips.map((t) => t.day))];
+    const groups = days.flatMap((day) =>
+        groupTripsByNumber(trips, day).map((g) => ({
+          ...g,
+          key: day + ":" + g.number,
+        })),
+      ),
       current = groups.filter((g) => g.active),
       previous = groups.filter((g) => !g.active);
     function renderRows(t) {
@@ -2636,19 +2674,19 @@ export function createApprovedPages(UI) {
     }
     function render(group, index) {
       const latest = group.trips[0],
-        isOpen = open === group.number || (open === null && index === 0),
+        isOpen = open === group.key || (open === null && index === 0),
         multiple = group.trips.length > 1,
         couriers = [...new Set(group.trips.map((t) => t.courier))];
       return (
         <details
           className={"rv-trip " + (!group.active ? "rv-trip-closed" : "")}
-          key={group.number}
+          key={group.key}
           open={isOpen}
         >
           <summary
             onClick={(e) => {
               e.preventDefault();
-              setOpen(isOpen ? "" : group.number);
+              setOpen(isOpen ? "" : group.key);
             }}
           >
             <span className="rv-trip-titleline">
@@ -2748,6 +2786,18 @@ export function createApprovedPages(UI) {
           title="Trip Pengantaran"
           icon={Truck}
           className="rv-trip-page-header"
+          filters={
+            <PeriodFilters
+              value={period}
+              onChange={(v) => {
+                setPeriod(v);
+                setOffset(0);
+                setOpen(null);
+              }}
+              today={data.today}
+              label="Periode trip"
+            />
+          }
         >
           {canAccessPage(data.user, "orders") && (
             <button
@@ -2762,7 +2812,7 @@ export function createApprovedPages(UI) {
         </Header>
         <main className="rv-body">
           <div className="rv-section-heading">
-            <h3>Trip hari ini</h3>
+            <h3>Trip pengantaran</h3>
             <span className="rv-note">
               {groups
                 .flatMap((group) => group.trips)
@@ -2776,7 +2826,34 @@ export function createApprovedPages(UI) {
           </div>
           {current.map(render)}
           {previous.map((g, i) => render(g, current.length + i + 1))}
-          {!groups.length && <Empty>Belum ada trip.</Empty>}
+          {error && (
+            <p role="alert" className="rv-error">
+              {error}
+            </p>
+          )}
+          {!result && !error && <LoadingState />}
+          {result && !groups.length && (
+            <Empty>Belum ada trip pada periode ini.</Empty>
+          )}
+          {(offset > 0 || result?.hasMore) && (
+            <div className="rv-report-pagination">
+              <button
+                type="button"
+                disabled={!offset}
+                onClick={() => setOffset(Math.max(0, offset - 30))}
+              >
+                Sebelumnya
+              </button>
+              <span>{result?.total || 0} trip</span>
+              <button
+                type="button"
+                disabled={!result?.hasMore}
+                onClick={() => setOffset(offset + 30)}
+              >
+                Berikutnya
+              </button>
+            </div>
+          )}
         </main>
       </>
     );
@@ -2892,6 +2969,7 @@ export function createApprovedPages(UI) {
                     customer={row.customer}
                     onClick={() => setReceiptId(row.id)}
                   />
+                  <FinancialActions id={row.id} kind="payment" />
                 </div>
               </article>
             ))}
@@ -3176,6 +3254,7 @@ export function createApprovedPages(UI) {
             </details>
           </div>
         )}
+        <FinancialActions id={r.id} />
       </article>
     );
     return (
@@ -3412,6 +3491,7 @@ export function createApprovedPages(UI) {
               onChange={setPeriod}
               today={data.today}
               label="Periode transaksi"
+              recentOnly={!can(data.user, "reports")}
             />
           }
         />

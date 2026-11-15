@@ -35,6 +35,7 @@ export const PERMISSIONS = [
   "display",
   "attendanceView",
   "waterControl",
+  "payroll",
 ];
 export const id = () => randomUUID();
 export const hash = (value) => createHash("sha256").update(value).digest("hex");
@@ -42,6 +43,14 @@ export const dayWib = (date) =>
   new Date(new Date(date).getTime() + 7 * 3600000).toISOString().slice(0, 10);
 export const has = (user, permission) =>
   !!user.owner || user.permissions.includes(permission);
+export function staffFinancialPeriod(user, period, now) {
+  if (has(user, "reports")) return period;
+  const today = dayWib(now),
+    yesterday = dayWib(new Date(Date.parse(now) - 86400000));
+  if (period.from < yesterday || period.to > today)
+    fail("Akses karyawan hanya untuk hari ini dan kemarin.", 403);
+  return period;
+}
 export function fail(message, status = 400) {
   const e = new Error(message);
   e.status = status;
@@ -705,7 +714,10 @@ export function createDomain(
       fail("Bayar sekarang harus lunas.");
     const invoiceId = id();
     run(
-      "INSERT INTO invoices VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      "INSERT INTO invoices(rowid,id,order_id,customer_id,customer_name,customer_code,trip_id,net,shipping,discount,items,discounts,recorded_at,actor_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+      get(
+        "SELECT MAX(n)+1 n FROM (SELECT COALESCE(MAX(rowid),0) n FROM invoices UNION ALL SELECT COALESCE(MAX(invoice_cursor),0) n FROM water_checks)",
+      ).n,
       invoiceId,
       orderRow.id,
       orderRow.customer_id,
@@ -891,6 +903,7 @@ export function createDomain(
     };
   }
   return {
+    db,
     now,
     get,
     all,

@@ -38,7 +38,7 @@ export function waterComparison(readings, sales, opening, closing) {
       openingLiters,
       closingLiters,
       expectedLiters,
-      differenceLiters: roundWater(usageLiters - expectedLiters),
+      differenceLiters: roundWater(expectedLiters - usageLiters),
     };
   });
 }

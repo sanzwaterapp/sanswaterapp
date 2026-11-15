@@ -33,7 +33,7 @@ export function openDatabase(path) {
     CREATE TABLE IF NOT EXISTS payments(id TEXT PRIMARY KEY,customer_id TEXT REFERENCES customers(id),amount INTEGER NOT NULL CHECK(amount>=0),method TEXT NOT NULL CHECK(method IN ('Tunai','QRIS')),tender INTEGER,proof_id TEXT,scope TEXT NOT NULL,created_at TEXT NOT NULL,actor_id TEXT NOT NULL REFERENCES users(id),version INTEGER NOT NULL DEFAULT 1);
     CREATE TABLE IF NOT EXISTS allocations(payment_id TEXT NOT NULL REFERENCES payments(id),invoice_id TEXT NOT NULL REFERENCES invoices(id),amount INTEGER NOT NULL CHECK(amount>0),PRIMARY KEY(payment_id,invoice_id));
     CREATE TABLE IF NOT EXISTS stock_movements(id TEXT PRIMARY KEY,product_id TEXT NOT NULL REFERENCES products(id),qty INTEGER NOT NULL,kind TEXT NOT NULL,invoice_id TEXT REFERENCES invoices(id),actor_id TEXT NOT NULL REFERENCES users(id),created_at TEXT NOT NULL,note TEXT NOT NULL,UNIQUE(invoice_id,product_id));
-    CREATE TABLE IF NOT EXISTS attendance(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),day TEXT NOT NULL,created_at TEXT NOT NULL,photo_id TEXT NOT NULL,UNIQUE(user_id,day));
+    CREATE TABLE IF NOT EXISTS attendance(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),day TEXT NOT NULL,created_at TEXT NOT NULL,photo_id TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS photos(id TEXT PRIMARY KEY,kind TEXT NOT NULL,owner_id TEXT NOT NULL REFERENCES users(id),mime TEXT NOT NULL,bytes BLOB NOT NULL,created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS audit(id TEXT PRIMARY KEY,actor_id TEXT NOT NULL REFERENCES users(id),action TEXT NOT NULL,object_id TEXT NOT NULL,before_json TEXT,after_json TEXT,created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS idempotency(user_id TEXT NOT NULL REFERENCES users(id),key TEXT NOT NULL,fingerprint TEXT NOT NULL,response TEXT NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(user_id,key));
@@ -215,6 +215,25 @@ export function openDatabase(path) {
       db.exec("PRAGMA foreign_keys=ON");
     }
   }
+  // Column layout stays compatible with the cloud record store. Preserve rowids
+  // while removing the old one-entry-per-day constraint on existing projections.
+  if (
+    db
+      .prepare("PRAGMA index_list(attendance)")
+      .all()
+      .some((i) => i.unique && i.origin === "u")
+  ) {
+    transaction(db, () =>
+      db.exec(
+        "CREATE TABLE attendance_repeat(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),day TEXT NOT NULL,created_at TEXT NOT NULL,photo_id TEXT NOT NULL);" +
+          "INSERT INTO attendance_repeat(rowid,id,user_id,day,created_at,photo_id) SELECT rowid,id,user_id,day,created_at,photo_id FROM attendance;" +
+          "DROP TABLE attendance; ALTER TABLE attendance_repeat RENAME TO attendance;",
+      ),
+    );
+  }
+  db.exec(
+    "CREATE INDEX IF NOT EXISTS attendance_user_day ON attendance(user_id,day,created_at)",
+  );
   return db;
 }
 

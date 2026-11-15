@@ -4,6 +4,16 @@ Folder **SansWater** berisi aplikasi React/Vite dan API Node.js 24 untuk Vercel 
 
 Mulai dari **[DEPLOY-VERCEL.md](DEPLOY-VERCEL.md)**. Hasil pemeriksaan, arsitektur dan batas penggunaan ada di **[VERIFIKASI.md](VERIFIKASI.md)**.
 
+## Revisi 2 — 15 November 2026
+
+- Antrean Aktif mendahulukan pesanan yang belum diantar, lalu pengantaran; durasi terlama tetap dipertahankan, termasuk antarhalaman. Trip memiliki filter periode dan halaman riwayat tersendiri.
+- Owner dapat membuka **Koreksi** pada rincian transaksi/tagihan atau riwayat pembayaran hutang. Alasan wajib diisi. **Hapus transaksi dan pembayaran** mengembalikan stok serta membatalkan bagian pembayarannya; bagian untuk tagihan lain tetap tercatat. Konfirmasi, versi, audit dan idempotensi melindungi perubahan. Pembayaran gabungan/prabayar yang perlu diubah nominalnya dikoreksi melalui pembayaran terlebih dahulu.
+- Owner dapat mengoreksi angka pada rincian laporan meteran, atau melalui **Koreksi meteran** di Catat meter. Angka awal berikutnya ikut diperbarui; foto asli tetap tersimpan. Selisih memakai **seharusnya − meteran**, termasuk catatan lama.
+- Payroll memisahkan RO 1, RO 2 dan Mineral pada masing-masing shift, dengan penanggung jawab dan tarif sendiri. Perbandingan kontrol air tetap menggabungkan RO 1 + RO 2. Pengaturan RO gabungan lama menjadi nilai awal kedua meter; Owner dapat memisahkannya. Karyawan memperoleh tampilan baca saja untuk akun sendiri, hari ini dan kemarin; Owner/Manager dapat membaca periode penuh, pengaturan hanya Owner.
+- Riwayat pembayaran hutang hanya memuat pelunasan hutang. Absensi dapat dicatat berulang tanpa jam wajib; rekap tersedia di menu **Rekap absensi**, dan absensi Beranda mengikuti periode yang dipilih.
+
+Perubahan ini perlu diunggah ulang ke GitHub dan dideploy di Vercel. Tidak ada environment baru, impor ulang data, atau SQL Supabase tambahan. Penyesuaian batas absensi pada proyeksi lokal berjalan otomatis, dengan ID/foto lama dipertahankan. Pengujian memakai database sementara; data produksi tidak diubah.
+
 ## Isi folder
 
 - `src/`: tampilan dan alur kerja aplikasi; tema yang disetujui dipertahankan.

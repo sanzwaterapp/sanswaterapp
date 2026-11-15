@@ -14,7 +14,11 @@ import { CaptureScreen } from "./DepartureCamera.jsx";
 import { api } from "./api.js";
 import { formatLiters } from "./water-volume.js";
 import { waterComparison } from "./water-stock.js";
-import { WaterFlow, WaterMenu } from "./water-reports.jsx";
+import {
+  WaterFlow,
+  WaterMenu,
+  createMeterCorrection,
+} from "./water-reports.jsx";
 
 export function createWaterControl({
   useApp,
@@ -23,6 +27,7 @@ export function createWaterControl({
   Submit,
   useResource,
 }) {
+  const MeterCorrection = createMeterCorrection({ useApp, useResource });
   return function WaterControl() {
     const { act } = useApp(),
       [revision, setRevision] = useState(0),
@@ -192,6 +197,10 @@ export function createWaterControl({
                   dibuka besok.
                 </p>
               )}
+              <MeterCorrection
+                id={info.previous?.id}
+                onSaved={() => setRevision((v) => v + 1)}
+              />
               <AppForm
                 className="rv-stack rv-water-form"
                 validationDurationMs={2000}

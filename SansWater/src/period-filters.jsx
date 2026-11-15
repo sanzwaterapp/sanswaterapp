@@ -9,6 +9,7 @@ export default function PeriodFilters({
   onChange,
   today,
   label = "Periode",
+  recentOnly = false,
 }) {
   const [calendarOpen, setCalendarOpen] = useState(false);
   return (
@@ -21,22 +22,26 @@ export default function PeriodFilters({
             ["week", "Minggu ini"],
             ["month", "Bulan ini"],
             ["range", "Custom"],
-          ].map(([kind, text]) => (
-            <button
-              type="button"
-              key={kind}
-              aria-pressed={value.kind === kind}
-              aria-haspopup={kind === "range" ? "dialog" : undefined}
-              aria-expanded={kind === "range" ? calendarOpen : undefined}
-              onClick={() =>
-                kind === "range"
-                  ? setCalendarOpen(true)
-                  : onChange({ ...value, kind })
-              }
-            >
-              {text}
-            </button>
-          ))}
+          ]
+            .filter(
+              ([kind]) => !recentOnly || ["today", "yesterday"].includes(kind),
+            )
+            .map(([kind, text]) => (
+              <button
+                type="button"
+                key={kind}
+                aria-pressed={value.kind === kind}
+                aria-haspopup={kind === "range" ? "dialog" : undefined}
+                aria-expanded={kind === "range" ? calendarOpen : undefined}
+                onClick={() =>
+                  kind === "range"
+                    ? setCalendarOpen(true)
+                    : onChange({ ...value, kind })
+                }
+              >
+                {text}
+              </button>
+            ))}
         </div>
         {value.kind === "range" && (
           <button

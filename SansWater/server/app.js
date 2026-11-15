@@ -29,6 +29,7 @@ import {
   dayWib,
   has,
   requireAccess,
+  staffFinancialPeriod,
   fail,
   text,
   integer,
@@ -556,7 +557,7 @@ export function createApp(options = {}) {
             (active
               ? ""
               : " AND datetime(COALESCE((SELECT max(i.recorded_at) FROM invoices i WHERE i.order_id=o.id),(SELECT max(a.created_at) FROM audit a WHERE a.object_id=o.id AND a.action IN ('order.status','trip.result')),o.created_at))>=datetime(?) AND datetime(COALESCE((SELECT max(i.recorded_at) FROM invoices i WHERE i.order_id=o.id),(SELECT max(a.created_at) FROM audit a WHERE a.object_id=o.id AND a.action IN ('order.status','trip.result')),o.created_at))<datetime(?)") +
-            " ORDER BY datetime(o.received_at) ASC,datetime(o.created_at) ASC,o.rowid ASC",
+            " ORDER BY (o.status='delivery'),datetime(o.received_at) ASC,datetime(o.created_at) ASC,o.rowid ASC",
           ...args,
         )
         .map(orderWithPayment),
@@ -1282,6 +1283,45 @@ export function createApp(options = {}) {
     );
     return { ok: true };
   });
+  route("GET", "/api/trips", "trips", (ctx) => {
+    const p = d.period(ctx.query),
+      offset = integer(
+        Number(ctx.query.get("offset") || 0),
+        "Halaman trip",
+        0,
+        10000000,
+      );
+    const where =
+        " WHERE t.day>=? AND t.day<=?" +
+        (ctx.user.owner ? "" : " AND t.courier_id=?"),
+      args = [p.from, p.to, ...(ctx.user.owner ? [] : [ctx.user.id])];
+    const total = d.get("SELECT COUNT(*) n FROM trips t" + where, ...args).n;
+    const trips = d
+      .all(
+        "SELECT t.*,u.name courier FROM trips t JOIN users u ON u.id=t.courier_id" +
+          where +
+          " ORDER BY t.day DESC,t.number DESC,t.id LIMIT 30 OFFSET ?",
+        ...args,
+        offset,
+      )
+      .map((t) => ({
+        ...t,
+        orders: d
+          .all(
+            "SELECT x.*,o.name,o.code,i.id invoice_id,i.net+i.shipping total FROM trip_orders x JOIN orders o ON o.id=x.order_id LEFT JOIN invoices i ON i.order_id=o.id AND i.trip_id=x.trip_id WHERE x.trip_id=?",
+            t.id,
+          )
+          .map((r) => ({
+            ...r,
+            items: JSON.parse(r.items),
+            revision: d.quantityRevision(
+              d.find("orders", r.order_id),
+              r.outcome === "delivery" ? null : r.recorded_at,
+            ),
+          })),
+      }));
+    return { trips, total, offset, hasMore: offset + trips.length < total };
+  });
   route("POST", "/api/trips", "trips", (ctx) => {
     const ids = ctx.body.orderIds;
     if (
@@ -1473,6 +1513,7 @@ export function createApp(options = {}) {
       params.push(search);
     }
     const rawCursor = ctx.query.get("cursor");
+    let queueAt = d.now();
     if (rawCursor) {
       let cursor;
       try {
@@ -1482,7 +1523,12 @@ export function createApp(options = {}) {
           Buffer.from(rawCursor, "base64url").toString("utf8"),
         );
         if (
-          cursor.v !== 1 ||
+          cursor.v !== 3 ||
+          typeof cursor.queueAt !== "string" ||
+          !Number.isFinite(Date.parse(cursor.queueAt)) ||
+          !Number.isSafeInteger(cursor.minutes) ||
+          cursor.minutes < 0 ||
+          ![0, 1].includes(cursor.rank) ||
           cursor.from !== from ||
           cursor.to !== to ||
           cursor.filter !== filter ||
@@ -1498,13 +1544,25 @@ export function createApp(options = {}) {
       } catch {
         fail("Halaman pesanan tidak cocok. Pilih ulang filter tanggal.");
       }
-      clauses.push("(o.received_at>? OR (o.received_at=? AND o.id>?))");
-      params.push(cursor.at, cursor.at, cursor.id);
+      queueAt = cursor.queueAt;
+      clauses.push(
+        "((o.status='delivery')>? OR ((o.status='delivery')=? AND (queue_minutes<? OR (queue_minutes=? AND (o.received_at>? OR (o.received_at=? AND o.id>?))))))",
+      );
+      params.push(
+        cursor.rank,
+        cursor.rank,
+        cursor.minutes,
+        cursor.minutes,
+        cursor.at,
+        cursor.at,
+        cursor.id,
+      );
     }
     const rows = d.all(
-      "SELECT o.*,u.name courier FROM orders o LEFT JOIN trips t ON t.id=o.current_trip_id LEFT JOIN users u ON u.id=t.courier_id WHERE " +
+      "SELECT o.*,u.name courier,CASE WHEN o.kind='counter' THEN 0 ELSE MAX(0,CAST((unixepoch(COALESCE(o.first_departure_at,?))-unixepoch(o.received_at))/60 AS INTEGER)) END queue_minutes FROM orders o LEFT JOIN trips t ON t.id=o.current_trip_id LEFT JOIN users u ON u.id=t.courier_id WHERE " +
         clauses.join(" AND ") +
-        " ORDER BY o.received_at ASC,o.id ASC LIMIT ?",
+        " ORDER BY (o.status='delivery') ASC,queue_minutes DESC,o.received_at ASC,o.id ASC LIMIT ?",
+      queueAt,
       ...params,
       limit + 1,
     );
@@ -1517,7 +1575,10 @@ export function createApp(options = {}) {
       nextCursor: hasMore
         ? Buffer.from(
             JSON.stringify({
-              v: 1,
+              v: 3,
+              queueAt,
+              minutes: last.queue_minutes,
+              rank: Number(last.status === "delivery"),
               from,
               to,
               filter,
@@ -1532,7 +1593,11 @@ export function createApp(options = {}) {
   });
   route("GET", "/api/debt-payments", "debts", (ctx) => {
     const params = [],
-      clauses = ["p.customer_id IS NOT NULL", "p.amount>0"];
+      clauses = [
+        "p.customer_id IS NOT NULL",
+        "p.amount>0",
+        "NOT EXISTS(SELECT 1 FROM order_prepayments op WHERE op.payment_id=p.id) AND NOT EXISTS(SELECT 1 FROM audit a WHERE a.object_id=p.id AND a.action='payment.create' AND json_extract(a.after_json,'$.origin')='sale') AND NOT EXISTS(SELECT 1 FROM audit a WHERE a.action='order.complete' AND json_extract(a.after_json,'$.paymentId')=p.id)",
+      ];
     if (ctx.query.get("period") !== "all") {
       const { start, end } = d.period(ctx.query);
       clauses.push("p.created_at>=?", "p.created_at<?");
@@ -1579,6 +1644,8 @@ export function createApp(options = {}) {
     );
     if (!row) fail("Pembayaran tidak ditemukan.", 404);
     const { prepayment, metadata, immediate, ...payment } = row;
+    if (isSaleReceipt({ prepayment, metadata, immediate }))
+      fail("Pembayaran ini merupakan pembayaran langsung penjualan.", 404);
     const allocations = d.all(
       "SELECT i.id,i.recorded_at,a.amount FROM allocations a JOIN invoices i ON i.id=a.invoice_id WHERE a.payment_id=? ORDER BY i.recorded_at,i.id",
       payment.id,
@@ -1642,11 +1709,11 @@ export function createApp(options = {}) {
   route("GET", "/api/customers/:id/payments", "debts", (ctx) => {
     d.find("customers", ctx.params.id);
     return d.all(
-      "SELECT p.id,p.amount,p.method,p.proof_id,p.created_at,p.actor_id,u.name actor FROM payments p JOIN users u ON u.id=p.actor_id WHERE p.customer_id=? ORDER BY p.created_at DESC,p.rowid DESC LIMIT 100",
+      "SELECT p.id,p.amount,p.method,p.proof_id,p.created_at,p.actor_id,u.name actor FROM payments p JOIN users u ON u.id=p.actor_id WHERE p.customer_id=? AND p.amount>0 AND NOT EXISTS(SELECT 1 FROM order_prepayments op WHERE op.payment_id=p.id) AND NOT EXISTS(SELECT 1 FROM audit a WHERE a.object_id=p.id AND a.action='payment.create' AND json_extract(a.after_json,'$.origin')='sale') AND NOT EXISTS(SELECT 1 FROM audit a WHERE a.action='order.complete' AND json_extract(a.after_json,'$.paymentId')=p.id) ORDER BY p.created_at DESC,p.rowid DESC LIMIT 100",
       ctx.params.id,
     );
   });
-  route("GET", "/api/payments", "correct", (ctx) =>
+  route("GET", "/api/payments", "owner", (ctx) =>
     d.all(
       "SELECT p.id,p.amount,p.method,p.tender,p.proof_id,p.created_at,p.actor_id,p.version,u.name actor,c.name customer FROM payments p JOIN users u ON u.id=p.actor_id LEFT JOIN customers c ON c.id=p.customer_id" +
         (ctx.user.owner ? "" : " WHERE p.actor_id=?") +
@@ -1654,11 +1721,11 @@ export function createApp(options = {}) {
       ...(ctx.user.owner ? [] : [ctx.user.id]),
     ),
   );
-  route("PATCH", "/api/payments/:id", "correct", (ctx) => {
+  route("PATCH", "/api/payments/:id", "owner", (ctx) => {
     const p = d.find("payments", ctx.params.id),
       b = ctx.body;
-    if (!ctx.user.owner && p.actor_id !== ctx.user.id)
-      fail("Hanya dapat mengoreksi catatan sendiri.", 403);
+    if (!ctx.user.owner)
+      fail("Hanya Owner yang dapat mengoreksi pembayaran.", 403);
     if (p.version !== b.version)
       fail("Pembayaran sudah dikoreksi. Muat ulang.", 409);
     const reason = text(b.reason, "Alasan koreksi", 500),
@@ -1760,7 +1827,11 @@ export function createApp(options = {}) {
       !["orders", "counter", "trips", "reports"].some((p) => has(ctx.user, p))
     )
       fail("Tidak ada akses riwayat.", 403);
-    const { start, end } = d.period(ctx.query);
+    const { start, end } = staffFinancialPeriod(
+      ctx.user,
+      d.period(ctx.query),
+      d.now(),
+    );
     return d
       .all(
         d.invoiceQuery +
@@ -1774,13 +1845,7 @@ export function createApp(options = {}) {
       .map(decodeInvoice);
   });
   route("POST", "/api/attendance", "login", (ctx) => {
-    const day = dayWib(d.now()),
-      existing = d.get(
-        "SELECT * FROM attendance WHERE user_id=? AND day=?",
-        ctx.user.id,
-        day,
-      );
-    if (existing) return existing;
+    const day = dayWib(d.now());
     const photoId = d.photo(ctx.user, ctx.body.photo, "attendance"),
       recordId = id();
     d.run(
@@ -1794,16 +1859,61 @@ export function createApp(options = {}) {
     d.audit(ctx.user, "attendance.in", recordId, null, { day });
     return d.find("attendance", recordId);
   });
+  route("GET", "/api/attendance", "login", (ctx) => {
+    const p = d.period(ctx.query),
+      actor = has(ctx.user, "attendanceView")
+        ? ctx.query.get("actor") || ""
+        : ctx.user.id;
+    if (
+      !has(ctx.user, "attendanceView") &&
+      ctx.query.get("actor") &&
+      ctx.query.get("actor") !== ctx.user.id
+    )
+      fail("Hanya dapat melihat absensi sendiri.", 403);
+    const args = [p.from, p.to, ...(actor ? [actor] : [])],
+      where =
+        " WHERE a.day>=? AND a.day<=?" + (actor ? " AND a.user_id=?" : "");
+    const offset = integer(
+      Number(ctx.query.get("offset") || 0),
+      "Halaman absensi",
+      0,
+      10000000,
+    );
+    const join = " FROM attendance a JOIN users u ON u.id=a.user_id";
+    const total = d.get("SELECT COUNT(*) total" + join + where, ...args).total;
+    return {
+      from: p.from,
+      to: p.to,
+      total,
+      offset,
+      rows: d.all(
+        "SELECT a.*,u.name" +
+          join +
+          where +
+          " ORDER BY a.created_at DESC,a.rowid DESC LIMIT 50 OFFSET ?",
+        ...args,
+        offset,
+      ),
+      summary: d.all(
+        "SELECT a.user_id,u.name,COUNT(*) entries,COUNT(DISTINCT a.day) days" +
+          join +
+          where +
+          " GROUP BY a.user_id ORDER BY u.name",
+        ...args,
+      ),
+      hasMore: offset + 50 < total,
+    };
+  });
   route("GET", "/api/account/attendance", "login", (ctx) => ({
     today: dayWib(d.now()),
     current:
       d.get(
-        "SELECT id,day,created_at,photo_id FROM attendance WHERE user_id=? AND day=?",
+        "SELECT id,day,created_at,photo_id FROM attendance WHERE user_id=? AND day=? ORDER BY created_at DESC,rowid DESC LIMIT 1",
         ctx.user.id,
         dayWib(d.now()),
       ) || null,
     rows: d.all(
-      "SELECT id,day,created_at,photo_id FROM attendance WHERE user_id=? ORDER BY day DESC,created_at DESC LIMIT 7",
+      "SELECT id,day,created_at,photo_id FROM attendance WHERE user_id=? ORDER BY created_at DESC,rowid DESC LIMIT 14",
       ctx.user.id,
     ),
   }));

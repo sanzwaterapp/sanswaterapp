@@ -8,6 +8,7 @@ import {
   Wallet,
   Droplets,
   Calculator,
+  Camera,
 } from "lucide-react";
 import { can } from "./api.js";
 
@@ -55,7 +56,14 @@ const menuItems = [
     "reports",
   ],
   ["display", "Tampilan TV", "Pantau antrean pesanan", TvMinimal, "display"],
-  ["payroll", "Payroll", "Galon dan gaji per staf", Calculator, "reports"],
+  ["payroll", "Payroll", "Galon dan gaji per staf", Calculator],
+  [
+    "attendance",
+    "Rekap absensi",
+    "Kehadiran karyawan",
+    Camera,
+    "attendanceView",
+  ],
   ["settings", "Pengaturan", "Durasi dan tampilan aplikasi", Settings2],
 ];
 

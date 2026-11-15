@@ -1,4 +1,4 @@
-import { fail, has, id, dayWib, integer } from "./domain.js";
+import { fail, has, id, dayWib, integer, hash, text } from "./domain.js";
 import { waterSummary, waterBreakdown, waterActivity } from "./water-volume.js";
 import { waterGroup, waterComparison } from "../src/water-stock.js";
 
@@ -48,7 +48,17 @@ export function registerWaterControl(route, db, d) {
       ungroupedLiters: shift ? snapshot.ungroupedLiters || 0 : 0,
       readings: JSON.parse(row.readings),
       stock: row.stock_snapshot ? JSON.parse(row.stock_snapshot) : null,
-      comparison: shift ? snapshot.groups : snapshot,
+      revision: hash(
+        JSON.stringify([
+          row.readings,
+          row.stock_snapshot,
+          row.comparison_snapshot,
+        ]),
+      ),
+      comparison: (shift ? snapshot.groups : snapshot)?.map((g) => ({
+        ...g,
+        differenceLiters: rounded(g.expectedLiters - g.usageLiters),
+      })),
     };
   };
   const stockOptions = (previous) => {
@@ -240,8 +250,8 @@ export function registerWaterControl(route, db, d) {
       salesLiters: check.sales_liters,
       expectedLiters: check.comparison ? expectedLiters : check.sales_liters,
       differenceLiters: rounded(
-        check.usage_liters -
-          (check.comparison ? expectedLiters : check.sales_liters),
+        (check.comparison ? expectedLiters : check.sales_liters) -
+          check.usage_liters,
       ),
       legacyInvoices: check.legacy_invoices,
       ungroupedLiters: check.ungroupedLiters,
@@ -431,6 +441,79 @@ export function registerWaterControl(route, db, d) {
         };
       }),
     };
+  });
+  route("PATCH", "/api/water-reports/:id", "login", (ctx) => {
+    if (!ctx.user.owner)
+      fail("Hanya Owner yang dapat mengoreksi meteran.", 403);
+    const row = d.find("water_checks", ctx.params.id),
+      before = decode(row);
+    if (ctx.body.revision !== before.revision)
+      fail("Meteran sudah berubah. Buka ulang laporan.", 409);
+    const reason = text(ctx.body.reason, "Alasan koreksi", 500);
+    if (
+      !Array.isArray(ctx.body.readings) ||
+      ctx.body.readings.length !== 3 ||
+      new Set(ctx.body.readings.map((r) => r.meterId)).size !== 3
+    )
+      fail("Lengkapi ketiga meteran.");
+    const parent = row.previous_id
+      ? decode(d.find("water_checks", row.previous_id))
+      : null;
+    const readings = before.readings.map((old) => {
+      const input = ctx.body.readings.find((r) => r.meterId === old.meterId);
+      if (!input) fail("Meteran belum lengkap.");
+      const opening = parent
+          ? parent.readings.find((r) => r.meterId === old.meterId).closing
+          : reading(input.opening),
+        closing = reading(input.closing);
+      if (closing < opening)
+        fail("Angka akhir tidak boleh kurang dari angka awal.");
+      return { ...old, opening, closing, liters: rounded(closing - opening) };
+    });
+    function save(raw, next) {
+      const prior = decode(raw),
+        snapshot = JSON.parse(raw.comparison_snapshot || "null");
+      if (snapshot?.scope === "shift") {
+        const sales = Object.fromEntries(
+          prior.comparison.map((g) => [g.group, g.salesLiters]),
+        );
+        snapshot.groups = waterComparison(
+          next,
+          sales,
+          prior.stock.opening,
+          prior.stock.closing,
+        );
+      }
+      d.run(
+        "UPDATE water_checks SET readings=?,usage_liters=?,comparison_snapshot=? WHERE id=?",
+        JSON.stringify(next),
+        rounded(next.reduce((s, r) => s + r.liters, 0)),
+        JSON.stringify(snapshot),
+        raw.id,
+      );
+      d.audit(ctx.user, "water.correct", raw.id, prior, {
+        ...decode(d.find("water_checks", raw.id)),
+        reason,
+      });
+    }
+    const child = d.get(
+      "SELECT * FROM water_checks WHERE previous_id=?",
+      row.id,
+    );
+    if (child) {
+      const next = JSON.parse(child.readings).map((old) => {
+        const opening = readings.find((r) => r.meterId === old.meterId).closing;
+        if (old.closing < opening)
+          fail(
+            "Angka koreksi melebihi akhir shift berikutnya. Koreksi akhir shift berikutnya terlebih dahulu.",
+            409,
+          );
+        return { ...old, opening, liters: rounded(old.closing - opening) };
+      });
+      save(child, next);
+    }
+    save(row, readings);
+    return { ok: true };
   });
   route("POST", "/api/water-control", "waterControl", (ctx) => {
     const previous = latest(),

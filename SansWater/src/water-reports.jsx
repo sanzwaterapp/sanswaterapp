@@ -9,11 +9,143 @@ import {
   ClipboardPen,
   CalendarDays,
 } from "lucide-react";
-import { can, dateLabel, timeLabel } from "./api.js";
+import { api, can, dateLabel, timeLabel } from "./api.js";
 import { formatLiters } from "./water-volume.js";
 import PeriodFilters from "./period-filters.jsx";
 import { periodDates } from "./period-range.js";
-import { LoadingState } from "./OverlayDialog.jsx";
+import OverlayDialog, { LoadingState } from "./OverlayDialog.jsx";
+import AppForm from "./AppForm.jsx";
+
+export function createMeterCorrection({ useApp, useResource }) {
+  function Editor({ row, onClose }) {
+    const { act } = useApp(),
+      [readings, setReadings] = useState(row.readings),
+      [reason, setReason] = useState(""),
+      [error, setError] = useState(""),
+      [busy, setBusy] = useState(false);
+    return (
+      <AppForm
+        className="rv-stack"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (busy) return;
+          setBusy(true);
+          try {
+            await act(() =>
+              api("/water-reports/" + row.id, {
+                method: "PATCH",
+                body: { revision: row.revision, readings, reason },
+              }),
+            );
+            onClose();
+          } catch (err) {
+            setError(err.message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {readings.map((r, index) => (
+          <section key={r.meterId}>
+            <strong>{r.name}</strong>
+            <div className="rv-two">
+              {["opening", "closing"].map((key) => (
+                <label className="rv-field" key={key}>
+                  <span>{key === "opening" ? "Awal (L)" : "Akhir (L)"}</span>
+                  <input
+                    required
+                    type="number"
+                    min="0"
+                    step="0.000001"
+                    readOnly={key === "opening" && !!row.previous_id}
+                    value={r[key]}
+                    onChange={(e) =>
+                      setReadings(
+                        readings.map((v, i) =>
+                          i === index
+                            ? { ...v, [key]: Number(e.target.value) }
+                            : v,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+          </section>
+        ))}
+        <label className="rv-field">
+          <span>Alasan koreksi</span>
+          <input
+            required
+            maxLength="500"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </label>
+        <small className="rv-note">
+          Angka awal shift berikutnya ikut diperbarui. Foto bukti asli
+          dipertahankan.
+        </small>
+        {error && (
+          <p className="rv-error" role="alert">
+            {error}
+          </p>
+        )}
+        <button type="submit" className="rv-primary" disabled={busy}>
+          {busy ? "Menyimpan…" : "Simpan koreksi"}
+        </button>
+      </AppForm>
+    );
+  }
+  function Dialog({ id, onClose }) {
+    const [row, error] = useResource("/water-reports/" + id, { live: false });
+    return (
+      <OverlayDialog
+        onClose={onClose}
+        className="rv-finance-editor"
+        aria-label="Koreksi meteran"
+      >
+        <div className="rv-section-heading">
+          <h3>Koreksi meteran</h3>
+          <button type="button" onClick={onClose}>
+            ×
+          </button>
+        </div>
+        {row ? (
+          <Editor row={row} onClose={onClose} />
+        ) : (
+          <p role="status">{error || "Memuat…"}</p>
+        )}
+      </OverlayDialog>
+    );
+  }
+  return function MeterCorrection({ id, onSaved }) {
+    const { data } = useApp(),
+      [open, setOpen] = useState(false);
+    if (!data.user.owner || !id) return null;
+    return (
+      <>
+        <button
+          type="button"
+          className="rv-secondary rv-owner-correct"
+          onClick={() => setOpen(true)}
+        >
+          Koreksi meteran
+        </button>
+        {open && (
+          <Dialog
+            id={id}
+            onClose={() => {
+              setOpen(false);
+              onSaved?.();
+            }}
+          />
+        )}
+      </>
+    );
+  };
+}
 
 export function WaterMenu({ current, canRecord = true }) {
   return (
@@ -59,8 +191,8 @@ export function WaterFlow({ group }) {
       </div>
       <div className="rv-water-equation rv-water-result-equation">
         {[
-          ["Meteran", group.usageLiters],
-          ["− Seharusnya", group.expectedLiters],
+          ["Seharusnya", group.expectedLiters],
+          ["− Meteran", group.usageLiters],
           ["= Selisih", group.differenceLiters],
         ].map(([label, value]) => term(label, value))}
       </div>
@@ -141,6 +273,7 @@ export function createWaterReports({
   useResource,
   PhotoButton,
 }) {
+  const MeterCorrection = createMeterCorrection({ useApp, useResource });
   function MeterEvidence({ phase, name, value, photoId }) {
     const reading = formatLiters(value);
     return (
@@ -175,6 +308,7 @@ export function createWaterReports({
       );
     return (
       <div className="rv-water-report-detail">
+        <MeterCorrection id={id} />
         {(check.comparison || []).map((group) => (
           <WaterFlow key={group.group} group={group} />
         ))}

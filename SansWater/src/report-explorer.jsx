@@ -10,12 +10,15 @@ import {
   ScanLine,
   Calculator,
   X,
+  SquarePen,
+  Trash2,
 } from "lucide-react";
 import { api, money, dateLabel, timeLabel } from "./api.js";
 import AppForm from "./AppForm.jsx";
-import { LoadingState } from "./OverlayDialog.jsx";
+import OverlayDialog, { LoadingState } from "./OverlayDialog.jsx";
 import PeriodFilters from "./period-filters.jsx";
 import { formatLiters } from "./water-volume.js";
+import { hasItemShipping, itemShipping } from "./order-pricing.js";
 import PaymentReceipt, {
   paymentLabels,
   ReceiptButton,
@@ -30,9 +33,11 @@ export function createPayroll({
   Submit,
 }) {
   const components = [
-    ["roShift1", "RO · Shift 1"],
+    ["ro1Shift1", "RO 1 · Shift 1"],
+    ["ro2Shift1", "RO 2 · Shift 1"],
     ["mineralShift1", "Mineral · Shift 1"],
-    ["roShift2", "RO · Shift 2"],
+    ["ro1Shift2", "RO 1 · Shift 2"],
+    ["ro2Shift2", "RO 2 · Shift 2"],
     ["mineralShift2", "Mineral · Shift 2"],
   ];
   const number = (value) =>
@@ -105,6 +110,15 @@ export function createPayroll({
       }
     }
     function fields(label, item, onChange) {
+      if (result.readOnly)
+        return (
+          <div className="rv-payroll-readonly">
+            <strong>
+              {result.actors.find((u) => u.id === item.actor)?.name || "—"}
+            </strong>
+            <span>{money(item.rate)} / galon</span>
+          </div>
+        );
       return (
         <div className="rv-payroll-variable-fields">
           <label className="rv-field">
@@ -184,55 +198,63 @@ export function createPayroll({
           className="rv-payroll-volumes rv-payroll-editable"
           aria-label="Perhitungan payroll"
         >
-          {[1, 2].map((shift) => (
-            <section
-              className="rv-card rv-payroll-shift-block"
-              aria-label={"Shift " + shift}
-              key={shift}
-            >
-              <h4>Shift {shift}</h4>
-              <div className="rv-payroll-shift-grid">
-                {components
-                  .filter(([key]) => key.endsWith(String(shift)))
-                  .map(([key, label]) => (
-                    <div
-                      key={key}
-                      className={"rv-payroll-volume rv-payroll-" + key}
-                    >
-                      <header className="rv-payroll-product-heading">
-                        {key.startsWith("ro") ? (
-                          <>
-                            RO{" "}
-                            <small className="rv-payroll-ro-description">
-                              (RO1 + RO2)
-                            </small>
-                          </>
-                        ) : (
-                          "Mineral"
+          {[1, 2]
+            .filter(
+              (shift) =>
+                !result.ownOnly ||
+                components.some(
+                  ([key]) =>
+                    key.endsWith(String(shift)) && draft.meters[key].actor,
+                ),
+            )
+            .map((shift) => (
+              <section
+                className="rv-card rv-payroll-shift-block"
+                aria-label={"Shift " + shift}
+                key={shift}
+              >
+                <h4>Shift {shift}</h4>
+                <div className="rv-payroll-shift-grid">
+                  {components
+                    .filter(
+                      ([key]) =>
+                        key.endsWith(String(shift)) &&
+                        (!result.ownOnly || draft.meters[key].actor),
+                    )
+                    .map(([key, label]) => (
+                      <div
+                        key={key}
+                        className={"rv-payroll-volume rv-payroll-" + key}
+                      >
+                        <header className="rv-payroll-product-heading">
+                          {key.startsWith("ro")
+                            ? key.startsWith("ro1")
+                              ? "RO 1"
+                              : "RO 2"
+                            : "Mineral"}
+                        </header>
+                        <strong>
+                          {number(result.summary[key].gallons)}{" "}
+                          <small>galon</small>
+                        </strong>
+                        <small className="rv-payroll-liter-chip">
+                          {formatLiters(result.summary[key].liters, 3)}
+                        </small>
+                        {fields(label, draft.meters[key], (item) =>
+                          setDraft({
+                            ...draft,
+                            meters: { ...draft.meters, [key]: item },
+                          }),
                         )}
-                      </header>
-                      <strong>
-                        {number(result.summary[key].gallons)}{" "}
-                        <small>galon</small>
-                      </strong>
-                      <small className="rv-payroll-liter-chip">
-                        {formatLiters(result.summary[key].liters, 3)}
-                      </small>
-                      {fields(label, draft.meters[key], (item) =>
-                        setDraft({
-                          ...draft,
-                          meters: { ...draft.meters, [key]: item },
-                        }),
-                      )}
-                      <div className="rv-payroll-variable-result">
-                        <span>Gaji</span>
-                        <strong>{money(meterAmounts[key])}</strong>
+                        <div className="rv-payroll-variable-result">
+                          <span>Gaji</span>
+                          <strong>{money(meterAmounts[key])}</strong>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-              </div>
-            </section>
-          ))}
+                    ))}
+                </div>
+              </section>
+            ))}
           <section
             className="rv-card rv-payroll-shift-block rv-payroll-delivery-block"
             aria-label="Antar"
@@ -263,6 +285,7 @@ export function createPayroll({
                       max="10000000"
                       step="1"
                       required
+                      readOnly={result.readOnly}
                       value={draft.drivers[driver.id]?.rate ?? 0}
                       onChange={(event) =>
                         setDraft({
@@ -297,7 +320,7 @@ export function createPayroll({
             {error}
           </p>
         )}
-        <Submit>Simpan pengaturan</Submit>
+        {!result.readOnly && <Submit>Simpan pengaturan</Submit>}
         {notice && (
           <p className="rv-note" role="status">
             {notice}
@@ -326,19 +349,21 @@ export function createPayroll({
                 </dt>
                 <dd>
                   <strong>{money(total)}</strong>
-                  <button
-                    type="button"
-                    className="rv-payroll-clear"
-                    disabled={busy}
-                    aria-label={
-                      "Hapus pengaturan gaji " +
-                      (result.actors.find((user) => user.id === id)?.name ||
-                        "akun")
-                    }
-                    onClick={() => clearAccount(id)}
-                  >
-                    <X size={14} />
-                  </button>
+                  {!result.readOnly && (
+                    <button
+                      type="button"
+                      className="rv-payroll-clear"
+                      disabled={busy}
+                      aria-label={
+                        "Hapus pengaturan gaji " +
+                        (result.actors.find((user) => user.id === id)?.name ||
+                          "akun")
+                      }
+                      onClick={() => clearAccount(id)}
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
                 </dd>
               </div>
             ))}
@@ -349,7 +374,8 @@ export function createPayroll({
   }
   return function Payroll() {
     const { data } = useApp();
-    const [period, setPeriod, query] = usePeriod("month");
+    const full = data.user.owner || data.user.permissions.includes("reports");
+    const [period, setPeriod, query] = usePeriod(full ? "month" : "today");
     const [result, error] = useResource("/payroll?" + query);
     return (
       <>
@@ -363,6 +389,7 @@ export function createPayroll({
               onChange={setPeriod}
               today={data.today}
               label="Periode payroll"
+              recentOnly={!full}
             />
           }
         />
@@ -505,8 +532,280 @@ export function createCashFlowList({ useResource }) {
   };
 }
 
+export function createFinancialActions({ useApp, useResource }) {
+  function Editor({ id, kind, onClose }) {
+    const { act } = useApp(),
+      [row, error] = useResource(
+        kind === "invoice" ? "/invoices/" + id + "/edit" : "/payments/" + id,
+        { live: false },
+      );
+    return (
+      <OverlayDialog
+        onClose={onClose}
+        className="rv-finance-editor"
+        aria-label="Koreksi transaksi Owner"
+      >
+        <div className="rv-section-heading">
+          <h3>Koreksi {kind === "invoice" ? "transaksi" : "pembayaran"}</h3>
+          <button type="button" onClick={onClose} aria-label="Tutup">
+            <X size={18} />
+          </button>
+        </div>
+        {!row ? (
+          <p role="status">{error || "Memuat…"}</p>
+        ) : (
+          <Form
+            key={row.revision || row.version}
+            row={row}
+            kind={kind}
+            act={act}
+            onClose={onClose}
+          />
+        )}
+      </OverlayDialog>
+    );
+  }
+  function Form({ row, kind, act, onClose }) {
+    const invoice = kind === "invoice",
+      [draft, setDraft] = useState({
+        ...row,
+        paid: row.paid ?? row.amount,
+        method: row.method || row.payments?.[0]?.method || "Tunai",
+      }),
+      [reason, setReason] = useState(""),
+      [error, setError] = useState(""),
+      [deleting, setDeleting] = useState(false),
+      [saving, setSaving] = useState(false);
+    async function save(remove = false) {
+      if (saving) return;
+      setSaving(true);
+      setError("");
+      try {
+        await act(() =>
+          api((invoice ? "/invoices/" : "/payments/") + row.id, {
+            method: remove ? "DELETE" : "PATCH",
+            body: {
+              ...draft,
+              amount: Number(draft.paid),
+              paid: Number(draft.paid),
+              shipping: Number(draft.shipping),
+              discount: Number(draft.discount),
+              items: draft.items?.map((l) => ({
+                ...l,
+                qty: Number(l.qty),
+                price: Number(l.price),
+                ...(l.shippingRate !== undefined
+                  ? { shippingRate: Number(l.shippingRate) }
+                  : {}),
+              })),
+              reason,
+              confirmed: remove,
+            },
+          }),
+        );
+        onClose();
+      } catch (e) {
+        setError(e.message);
+      } finally {
+        setSaving(false);
+      }
+    }
+    const unitShipping = invoice && hasItemShipping(draft.items);
+    const shippingTotal = unitShipping
+      ? itemShipping(draft.items)
+      : Number(draft.shipping || 0);
+    const correctionTotal = invoice
+      ? draft.items.reduce(
+          (sum, l) => sum + Number(l.qty) * Number(l.price),
+          0,
+        ) -
+        Number(draft.discount || 0) +
+        shippingTotal
+      : 0;
+    const field = (key, label) => (
+      <label className="rv-field">
+        <span>{label}</span>
+        <input
+          type="number"
+          min="0"
+          step="1"
+          required
+          value={
+            key === "shipping" && unitShipping ? shippingTotal : draft[key]
+          }
+          readOnly={key === "shipping" && unitShipping}
+          onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
+        />
+      </label>
+    );
+    return (
+      <AppForm
+        className="rv-stack"
+        onSubmit={(e) => {
+          e.preventDefault();
+          save(deleting);
+        }}
+      >
+        <strong>{row.customer_name || "Pembayaran pelanggan"}</strong>
+        {!deleting && (
+          <>
+            {invoice && (
+              <>
+                {draft.items.map((line, index) => (
+                  <div className="rv-finance-edit-line" key={index}>
+                    <strong>
+                      {line.name} · {line.mode}
+                    </strong>
+                    <label className="rv-field">
+                      <span>Jumlah</span>
+                      <input
+                        required
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={line.qty}
+                        onChange={(e) =>
+                          setDraft({
+                            ...draft,
+                            items: draft.items.map((l, i) =>
+                              i === index ? { ...l, qty: e.target.value } : l,
+                            ),
+                          })
+                        }
+                      />
+                    </label>
+                    <label className="rv-field">
+                      <span>Harga/unit</span>
+                      <input
+                        required
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={line.price}
+                        onChange={(e) =>
+                          setDraft({
+                            ...draft,
+                            items: draft.items.map((l, i) =>
+                              i === index ? { ...l, price: e.target.value } : l,
+                            ),
+                          })
+                        }
+                      />
+                    </label>
+                    {row.trip_id && line.shippingRate !== undefined && (
+                      <label className="rv-field">
+                        <span>Ongkir/unit</span>
+                        <input
+                          required
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={line.shippingRate}
+                          onChange={(e) =>
+                            setDraft({
+                              ...draft,
+                              items: draft.items.map((l, i) =>
+                                i === index
+                                  ? { ...l, shippingRate: e.target.value }
+                                  : l,
+                              ),
+                            })
+                          }
+                        />
+                      </label>
+                    )}
+                  </div>
+                ))}
+                <div className="rv-two">
+                  {field("discount", "Diskon (Rp)")}
+                  {field("shipping", "Ongkir total (Rp)")}
+                </div>
+                <div className="rv-payment-balance">
+                  <span>Total koreksi</span>
+                  <strong>{money(correctionTotal)}</strong>
+                </div>
+              </>
+            )}
+            <div className="rv-two">
+              {field("paid", "Dibayar (Rp)")}
+              <label className="rv-field">
+                <span>Metode</span>
+                <select
+                  value={draft.method}
+                  onChange={(e) =>
+                    setDraft({ ...draft, method: e.target.value })
+                  }
+                >
+                  <option>Tunai</option>
+                  <option>QRIS</option>
+                </select>
+              </label>
+            </div>
+          </>
+        )}
+        {deleting && (
+          <p className="rv-error">
+            {invoice
+              ? "Transaksi dan pembayaran terkait dibatalkan. Stok dikembalikan; bagian pembayaran untuk tagihan lain tetap tercatat."
+              : "Pembayaran dibatalkan dan saldo hutang diperbarui."}
+          </p>
+        )}
+        <label className="rv-field">
+          <span>Alasan {deleting ? "penghapusan" : "koreksi"}</span>
+          <input
+            required
+            maxLength="500"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </label>
+        {error && (
+          <p className="rv-error" role="alert">
+            {error}
+          </p>
+        )}
+        <button
+          className={deleting ? "rv-danger" : "rv-primary"}
+          disabled={saving}
+          type="submit"
+        >
+          {saving ? "Menyimpan…" : deleting ? "Ya, batalkan" : "Simpan koreksi"}
+        </button>
+        <button
+          type="button"
+          className="rv-text-button"
+          disabled={saving}
+          onClick={() => setDeleting(!deleting)}
+        >
+          {deleting
+            ? "Kembali ke koreksi"
+            : "Hapus " + (invoice ? "transaksi dan pembayaran" : "pembayaran")}
+        </button>
+      </AppForm>
+    );
+  }
+  return function FinancialActions({ id, kind = "invoice" }) {
+    const { data } = useApp(),
+      [open, setOpen] = useState(false);
+    if (!data.user.owner) return null;
+    return (
+      <>
+        <button
+          type="button"
+          className="rv-secondary rv-owner-correct"
+          onClick={() => setOpen(true)}
+        >
+          <SquarePen size={13} /> Koreksi
+        </button>
+        {open && <Editor id={id} kind={kind} onClose={() => setOpen(false)} />}
+      </>
+    );
+  };
+}
+
 export function createReportExplorer(UI, { transactionsOnly = false } = {}) {
   const { useApp, useResource, Identity, PhotoButton, Empty } = UI;
+  const FinancialActions = createFinancialActions(UI);
   const prefix = transactionsOnly ? "/transactions/" : "/report-";
   const listPath = transactionsOnly ? "/transactions" : "/report-transactions";
   const encoded = (query, values) =>
@@ -535,6 +834,7 @@ export function createReportExplorer(UI, { transactionsOnly = false } = {}) {
         {showItems && !row && <Pending error={error} />}
         {showItems && row && (
           <div className="rv-report-items" aria-label="Rincian transaksi">
+            <FinancialActions id={id} />
             <ul className="rv-report-item-list">
               {row.items.map((line, index) => (
                 <li className="rv-report-item" key={index}>

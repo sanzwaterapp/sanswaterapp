@@ -1,0 +1,13 @@
+node_modules
+dist
+.env
+.env.*
+!.env.production.example
+.git
+backups
+data
+*.sqlite*
+*.log
+*.private
+*.zip
+MANIFEST.sha256

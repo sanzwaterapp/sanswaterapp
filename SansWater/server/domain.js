@@ -44,7 +44,9 @@ export const dayWib = (date) =>
 export const has = (user, permission) =>
   !!user.owner || user.permissions.includes(permission);
 export function staffFinancialPeriod(user, period, now) {
-  if (has(user, "reports")) return period;
+  return has(user, "reports") ? period : recentOperationalPeriod(period, now);
+}
+export function recentOperationalPeriod(period, now) {
   const today = dayWib(now),
     yesterday = dayWib(new Date(Date.parse(now) - 86400000));
   if (period.from < yesterday || period.to > today)
@@ -818,6 +820,31 @@ export function createDomain(
       ).toISOString(),
     };
   }
+  function orderCounts({ start, end }) {
+    return Object.fromEntries(
+      all(
+        "SELECT status,COUNT(*) count FROM orders WHERE created_at>=? AND created_at<? GROUP BY status",
+        start,
+        end,
+      ).map((row) => [row.status, row.count]),
+    );
+  }
+  function deliveryPerformance({ condition, params }, courierId = null) {
+    return all(
+      `SELECT CASE WHEN EXISTS(SELECT 1 FROM invoices earlier WHERE earlier.order_id=i.order_id AND earlier.rowid<i.rowid) THEN i.id ELSE o.id END id,
+                o.id order_id,o.code,o.name,
+                o.received_at,
+                i.recorded_at completed_at,u.name courier,
+                MAX(0,(unixepoch(i.recorded_at,'subsec')-unixepoch(o.received_at,'subsec'))) seconds
+                 FROM invoices i JOIN orders o ON o.id=i.order_id
+                 JOIN trips t ON t.id=i.trip_id JOIN users u ON u.id=t.courier_id` +
+        condition +
+        (courierId ? " AND t.courier_id=?" : "") +
+        " AND o.kind='delivery' AND unixepoch(o.received_at) IS NOT NULL AND unixepoch(i.recorded_at) IS NOT NULL ORDER BY seconds DESC,i.recorded_at DESC,o.id",
+      ...params,
+      ...(courierId ? [courierId] : []),
+    );
+  }
   function report(user, query, customerId = null) {
     requireAccess(user, "reports");
     const summaryOnly = query.get("view") === "summary";
@@ -876,27 +903,10 @@ export function createDomain(
       ...cashFlowSummary(db, start, end, breakdown.cashHolders),
       ...(!summaryOnly && user.owner
         ? {
-            deliveryPerformance: all(
-              `SELECT CASE WHEN EXISTS(SELECT 1 FROM invoices earlier WHERE earlier.order_id=i.order_id AND earlier.rowid<i.rowid) THEN i.id ELSE o.id END id,
-                o.id order_id,o.code,o.name,
-                CASE WHEN EXISTS(SELECT 1 FROM invoices earlier WHERE earlier.order_id=i.order_id AND earlier.rowid<i.rowid) THEN t.departed_at ELSE o.received_at END received_at,
-                i.recorded_at completed_at,u.name courier,
-                MAX(0,unixepoch(i.recorded_at)-unixepoch(CASE WHEN EXISTS(SELECT 1 FROM invoices earlier WHERE earlier.order_id=i.order_id AND earlier.rowid<i.rowid) THEN t.departed_at ELSE o.received_at END)) seconds
-                 FROM invoices i JOIN orders o ON o.id=i.order_id
-                 JOIN trips t ON t.id=i.trip_id JOIN users u ON u.id=t.courier_id` +
-                condition +
-                " AND o.kind='delivery' AND unixepoch(o.received_at) IS NOT NULL AND unixepoch(i.recorded_at) IS NOT NULL ORDER BY seconds DESC,i.recorded_at DESC,o.id",
-              ...params,
-            ),
+            deliveryPerformance: deliveryPerformance({ condition, params }),
           }
         : {}),
-      orderCounts: Object.fromEntries(
-        all(
-          "SELECT status,COUNT(*) count FROM orders WHERE created_at>=? AND created_at<? GROUP BY status",
-          start,
-          end,
-        ).map((row) => [row.status, row.count]),
-      ),
+      orderCounts: orderCounts({ start, end }),
       rows,
       trips,
       truncated: !compact && stats.count > rows.length,
@@ -927,6 +937,8 @@ export function createDomain(
     ownTrip,
     period,
     report,
+    deliveryPerformance,
+    orderCounts,
     stockMove,
     allocate,
   };

@@ -31,7 +31,7 @@ export function CameraCapture({ photo, onChange, label, facing, allowFile = fals
 }
 
 export function CameraScreenHeader({
-  title, titleId, detail, icon: Icon = Camera, onClose, closeLabel = "Tutup kamera",
+  title, titleId, detail, icon: Icon = Camera, onClose, closeLabel = "Tutup kamera", closeDisabled = false,
 }) {
   return (
     <header className="rv-departure-top">
@@ -40,19 +40,20 @@ export function CameraScreenHeader({
         <strong id={titleId}>{title}</strong>
         {detail && <small>{detail}</small>}
       </span>
-      <button type="button" className="rv-icon-button" aria-label={closeLabel} onClick={onClose}>
+      <button type="button" className="rv-icon-button" aria-label={closeLabel} disabled={closeDisabled} onClick={onClose}>
         <X size={22} aria-hidden="true" />
       </button>
     </header>
   );
 }
 
-export function CaptureScreen({ title, detail, caption = title, facing, photo, allowFile, onUse, onClose }) {
+export function CaptureScreen({ title, detail, caption = title, facing, photo, allowFile, onUse, onClose, confirmLabel = "Gunakan foto" }) {
   const ref = useRef(null);
   const titleId = useId();
   const [draft, setDraft] = useState(photo || "");
   const [error, setError] = useState("");
   const [reading, setReading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useLayoutEffect(() => {
     const dialog = ref.current;
@@ -84,29 +85,38 @@ export function CaptureScreen({ title, detail, caption = title, facing, photo, a
       }}
       onCancel={(event) => {
         event.preventDefault();
-        onClose();
+        if (!submitting) onClose();
       }}
     >
-      <CameraScreenHeader title={title} titleId={titleId} detail={detail} onClose={onClose} />
-      <DepartureCamera facing={facing} caption={caption} alt={title} photo={draft} onChange={setDraft} />
+      <CameraScreenHeader title={title} titleId={titleId} detail={detail} onClose={onClose} closeDisabled={submitting} />
+      <DepartureCamera facing={facing} caption={caption} alt={title} photo={draft} disabled={submitting} onChange={setDraft} />
       <div className="rv-departure-bottom">
         {allowFile && (
           <label className="rv-camera-file">
             {reading ? "Menyiapkan foto…" : "Pilih berkas"}
-            <input type="file" accept="image/*" aria-label={"Pilih berkas " + title} disabled={reading} onChange={pickPhoto} />
+            <input type="file" accept="image/*" aria-label={"Pilih berkas " + title} disabled={reading || submitting} onChange={pickPhoto} />
           </label>
         )}
         {error && <p className="rv-error" role="alert">{error}</p>}
         <button
           className="rv-primary"
           type="button"
-          disabled={!draft || reading}
-          onClick={() => {
-            onUse(draft);
-            onClose();
+          disabled={!draft || reading || submitting}
+          onClick={async () => {
+            if (!draft || reading || submitting) return;
+            setError("");
+            setSubmitting(true);
+            try {
+              await onUse(draft);
+              onClose();
+            } catch (err) {
+              setError(err.message);
+            } finally {
+              setSubmitting(false);
+            }
           }}
         >
-          Gunakan foto <Check size={16} aria-hidden="true" />
+          {submitting ? "Mengirim…" : confirmLabel} <Check size={16} aria-hidden="true" />
         </button>
       </div>
     </dialog>
@@ -119,6 +129,7 @@ export default function DepartureCamera({
   facing = "environment",
   caption = "Foto muatan",
   alt = "Foto muatan trip",
+  disabled = false,
 }) {
   const video = useRef(null);
   const [ready, setReady] = useState(false);
@@ -230,7 +241,7 @@ export default function DepartureCamera({
           <button
             className="rv-camera-shutter"
             type="button"
-            disabled={!photo && !ready && !error}
+            disabled={disabled || (!photo && !ready && !error)}
             onClick={() =>
               photo
                 ? onChange("")

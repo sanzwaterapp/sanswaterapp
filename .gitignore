@@ -1,0 +1,18 @@
+node_modules/
+dist/
+data/
+backups/
+.env
+*.log
+android/.gradle/
+android/local.properties
+android/**/build/
+
+# Salinan sumber untuk diunggah sebagai repository terpisah.
+SIAP-GITHUB-SANZ-WATER/
+
+# Repository produksi hanya berisi paket Vercel SansWater.
+# Sumber lokal, konfigurasi privat, APK dan backup tetap di luar Git.
+/*
+!/.gitignore
+!/SansWater/

@@ -7,6 +7,7 @@ import {
   Truck,
   Store,
   ClipboardPen,
+  SquarePen,
   CalendarDays,
 } from "lucide-react";
 import { api, can, dateLabel, timeLabel } from "./api.js";
@@ -15,12 +16,12 @@ import PeriodFilters from "./period-filters.jsx";
 import { periodDates } from "./period-range.js";
 import OverlayDialog, { LoadingState } from "./OverlayDialog.jsx";
 import AppForm from "./AppForm.jsx";
+import Empty from "./EmptyState.jsx";
 
 export function createMeterCorrection({ useApp, useResource }) {
   function Editor({ row, onClose }) {
     const { act } = useApp(),
       [readings, setReadings] = useState(row.readings),
-      [reason, setReason] = useState(""),
       [error, setError] = useState(""),
       [busy, setBusy] = useState(false);
     return (
@@ -34,7 +35,7 @@ export function createMeterCorrection({ useApp, useResource }) {
             await act(() =>
               api("/water-reports/" + row.id, {
                 method: "PATCH",
-                body: { revision: row.revision, readings, reason },
+                body: { revision: row.revision, readings },
               }),
             );
             onClose();
@@ -57,7 +58,6 @@ export function createMeterCorrection({ useApp, useResource }) {
                     type="number"
                     min="0"
                     step="0.000001"
-                    readOnly={key === "opening" && !!row.previous_id}
                     value={r[key]}
                     onChange={(e) =>
                       setReadings(
@@ -74,18 +74,9 @@ export function createMeterCorrection({ useApp, useResource }) {
             </div>
           </section>
         ))}
-        <label className="rv-field">
-          <span>Alasan koreksi</span>
-          <input
-            required
-            maxLength="500"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-          />
-        </label>
         <small className="rv-note">
-          Angka awal shift berikutnya ikut diperbarui. Foto bukti asli
-          dipertahankan.
+          Koreksi angka awal menyesuaikan akhir shift sebelumnya. Koreksi angka
+          akhir menyesuaikan awal shift berikutnya.
         </small>
         {error && (
           <p className="rv-error" role="alert">
@@ -107,8 +98,14 @@ export function createMeterCorrection({ useApp, useResource }) {
         aria-label="Koreksi meteran"
       >
         <div className="rv-section-heading">
-          <h3>Koreksi meteran</h3>
-          <button type="button" onClick={onClose}>
+          <h3 className="rv-meter-correction-title">
+            <SquarePen size={17} aria-hidden="true" /> Koreksi meteran
+          </h3>
+          <button
+            type="button"
+            aria-label="Tutup koreksi meteran"
+            onClick={onClose}
+          >
             ×
           </button>
         </div>
@@ -128,10 +125,11 @@ export function createMeterCorrection({ useApp, useResource }) {
       <>
         <button
           type="button"
-          className="rv-secondary rv-owner-correct"
+          className="rv-secondary rv-meter-correction-button"
+          aria-haspopup="dialog"
           onClick={() => setOpen(true)}
         >
-          Koreksi meteran
+          <SquarePen size={16} aria-hidden="true" /> Koreksi meteran
         </button>
         {open && (
           <Dialog
@@ -467,7 +465,11 @@ export function createWaterReports({
         {rows.map((row) => (
           <Shift key={row.id} row={row} />
         ))}
-        {!rows.length && <p className="rv-note">Belum ada laporan.</p>}
+        {!rows.length && (
+          <Empty icon={Droplets} compact>
+            Belum ada laporan.
+          </Empty>
+        )}
         <Pagination report={report} onPage={onPage} />
       </>
     );
@@ -598,7 +600,9 @@ export function createWaterReports({
                     />
                   ))}
                   {!report.rows.length && (
-                    <p className="rv-note">Belum ada laporan.</p>
+                    <Empty icon={Droplets} compact>
+                      Belum ada laporan.
+                    </Empty>
                   )}
                   <Pagination report={report} onPage={setOffset} />
                 </>

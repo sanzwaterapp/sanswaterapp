@@ -1,4 +1,5 @@
 import AppForm from "./AppForm.jsx";
+import Empty from "./EmptyState.jsx";
 import OverlayDialog, { LoadingState } from "./OverlayDialog.jsx";
 import React, {
   createContext,
@@ -98,17 +99,6 @@ function Identity({ code, name, source }) {
       <b>{code || "Umum"}</b> <span className="rv-dash">-</span> {name}
       {source && <span className="rv-order-source">- {source}</span>}
     </span>
-  );
-}
-function Empty({
-  children = "Belum ada catatan.",
-  icon: Icon = ClipboardList,
-}) {
-  return (
-    <div className="empty">
-      <Icon size={26} />
-      <p>{children}</p>
-    </div>
   );
 }
 function Field({ label, children, ...props }) {
@@ -722,6 +712,7 @@ function useResource(
       setValue(null);
     previousPath.current = path;
     previousResetKey.current = resetKey;
+    if (!path) return;
     api(path, { signal: controller.signal })
       .then((v) => {
         if (active) {
@@ -1622,7 +1613,9 @@ function Customers() {
                   </div>
                   {(group === prefix || !!search) && !people.length && (
                     <div className="rv-customer-group-empty">
-                      <span>Belum ada pelanggan.</span>
+                      <Empty icon={Users} compact>
+                        Belum ada pelanggan.
+                      </Empty>
                     </div>
                   )}
                   {(group === prefix || !!search) &&
@@ -1799,9 +1792,9 @@ function Customers() {
                                     </details>
                                   ))}
                                   {!insight.rows.length && (
-                                    <span className="rv-note">
+                                    <Empty icon={ClipboardList} compact>
                                       Belum ada pembelian pada periode ini.
-                                    </span>
+                                    </Empty>
                                   )}
                                   {(purchasePage > 0 || insight.hasMore) && (
                                     <div className="rv-customer-ledger-pages">
@@ -2570,7 +2563,6 @@ const staffPages = [
   ["Produk & stok", ["stock", "catalog"]],
   ["Pengeluaran & kas", ["expenses"]],
   ["Status Delivery", ["display"]],
-  ["Absensi staf", ["attendanceView"]],
   ["Kontrol air", ["waterControl"]],
 ];
 function Staff() {
@@ -2903,8 +2895,7 @@ function Staff() {
   );
 }
 function Attendance() {
-  const { data, act } = useApp(),
-    [photo, setPhoto] = useState(""),
+  const { data } = useApp(),
     [offset, setOffset] = useState(0),
     [period, setPeriod, query] = usePeriod();
   const [report, error] = useResource(
@@ -2928,26 +2919,9 @@ function Attendance() {
         }
       />
       <main className="rv-body rv-feature">
-        <AppForm
-          className="rv-card rv-stack"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            await act(() =>
-              api("/attendance", { method: "POST", body: { photo } }),
-            )
-              .then(() => setPhoto(""))
-              .catch(() => {});
-          }}
-        >
-          <h3>Catat kehadiran</h3>
-          <CameraCapture
-            facing="user"
-            label="Foto di depot"
-            photo={photo}
-            onChange={setPhoto}
-          />
-          <Submit disabled={!photo}>Catat kehadiran</Submit>
-        </AppForm>
+        <section className="rv-card">
+          <OwnAttendance showHistory={false} />
+        </section>
         {error && <p className="rv-error">{error}</p>}
         <section className="rv-card rv-stack">
           <div className="rv-section-heading">
@@ -2966,7 +2940,9 @@ function Attendance() {
             <div className="rv-attendance-row" key={row.id}>
               <strong>{row.name}</strong>
               <span>
-                {dateLabel(row.day)} · {timeLabel(row.created_at)}
+                {dateLabel(row.day)} ·{" "}
+                {row.shift ? "Shift " + row.shift + " · " : ""}
+                {timeLabel(row.created_at)}
               </span>
               <PhotoButton
                 id={row.photo_id}
@@ -2975,7 +2951,9 @@ function Attendance() {
             </div>
           ))}
           {report && !report.rows.length && (
-            <p className="rv-note">Belum ada absensi pada periode ini.</p>
+            <Empty icon={Camera} compact>
+              Belum ada absensi pada periode ini.
+            </Empty>
           )}
           {!!(offset || report?.hasMore) && (
             <div className="rv-two">
@@ -3483,7 +3461,7 @@ function Display() {
     </View>
   );
 }
-const { AccountMenu, AccountPasswordForm } = createAccountMenu({
+const { AccountMenu, AccountPasswordForm, OwnAttendance } = createAccountMenu({
   useApp,
   Field,
   Submit,

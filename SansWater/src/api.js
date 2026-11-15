@@ -152,8 +152,8 @@ export function duration(order, now = Date.now()) {
   return Math.max(
     0,
     Math.floor(
-      ((order.first_departure_at
-        ? new Date(order.first_departure_at).getTime()
+      ((order.completed_at || order.first_departure_at
+        ? Date.parse(order.completed_at || order.first_departure_at)
         : now) -
         new Date(order.received_at).getTime()) /
         60000,

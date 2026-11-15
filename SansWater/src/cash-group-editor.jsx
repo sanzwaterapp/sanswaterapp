@@ -1,3 +1,4 @@
+import Empty from "./EmptyState.jsx";
 import React, { useEffect, useRef, useState } from "react";
 import { Wallet, Plus, X, SquarePen, Check } from "lucide-react";
 import AppForm from "./AppForm.jsx";
@@ -122,7 +123,7 @@ export default function CashGroupEditor({ data, act, onClose, Field, Submit }) {
                   </span>
                 ))}
               {!data.categories.some((c) => c.fund === f.key) && (
-                <span className="rv-group-empty">Belum ada kategori</span>
+                <Empty compact>Belum ada kategori.</Empty>
               )}
               {fundForm?.key === f.key && adding !== f.key && (
                 <button

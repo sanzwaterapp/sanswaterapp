@@ -301,11 +301,7 @@ function registerFinancialCorrections(route, d) {
     });
     return view(before.id);
   });
-  route("DELETE", "/api/invoices/:id", "login", (ctx) => {
-    const before = checked(ctx),
-      reason = text(ctx.body.reason, "Alasan penghapusan", 500);
-    if (ctx.body.confirmed !== true)
-      fail("Konfirmasi pembatalan transaksi dan pembayaran.");
+  function deleteInvoice(ctx, before, reason) {
     before.cursor = d.get(
       "SELECT rowid n FROM invoices WHERE id=?",
       before.id,
@@ -326,6 +322,11 @@ function registerFinancialCorrections(route, d) {
         !d.get(
           "SELECT 1 FROM invoices WHERE order_id=? AND id<>?",
           advance.order_id,
+          before.id,
+        ) &&
+        !d.get(
+          "SELECT 1 FROM allocations WHERE payment_id=? AND invoice_id<>?",
+          p.id,
           before.id,
         );
       const amount = soleAdvance ? 0 : p.amount - p.allocated;
@@ -374,7 +375,89 @@ function registerFinancialCorrections(route, d) {
       reason,
       cancelPayments: true,
     });
+  }
+  route("DELETE", "/api/invoices/:id", "login", (ctx) => {
+    const before = checked(ctx);
+    const reason = text(ctx.body.reason, "Alasan penghapusan", 500);
+    if (ctx.body.confirmed !== true)
+      fail("Konfirmasi pembatalan transaksi dan pembayaran.");
+    deleteInvoice(ctx, before, reason);
     return { ok: true };
+  });
+  route("DELETE", "/api/orders/:id", "login", (ctx) => {
+    if (!ctx.user.owner)
+      fail("Hanya admin (Owner) yang dapat menghapus pesanan.", 403);
+    const row = d.find("orders", ctx.params.id);
+    if (ctx.body.confirmed !== true)
+      fail("Konfirmasi penghapusan pesanan terlebih dahulu.");
+    if (row.version !== ctx.body.version)
+      fail("Pesanan sudah berubah. Muat ulang sebelum menghapus.", 409);
+    const invoices = d.all(
+      "SELECT id FROM invoices WHERE order_id=? ORDER BY rowid",
+      row.id,
+    );
+    const advance = d.get(
+      "SELECT payment_id FROM order_prepayments WHERE order_id=?",
+      row.id,
+    );
+    const attempts = d.all(
+      "SELECT * FROM trip_orders WHERE order_id=?",
+      row.id,
+    );
+    const related =
+      invoices.length > 0 ||
+      !!advance ||
+      attempts.length > 0 ||
+      !!row.current_trip_id;
+    // Older clients omit reason; null explicitly confirms removal without a reason.
+    if (ctx.body.reason === undefined && (related || row.kind !== "delivery"))
+      fail(
+        "Isi alasan untuk menghapus pesanan yang memiliki catatan transaksi, pembayaran, atau trip.",
+        409,
+      );
+    const reason =
+      ctx.body.reason == null
+        ? null
+        : text(ctx.body.reason, "Alasan penghapusan", 500);
+    for (const invoice of invoices)
+      deleteInvoice(ctx, view(invoice.id), reason);
+    if (advance) {
+      const payment = d.find("payments", advance.payment_id);
+      if (payment.amount > 0) {
+        const remaining = d.get(
+          "SELECT COALESCE(SUM(amount),0) total FROM allocations WHERE payment_id=?",
+          payment.id,
+        ).total;
+        d.run(
+          "UPDATE payments SET amount=?,tender=NULL,version=version+1 WHERE id=?",
+          remaining,
+          payment.id,
+        );
+        d.audit(ctx.user, "payment.cancel", payment.id, payment, {
+          amount: remaining,
+          reason,
+          orderId: row.id,
+        });
+      }
+      d.run("DELETE FROM order_prepayments WHERE order_id=?", row.id);
+    }
+    d.run("DELETE FROM trip_orders WHERE order_id=?", row.id);
+    for (const attempt of attempts) {
+      d.run(
+        "UPDATE trips SET closed_at=? WHERE id=? AND closed_at IS NULL AND NOT EXISTS(SELECT 1 FROM trip_orders WHERE trip_id=? AND outcome='delivery')",
+        d.now(),
+        attempt.trip_id,
+        attempt.trip_id,
+      );
+    }
+    d.audit(ctx.user, "order.delete", row.id, row, {
+      deleted: true,
+      reason,
+      invoiceIds: invoices.map((invoice) => invoice.id),
+      tripAttempts: attempts,
+    });
+    d.run("DELETE FROM orders WHERE id=?", row.id);
+    return { ok: true, id: row.id };
   });
   route("GET", "/api/payments/:id", "login", (ctx) => {
     owner(ctx);

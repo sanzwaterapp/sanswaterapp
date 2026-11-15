@@ -27,6 +27,8 @@ Perubahan ini perlu diunggah ulang ke GitHub dan dideploy di Vercel. Tidak ada e
 
 Paket sumber untuk GitHub berisi **99 berkas**, termasuk berkas konfigurasi tersembunyi. Folder `dist` adalah hasil build lokal dan tidak disertakan; Vercel membuatnya kembali melalui `npm run build`. Jika menjalankan build di komputer, jangan ikut mengunggah folder `dist` yang muncul. Berkas pemeriksaan hash paket lama disimpan terpisah di backup pengembangan.
 
+Panduan pembaruan otomatis dari komputer ini: [Continuous Deployment GitHub–Vercel](CONTINUOUS-DEPLOYMENT.md).
+
 ## Deploy singkat
 
 1. Unggah isi folder ini ke GitHub. Jangan unggah folder backup atau file konfigurasi privat.

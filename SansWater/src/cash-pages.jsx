@@ -107,7 +107,9 @@ export function createCashPage(UI) {
   } = UI;
   return function Expenses() {
     const { data, act } = useApp(),
-      [period, setPeriod, query] = usePeriod(),
+      [period, setPeriod, query] = usePeriod(
+        data.user.owner ? undefined : "today",
+      ),
       [revision, setRevision] = useState(0),
       [filter, setFilter] = useState("all"),
       [offset, setOffset] = useState(0),
@@ -289,6 +291,7 @@ export function createCashPage(UI) {
               }}
               today={data.today}
               label="Periode pengeluaran"
+              recentOnly={!data.user.owner}
             />
           }
         >

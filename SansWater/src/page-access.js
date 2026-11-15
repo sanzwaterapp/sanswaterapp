@@ -16,6 +16,7 @@ export const PAGE_PERMISSIONS = {
   history: ["reports"],
   staff: ["staff"],
   corrections: [],
+  attendance: [],
   display: ["display"],
   audit: ["reports"],
 };

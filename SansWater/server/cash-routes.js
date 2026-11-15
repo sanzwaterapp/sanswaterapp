@@ -7,6 +7,7 @@ import {
   id,
   integer,
   requireAccess,
+  recentOperationalPeriod,
   text,
 } from "./domain.js";
 
@@ -85,6 +86,7 @@ export function registerCashRoutes(route, db, d) {
       ),
       conditions = ["e.day>=?", "e.day<=?"],
       args = [period.from, period.to];
+    if (!ctx.user.owner) recentOperationalPeriod(period, d.now());
     const filter = ctx.query.get("fund"),
       kind = ctx.query.get("kind");
     if (filter && filter !== "all") {

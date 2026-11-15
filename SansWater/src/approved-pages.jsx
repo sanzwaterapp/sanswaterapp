@@ -91,6 +91,7 @@ const orderStatusChoices = [
   ["active", "Aktif"],
   ["done", "Selesai"],
   ["cancel", "Batal"],
+  ["all", "Semua"],
 ];
 
 export function OrderStatusFilters({
@@ -105,16 +106,18 @@ export function OrderStatusFilters({
       role="group"
       aria-label={label}
     >
-      {orderStatusChoices.map(([key, text]) => (
-        <button
-          key={key}
-          type="button"
-          aria-pressed={value === key}
-          onClick={() => onChange(key)}
-        >
-          {text}
-        </button>
-      ))}
+      {orderStatusChoices
+        .filter(([key]) => compact || key !== "all")
+        .map(([key, text]) => (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={value === key}
+            onClick={() => onChange(key)}
+          >
+            {text}
+          </button>
+        ))}
     </div>
   );
 }
@@ -170,10 +173,102 @@ export function createApprovedPages(UI) {
       </button>
     );
   }
-  function OrderStatusPanel({ order, onClose, inlineError = false }) {
+  function OrderDeleteAction({ order, onDeleted }) {
+    const { data, act, busy } = useApp();
+    const [open, setOpen] = useState(false);
+    const [error, setError] = useState("");
+    if (!data.user.owner) return null;
+    return (
+      <>
+        <button
+          type="button"
+          className="rv-secondary rv-owner-delete rv-order-delete-action"
+          disabled={busy}
+          aria-label={"Hapus transaksi " + order.name}
+          onClick={() => {
+            setError("");
+            setOpen(true);
+          }}
+        >
+          <Trash2 size={13} aria-hidden="true" /> Hapus
+        </button>
+        {open && (
+          <OverlayDialog
+            className="rv-customer-delete-confirm"
+            role="alertdialog"
+            aria-label="Hapus transaksi pesanan"
+            onClose={() => !busy && setOpen(false)}
+            onCancel={(event) => {
+              if (busy) event.preventDefault();
+            }}
+          >
+            <div className="rv-customer-delete-icon">
+              <Trash2 size={19} aria-hidden="true" />
+            </div>
+            <AppForm
+              className="rv-stack"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                setError("");
+                await act(async () => {
+                  await api("/orders/" + order.id, {
+                    method: "DELETE",
+                    body: {
+                      confirmed: true,
+                      version: order.version,
+                      reason: null,
+                    },
+                  });
+                  setOpen(false);
+                  onDeleted?.();
+                }).catch((err) => setError(err.message));
+              }}
+            >
+              <div>
+                <h3>Hapus transaksi pesanan?</h3>
+                <p>
+                  {order.code ? order.code + " · " : ""}
+                  {order.name}. Pesanan dihapus dari daftar. Stok, tagihan, dan
+                  penerimaan terkait disesuaikan bila sudah tercatat.
+                </p>
+              </div>
+              {error && (
+                <p className="rv-error" role="alert">
+                  {error}
+                </p>
+              )}
+              <div className="rv-two">
+                <button
+                  type="button"
+                  className="rv-secondary"
+                  disabled={busy}
+                  autoFocus
+                  onClick={() => setOpen(false)}
+                >
+                  Kembali
+                </button>
+                <button
+                  type="submit"
+                  className="rv-primary rv-customer-delete-submit"
+                  disabled={busy}
+                >
+                  {busy ? "Menghapus…" : "Hapus transaksi"}
+                </button>
+              </div>
+            </AppForm>
+          </OverlayDialog>
+        )}
+      </>
+    );
+  }
+  function OrderStatusPanel({
+    order,
+    onClose,
+    inlineError = false,
+    showDelete = true,
+  }) {
     const { data, act, busy } = useApp();
     const [cancelling, setCancelling] = useState(false);
-    const [deleting, setDeleting] = useState(false);
     const [error, setError] = useState("");
     if (
       !can(data.user, "orders") ||
@@ -186,16 +281,6 @@ export function createApprovedPages(UI) {
         await api("/orders/" + order.id + "/status", {
           method: "PATCH",
           body: { version: order.version, status, reason },
-        });
-        onClose();
-      }).catch((err) => setError(err.message));
-    }
-    async function deleteOrder() {
-      setError("");
-      await act(async () => {
-        await api("/orders/" + order.id, {
-          method: "DELETE",
-          body: { confirmed: true, version: order.version },
         });
         onClose();
       }).catch((err) => setError(err.message));
@@ -223,67 +308,10 @@ export function createApprovedPages(UI) {
           >
             Batal
           </button>
-          {data.user.owner && (
-            <button
-              type="button"
-              className="rv-status-choice rv-delete-order-choice"
-              disabled={busy}
-              aria-label={"Hapus pesanan " + order.name}
-              onClick={() => {
-                setError("");
-                setCancelling(false);
-                setDeleting(true);
-              }}
-            >
-              <Trash2 size={14} /> Hapus pesanan
-            </button>
+          {showDelete && (
+            <OrderDeleteAction order={order} onDeleted={onClose} />
           )}
         </div>
-        {deleting && data.user.owner && (
-          <OverlayDialog
-            className="rv-customer-delete-confirm"
-            role="alertdialog"
-            aria-labelledby="rv-delete-order-title"
-            aria-describedby="rv-delete-order-description"
-            onClose={() => !busy && setDeleting(false)}
-            onCancel={(event) => busy && event.preventDefault()}
-          >
-            <div className="rv-customer-delete-icon">
-              <Trash2 size={19} />
-            </div>
-            <div>
-              <h3 id="rv-delete-order-title">Hapus pesanan?</h3>
-              <p id="rv-delete-order-description">
-                {order.code ? order.code + " · " : ""}
-                {order.name}. Pesanan akan dihapus dari daftar.
-              </p>
-            </div>
-            {error && (
-              <p className="rv-error" role="alert">
-                {error}
-              </p>
-            )}
-            <div className="rv-two">
-              <button
-                type="button"
-                className="rv-secondary"
-                disabled={busy}
-                autoFocus
-                onClick={() => setDeleting(false)}
-              >
-                Kembali
-              </button>
-              <button
-                type="button"
-                className="rv-primary rv-customer-delete-submit"
-                disabled={busy}
-                onClick={deleteOrder}
-              >
-                {busy ? "Menghapus…" : "Hapus pesanan"}
-              </button>
-            </div>
-          </OverlayDialog>
-        )}
         {cancelling && (
           <AppForm
             className="rv-stack"
@@ -301,7 +329,7 @@ export function createApprovedPages(UI) {
             <Submit>Catat batal</Submit>
           </AppForm>
         )}
-        {inlineError && error && !deleting && (
+        {inlineError && error && (
           <p className="rv-error" role="alert">
             {error}
           </p>
@@ -329,6 +357,7 @@ export function createApprovedPages(UI) {
     );
   }
   function AttendanceList({ query }) {
+    const { data } = useApp();
     const [offset, setOffset] = useState(0);
     useEffect(() => setOffset(0), [query]);
     const [attendance, error] = useResource(
@@ -340,7 +369,8 @@ export function createApprovedPages(UI) {
       <div className="rv-card rv-attendance">
         <div className="rv-section-heading">
           <h3>
-            <Camera size={14} /> Absensi periode ini
+            <Camera size={14} />{" "}
+            {data.user.owner ? "Absensi periode ini" : "Absensi saya"}
           </h3>
           <span className="rv-attendance-count">
             {attendance?.total || 0} masuk
@@ -354,7 +384,9 @@ export function createApprovedPages(UI) {
                 <strong>{a.name}</strong>
               </span>
               <time>
-                {dateLabel(a.created_at)} · {timeLabel(a.created_at)}
+                {dateLabel(a.created_at)} ·{" "}
+                {a.shift ? "Shift " + a.shift + " · " : ""}
+                {timeLabel(a.created_at)}
               </time>
               <PhotoButton id={a.photo_id} label={"Foto absensi " + a.name} />
             </div>
@@ -378,8 +410,10 @@ export function createApprovedPages(UI) {
               </button>
             </div>
           )}
-          {!rows.length && (
-            <span className="rv-note">Belum ada absensi pada periode ini.</span>
+          {attendance && !rows.length && (
+            <Empty icon={Camera} compact>
+              Belum ada absensi pada periode ini.
+            </Empty>
           )}
         </div>
       </div>
@@ -514,7 +548,7 @@ export function createApprovedPages(UI) {
         ) : !orders && !error ? (
           <LoadingState compact />
         ) : (
-          <p className="rv-delivery-empty">
+          <Empty icon={Timer} compact>
             {orders
               ? orders.length
                 ? "Tidak ada pesanan " +
@@ -524,14 +558,17 @@ export function createApprovedPages(UI) {
                   "."
                 : "Belum ada pengantaran selesai " + periodLabel + "."
               : "Daftar pengantaran belum dapat dimuat."}
-          </p>
+          </Empty>
         )}
       </section>
     );
   }
   function Home() {
     const { data } = useApp(),
-      [period, setPeriod, query] = usePeriod(),
+      [period, setPeriod, query] = usePeriod(
+        data.user.owner ? undefined : "today",
+      ),
+      dates = periodDates(data.today, period),
       [calendarOpen, setCalendarOpen] = useState(false),
       [report, error] = useResource(
         can(data.user, "reports")
@@ -539,13 +576,19 @@ export function createApprovedPages(UI) {
               query +
               "&view=dashboard&revision=" +
               encodeURIComponent(data.syncVersion || data.now)
-          : "/session",
+          : null,
         { keepPrevious: true, resetKey: data.user.id + ":" + query },
       ),
+      [staffSummary, staffSummaryError] = useResource(
+        data.user.owner
+          ? null
+          : "/home-summary?day=" + encodeURIComponent(dates.from),
+      ),
+      selectedSummary = staffSummary?.day === dates.from ? staffSummary : null,
       stats = report?.stats,
-      counts = can(data.user, "reports")
+      counts = data.user.owner
         ? report?.orderCounts
-        : data.dailyCounts,
+        : selectedSummary?.orderCounts,
       periodLabel = {
         today: "hari ini",
         yesterday: "kemarin",
@@ -556,36 +599,40 @@ export function createApprovedPages(UI) {
     return (
       <div id="rv-home">
         <section className="rv-home-hero" aria-label="Ringkasan Beranda">
-          {can(data.user, "reports") && (
+          {data.user.owner && (
             <div className="rv-card rv-home-sales">
-              <div
-                className="rv-home-periods"
-                role="group"
-                aria-label="Periode dashboard"
-              >
-                {[
-                  ["today", "Hari ini"],
-                  ["yesterday", "Kemarin"],
-                  ["week", "Minggu ini"],
-                  ["month", "Bulan ini"],
-                  ["range", "Custom"],
-                ].map(([kind, label]) => (
-                  <button
-                    type="button"
-                    key={kind}
-                    aria-pressed={period.kind === kind}
-                    aria-haspopup={kind === "range" ? "dialog" : undefined}
-                    aria-expanded={kind === "range" ? calendarOpen : undefined}
-                    onClick={() =>
-                      kind === "range"
-                        ? setCalendarOpen(true)
-                        : setPeriod({ ...period, kind })
-                    }
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+              {data.user.owner && (
+                <div
+                  className="rv-home-periods"
+                  role="group"
+                  aria-label="Periode dashboard"
+                >
+                  {[
+                    ["today", "Hari ini"],
+                    ["yesterday", "Kemarin"],
+                    ["week", "Minggu ini"],
+                    ["month", "Bulan ini"],
+                    ["range", "Custom"],
+                  ].map(([kind, label]) => (
+                    <button
+                      type="button"
+                      key={kind}
+                      aria-pressed={period.kind === kind}
+                      aria-haspopup={kind === "range" ? "dialog" : undefined}
+                      aria-expanded={
+                        kind === "range" ? calendarOpen : undefined
+                      }
+                      onClick={() =>
+                        kind === "range"
+                          ? setCalendarOpen(true)
+                          : setPeriod({ ...period, kind })
+                      }
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
               {period.kind === "range" && (
                 <button
                   type="button"
@@ -632,6 +679,117 @@ export function createApprovedPages(UI) {
                   </div>
                 ))}
               </dl>
+            </div>
+          )}
+          {!data.user.owner && (
+            <div className="rv-home-sales rv-staff-hero">
+              <div
+                className="rv-home-periods rv-staff-home-periods"
+                role="group"
+                aria-label="Periode Beranda"
+              >
+                {[
+                  ["today", "Hari ini"],
+                  ["yesterday", "Kemarin"],
+                ].map(([kind, label]) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    aria-pressed={period.kind === kind}
+                    onClick={() => setPeriod({ ...period, kind })}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="rv-staff-hero-heading">
+                <h2>Aktivitas saya</h2>
+                <time dateTime={dates.from}>
+                  <CalendarDays size={13} aria-hidden="true" />{" "}
+                  {dateLabel(dates.from)}
+                </time>
+              </div>
+              <dl className="rv-staff-hero-metrics" aria-live="polite">
+                <div>
+                  <dt>
+                    <Truck size={15} aria-hidden="true" /> Pengantaran selesai
+                  </dt>
+                  <dd>
+                    {selectedSummary
+                      ? selectedSummary.deliveryPerformance.length.toLocaleString(
+                          "id-ID",
+                        )
+                      : "—"}{" "}
+                    <small>Pesanan</small>
+                  </dd>
+                </div>
+                <div>
+                  <dt>
+                    <Droplets size={15} aria-hidden="true" /> Jumlah pesanan
+                  </dt>
+                  <dd>
+                    {selectedSummary?.depotItems?.toLocaleString("id-ID") ??
+                      "—"}{" "}
+                    <small>Item</small>
+                  </dd>
+                </div>
+              </dl>
+              <dl
+                className="rv-staff-hero-receipts"
+                aria-label="Penerimaan saya"
+                aria-live="polite"
+              >
+                <div>
+                  <dt>
+                    <Banknote size={14} aria-hidden="true" /> Tunai
+                  </dt>
+                  <dd>
+                    {selectedSummary?.receipts
+                      ? money(selectedSummary.receipts.cash)
+                      : "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>
+                    <ScanLine size={14} aria-hidden="true" /> QRIS
+                  </dt>
+                  <dd>
+                    {selectedSummary?.receipts
+                      ? money(selectedSummary.receipts.qris)
+                      : "—"}
+                  </dd>
+                </div>
+              </dl>
+              <div className="rv-staff-hero-attendance" aria-live="polite">
+                <strong>
+                  <Camera size={14} aria-hidden="true" /> Absensi saya
+                </strong>
+                {selectedSummary?.attendance.length ? (
+                  <div className="rv-staff-hero-shifts">
+                    {selectedSummary.attendance
+                      .slice()
+                      .reverse()
+                      .map((entry) => (
+                        <span key={entry.id}>
+                          <b>
+                            {entry.shift ? "Shift " + entry.shift : "Masuk"}
+                          </b>
+                          <time dateTime={entry.created_at}>
+                            {timeLabel(entry.created_at)} WIB
+                          </time>
+                        </span>
+                      ))}
+                  </div>
+                ) : (
+                  <span>
+                    {staffSummaryError
+                      ? "Gagal dimuat"
+                      : selectedSummary
+                        ? "Belum ada absensi"
+                        : "Memuat…"}
+                  </span>
+                )}
+              </div>
             </div>
           )}
         </section>
@@ -727,15 +885,19 @@ export function createApprovedPages(UI) {
               })}
             </div>
           </div>
-          {data.user.owner && (
-            <DeliveryPerformance
-              orders={report?.deliveryPerformance}
-              periodLabel={periodLabel}
-              periodKey={period.kind + ":" + query}
-              error={error}
-            />
+          <DeliveryPerformance
+            orders={
+              data.user.owner
+                ? report?.deliveryPerformance
+                : selectedSummary?.deliveryPerformance
+            }
+            periodLabel={periodLabel}
+            periodKey={period.kind + ":" + query}
+            error={data.user.owner ? error : staffSummaryError}
+          />
+          {data.user.owner && dates.from === dates.to && (
+            <AttendanceList query={query} />
           )}
-          <AttendanceList query={query} />
           {can(data.user, "stock") && (
             <details className="rv-card rv-extra rv-home-extra">
               <summary>
@@ -1274,12 +1436,14 @@ export function createApprovedPages(UI) {
       </>
     );
   }
+  const canSelectForTrip = (order) =>
+    order.kind === "delivery" &&
+    ["new", "pickup", "fill", "failed", "partial"].includes(order.status);
   function Orders() {
     const { data, act, tick, refresh } = useApp(),
       [filter, setFilter] = useState(() => {
         const key = window.location.hash.split("?")[1]?.split("&")[0];
-        return key === "all" ||
-          Object.prototype.hasOwnProperty.call(filters, key) ||
+        return Object.prototype.hasOwnProperty.call(filters, key) ||
           orderStatusChoices.some(([value]) => value === key)
           ? key
           : "active";
@@ -1361,21 +1525,15 @@ export function createApprovedPages(UI) {
       setProductEditor(null);
       setPages(next);
     }
-    const selectedOrders = data.orders.filter(
-      (o) =>
-        selected.includes(o.id) &&
-        o.kind === "delivery" &&
-        ["new", "pickup", "fill", "failed", "partial"].includes(o.status),
-    );
+    const canPickTrips = can(data.user, "trips");
+    const selectedOrders = canPickTrips
+      ? data.orders.filter(
+          (order) => selected.includes(order.id) && canSelectForTrip(order),
+        )
+      : [];
     useEffect(() => {
       const eligible = new Set(
-        data.orders
-          .filter(
-            (o) =>
-              o.kind === "delivery" &&
-              ["new", "pickup", "fill", "failed", "partial"].includes(o.status),
-          )
-          .map((o) => o.id),
+        data.orders.filter(canSelectForTrip).map((o) => o.id),
       );
       setSelected((previous) =>
         previous.every((id) => eligible.has(id))
@@ -1442,223 +1600,256 @@ export function createApprovedPages(UI) {
           {periodError && <span className="rv-error">{periodError}</span>}
           {!periodOrders && !periodError && <LoadingState />}
           <div className="rv-list">
-            {shown.map((o) => (
-              <article className="rv-order" key={o.id}>
-                <div className="rv-order-grid">
-                  <div className="rv-select-row">
-                    <input
-                      type="checkbox"
-                      id={"select-order-" + o.id}
-                      aria-label={"Pilih " + o.name + " untuk trip"}
-                      checked={selected.includes(o.id)}
-                      disabled={
-                        !can(data.user, "trips") ||
-                        o.kind !== "delivery" ||
-                        ![
-                          "new",
-                          "pickup",
-                          "fill",
-                          "failed",
-                          "partial",
-                        ].includes(o.status)
-                      }
-                      onChange={(e) =>
-                        setSelected((s) =>
-                          e.target.checked
-                            ? [...s, o.id]
-                            : s.filter((id) => id !== o.id),
-                        )
-                      }
-                    />
-                    <span>
-                      <label htmlFor={"select-order-" + o.id}>
-                        <Identity
-                          code={o.code}
-                          name={o.name}
-                          source={o.kind === "delivery" ? o.source : undefined}
+            {shown.map((o) => {
+              const canPick = canPickTrips && canSelectForTrip(o);
+              const identity = (
+                <Identity
+                  code={o.code}
+                  name={o.name}
+                  source={o.kind === "delivery" ? o.source : undefined}
+                />
+              );
+              return (
+                <article className="rv-order" key={o.id}>
+                  <div className="rv-order-grid">
+                    <div className="rv-select-row">
+                      {canPick && (
+                        <input
+                          className="rv-trip-order-checkbox"
+                          type="checkbox"
+                          id={"select-order-" + o.id}
+                          aria-label={"Pilih " + o.name + " untuk trip"}
+                          checked={selected.includes(o.id)}
+                          onChange={(e) =>
+                            setSelected((s) =>
+                              e.target.checked
+                                ? [...s, o.id]
+                                : s.filter((id) => id !== o.id),
+                            )
+                          }
                         />
-                      </label>
-                      <span className="rv-order-products">
-                        {can(data.user, "orders") &&
-                        o.kind === "delivery" &&
-                        [
-                          "new",
-                          "pickup",
-                          "fill",
-                          "failed",
-                          "partial",
-                          "delivery",
-                        ].includes(o.status) ? (
-                          <button
-                            type="button"
-                            className={
-                              "rv-order-product-action" +
-                              (!o.items.length ? " rv-order-product-empty" : "")
-                            }
-                            aria-label={
-                              (o.items.length
-                                ? "Ubah produk "
-                                : "Isi produk ") + o.name
-                            }
-                            aria-expanded={productEditor?.id === o.id}
-                            aria-controls={"order-products-" + o.id}
-                            onClick={() => {
-                              setProductEditor(
-                                productEditor?.id === o.id
-                                  ? null
-                                  : {
-                                      id: o.id,
-                                      version: o.version,
-                                      discounts: o.discounts || {},
-                                      lines: o.items.map((line) => ({
-                                        ...line,
-                                        price:
-                                          o.prepayment?.amount > 0
-                                            ? line.price
-                                            : (data.products
-                                                .find(
-                                                  (p) =>
-                                                    p.id === line.productId,
-                                                )
-                                                ?.modes.find(
-                                                  (m) => m.id === line.modeId,
-                                                )?.price ?? line.price),
-                                      })),
-                                    },
-                              );
-                              setProductError("");
-                              setMenu("");
-                            }}
-                          >
-                            {o.items.length ? (
-                              <>
-                                {orderProductSummary(o)}
-                                <SquarePen size={12} />
-                              </>
-                            ) : (
-                              <>
-                                <Plus size={13} /> Isi produk
-                              </>
-                            )}
-                          </button>
+                      )}
+                      <span className="rv-order-copy">
+                        {canPick ? (
+                          <label htmlFor={"select-order-" + o.id}>
+                            {identity}
+                          </label>
                         ) : (
-                          orderProductSummary(o) || "Produk belum diisi"
+                          identity
                         )}
+                        <span className="rv-order-products">
+                          {can(data.user, "orders") &&
+                          o.kind === "delivery" &&
+                          [
+                            "new",
+                            "pickup",
+                            "fill",
+                            "failed",
+                            "partial",
+                            "delivery",
+                          ].includes(o.status) ? (
+                            <button
+                              type="button"
+                              className={
+                                "rv-order-product-action" +
+                                (!o.items.length
+                                  ? " rv-order-product-empty"
+                                  : "")
+                              }
+                              aria-label={
+                                (o.items.length
+                                  ? "Ubah produk "
+                                  : "Isi produk ") + o.name
+                              }
+                              aria-expanded={productEditor?.id === o.id}
+                              aria-controls={"order-products-" + o.id}
+                              onClick={() => {
+                                setProductEditor(
+                                  productEditor?.id === o.id
+                                    ? null
+                                    : {
+                                        id: o.id,
+                                        version: o.version,
+                                        discounts: o.discounts || {},
+                                        lines: o.items.map((line) => ({
+                                          ...line,
+                                          price:
+                                            o.prepayment?.amount > 0
+                                              ? line.price
+                                              : (data.products
+                                                  .find(
+                                                    (p) =>
+                                                      p.id === line.productId,
+                                                  )
+                                                  ?.modes.find(
+                                                    (m) => m.id === line.modeId,
+                                                  )?.price ?? line.price),
+                                        })),
+                                      },
+                                );
+                                setProductError("");
+                                setMenu("");
+                              }}
+                            >
+                              {o.items.length ? (
+                                <>
+                                  {orderProductSummary(o)}
+                                  <SquarePen size={12} />
+                                </>
+                              ) : (
+                                <>
+                                  <Plus size={13} /> Isi produk
+                                </>
+                              )}
+                            </button>
+                          ) : (
+                            orderProductSummary(o) || "Produk belum diisi"
+                          )}
+                        </span>
                       </span>
-                    </span>
-                  </div>
-                  <div className="rv-order-rail">
-                    <DurationChip
-                      minutes={duration(o, tick)}
-                      settings={data.settings}
-                    />
-                    <OrderStatusButton
-                      order={o}
-                      open={menu === o.id}
-                      onToggle={() => {
-                        setMenu(menu === o.id ? "" : o.id);
-                        setProductEditor(null);
-                      }}
-                    />
-                  </div>
-                </div>
-                <OrderQuantityNote revision={o.revision} />
-                {["cancel", "failed"].includes(o.status) && o.reason && (
-                  <p className="rv-order-reason">
-                    <span>
-                      {o.status === "cancel" ? "Alasan batal" : "Alasan gagal"}
-                    </span>
-                    {o.reason}
-                  </p>
-                )}
-                {o.prepayment?.settled && (
-                  <span className="rv-paid-badge rv-order-paid">
-                    <BadgeCheck size={14} />
-                    Lunas · {o.prepayment.method}
-                  </span>
-                )}
-                {productEditor?.id === o.id && (
-                  <AppForm
-                    id={"order-products-" + o.id}
-                    className="rv-order-product-editor"
-                    aria-label={"Produk pesanan " + o.name}
-                    onSubmit={async (e) => {
-                      e.preventDefault();
-                      setProductError("");
-                      await act(async () => {
-                        await api("/orders/" + o.id + "/items", {
-                          method: "PATCH",
-                          body: {
-                            version: productEditor.version,
-                            items: productEditor.lines,
-                            discounts: Object.fromEntries(
-                              [
-                                ...new Set(
-                                  productEditor.lines.map(
-                                    (line) => line.productId,
-                                  ),
-                                ),
-                              ].map((key) => [
-                                key,
-                                Number(productEditor.discounts[key] || 0),
-                              ]),
-                            ),
-                          },
-                        });
-                        setProductEditor(null);
-                      }).catch(async (err) => {
-                        setProductError(err.message);
-                        if (err.status === 409) await refresh().catch(() => {});
-                      });
-                    }}
-                  >
-                    <div className="rv-section-heading">
-                      <h3>
-                        <Package size={14} /> Produk pesanan
-                      </h3>
-                      <button
-                        type="button"
-                        className="rv-order-editor-close"
-                        aria-label="Tutup isian produk"
-                        onClick={() => setProductEditor(null)}
-                      >
-                        <X size={16} />
-                      </button>
                     </div>
-                    <ProductPicker
-                      compactSelected
-                      chargesDisabled={!!o.prepayment}
-                      lines={productEditor.lines}
-                      discounts={productEditor.discounts}
-                      onDiscountChange={(discounts) =>
-                        setProductEditor((previous) => ({
-                          ...previous,
-                          discounts,
-                        }))
-                      }
-                      onChange={(lines) =>
-                        setProductEditor((previous) => ({ ...previous, lines }))
-                      }
+                    <div className="rv-order-rail">
+                      <DurationChip
+                        minutes={duration(o, tick)}
+                        settings={data.settings}
+                      />
+                      <OrderStatusButton
+                        order={o}
+                        open={menu === o.id}
+                        onToggle={() => {
+                          setMenu(menu === o.id ? "" : o.id);
+                          setProductEditor(null);
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {(o.completed_at || data.user.owner) && (
+                    <div className="rv-order-actions-row">
+                      {o.completed_at && (
+                        <time
+                          className="rv-order-completed-at"
+                          dateTime={o.completed_at}
+                        >
+                          <CalendarDays size={13} aria-hidden="true" />
+                          {dateLabel(o.completed_at)} ·{" "}
+                          {timeLabel(o.completed_at)} WIB
+                        </time>
+                      )}
+                      <OrderDeleteAction
+                        order={o}
+                        onDeleted={() => {
+                          setMenu("");
+                          setProductEditor(null);
+                        }}
+                      />
+                    </div>
+                  )}
+                  <OrderQuantityNote revision={o.revision} />
+                  {["cancel", "failed"].includes(o.status) && o.reason && (
+                    <p className="rv-order-reason">
+                      <span>
+                        {o.status === "cancel"
+                          ? "Alasan batal"
+                          : "Alasan gagal"}
+                      </span>
+                      {o.reason}
+                    </p>
+                  )}
+                  {o.prepayment?.settled && (
+                    <span className="rv-paid-badge rv-order-paid">
+                      <BadgeCheck size={14} />
+                      Lunas · {o.prepayment.method}
+                    </span>
+                  )}
+                  {productEditor?.id === o.id && (
+                    <AppForm
+                      id={"order-products-" + o.id}
+                      className="rv-order-product-editor"
+                      aria-label={"Produk pesanan " + o.name}
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        setProductError("");
+                        await act(async () => {
+                          await api("/orders/" + o.id + "/items", {
+                            method: "PATCH",
+                            body: {
+                              version: productEditor.version,
+                              items: productEditor.lines,
+                              discounts: Object.fromEntries(
+                                [
+                                  ...new Set(
+                                    productEditor.lines.map(
+                                      (line) => line.productId,
+                                    ),
+                                  ),
+                                ].map((key) => [
+                                  key,
+                                  Number(productEditor.discounts[key] || 0),
+                                ]),
+                              ),
+                            },
+                          });
+                          setProductEditor(null);
+                        }).catch(async (err) => {
+                          setProductError(err.message);
+                          if (err.status === 409)
+                            await refresh().catch(() => {});
+                        });
+                      }}
+                    >
+                      <div className="rv-section-heading">
+                        <h3>
+                          <Package size={14} /> Produk pesanan
+                        </h3>
+                        <button
+                          type="button"
+                          className="rv-order-editor-close"
+                          aria-label="Tutup isian produk"
+                          onClick={() => setProductEditor(null)}
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                      <ProductPicker
+                        compactSelected
+                        chargesDisabled={!!o.prepayment}
+                        lines={productEditor.lines}
+                        discounts={productEditor.discounts}
+                        onDiscountChange={(discounts) =>
+                          setProductEditor((previous) => ({
+                            ...previous,
+                            discounts,
+                          }))
+                        }
+                        onChange={(lines) =>
+                          setProductEditor((previous) => ({
+                            ...previous,
+                            lines,
+                          }))
+                        }
+                      />
+                      {productError && (
+                        <p className="rv-error" role="alert">
+                          {productError}
+                        </p>
+                      )}
+                      <Submit disabled={!productEditor.lines.length}>
+                        Simpan produk
+                      </Submit>
+                    </AppForm>
+                  )}
+                  {menu === o.id && (
+                    <OrderStatusPanel
+                      order={o}
+                      onClose={() => setMenu("")}
+                      showDelete={false}
                     />
-                    {productError && (
-                      <p className="rv-error" role="alert">
-                        {productError}
-                      </p>
-                    )}
-                    <Submit disabled={!productEditor.lines.length}>
-                      Simpan produk
-                    </Submit>
-                  </AppForm>
-                )}
-                {menu === o.id && (
-                  <OrderStatusPanel order={o} onClose={() => setMenu("")} />
-                )}
-              </article>
-            ))}
+                  )}
+                </article>
+              );
+            })}
             {periodOrders && !shown.length && (
-              <p className="rv-orders-empty">
-                Belum ada pesanan pada tanggal dan status ini.
-              </p>
+              <Empty>Belum ada pesanan pada tanggal dan status ini.</Empty>
             )}
           </div>
           {(navigation.index > 0 || periodOrders?.hasMore) && (
@@ -2072,6 +2263,12 @@ export function createApprovedPages(UI) {
       [reason, setReason] = useState(""),
       [receipt, setReceipt] = useState(null);
     const [payNow, setPayNow] = useState(false);
+    const [debtMode, setDebtMode] = useState("existing");
+    const [debtId, setDebtId] = useState("");
+    const [debtName, setDebtName] = useState(
+      order?.name === "Pembeli umum" ? "" : order?.name || "",
+    );
+    const [debtPhone, setDebtPhone] = useState("");
     const registered = counter ? !!customerId : !!order?.customer_id;
     const payLater = counter && registered && !payNow;
     const productIds = [...new Set(lines.map((l) => l.productId))],
@@ -2107,12 +2304,7 @@ export function createApprovedPages(UI) {
     useEffect(() => {
       if (!paidEdited) setPayment((p) => ({ ...p, paid: String(due) }));
     }, [due, paidEdited]);
-    useEffect(() => {
-      if (!registered && payment.method === "Utang") {
-        setPayment((p) => ({ ...p, method: "", paid: String(total) }));
-        setPaidEdited(false);
-      }
-    }, [registered, payment.method, total]);
+    const guestDebt = !counter && !registered && payment.method === "Utang";
     const set = (key, value) => {
       if (key === "paid") setPaidEdited(true);
       setPayment((p) => ({ ...p, [key]: value }));
@@ -2152,6 +2344,14 @@ export function createApprovedPages(UI) {
                       : undefined,
                   customerId,
                   guestName,
+                  ...(guestDebt
+                    ? {
+                        debtCustomer:
+                          debtMode === "existing"
+                            ? { id: debtId }
+                            : { name: debtName, whatsapp: debtPhone },
+                      }
+                    : {}),
                 },
           },
         );
@@ -2208,186 +2408,255 @@ export function createApprovedPages(UI) {
             />
           </div>
         )}
-        <div className="rv-card rv-stack rv-payment-card rv-payment-simple">
-          {counter && (
-            <div className="rv-payment-heading">
-              <span>
-                <Wallet size={16} />
-                <strong>Pembayaran</strong>
-              </span>
-              <strong>{money(total)}</strong>
-            </div>
-          )}
-          {prepaid ? (
-            <>
-              <span className="rv-paid-badge">
-                <BadgeCheck size={17} />
-                Dibayar di muka · {money(advanceUsed)}
-              </span>
-              {(Number(shipping) > 0 ||
-                Object.values(discounts).some(
-                  (value) => Number(value) > 0,
-                )) && (
-                <small className="rv-note">
-                  {[
-                    Object.values(discounts).reduce(
-                      (sum, value) => sum + Number(value || 0),
-                      0,
-                    ) > 0
-                      ? "Diskon −" +
-                        money(
-                          Object.values(discounts).reduce(
-                            (sum, value) => sum + Number(value || 0),
-                            0,
-                          ),
-                        )
-                      : "",
-                    Number(shipping) > 0
-                      ? "Ongkir " + money(Number(shipping))
-                      : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </small>
-              )}
-            </>
-          ) : (
-            <>
-              {advanceUsed > 0 && (
-                <p className="rv-note">
-                  Pembayaran di muka digunakan {money(advanceUsed)} · Sisa
-                  dibayar {money(due)}
-                </p>
-              )}
-              {counter && registered && (
-                <div
-                  className="rv-payment-timing"
-                  role="group"
-                  aria-label="Waktu pembayaran"
-                >
-                  <button
-                    type="button"
-                    aria-pressed={!payNow}
-                    onClick={() => setPayNow(false)}
-                  >
-                    Bayar nanti
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={payNow}
-                    onClick={() => setPayNow(true)}
-                  >
-                    Bayar sekarang
-                  </button>
-                </div>
-              )}
-              {payLater ? (
-                <p className="rv-payment-note">
-                  Dicatat sebagai utang pelanggan. Pembayaran bisa dimasukkan
-                  melalui halaman Utang.
-                </p>
-              ) : (
-                <>
+        {!outcome && (
+          <div className="rv-card rv-stack rv-payment-card rv-payment-simple">
+            {counter && (
+              <div className="rv-payment-heading">
+                <span>
+                  <Wallet size={16} />
+                  <strong>Pembayaran</strong>
+                </span>
+                <strong>{money(total)}</strong>
+              </div>
+            )}
+            {prepaid ? (
+              <>
+                <span className="rv-paid-badge">
+                  <BadgeCheck size={17} />
+                  Dibayar di muka · {money(advanceUsed)}
+                </span>
+                {(Number(shipping) > 0 ||
+                  Object.values(discounts).some(
+                    (value) => Number(value) > 0,
+                  )) && (
+                  <small className="rv-note">
+                    {[
+                      Object.values(discounts).reduce(
+                        (sum, value) => sum + Number(value || 0),
+                        0,
+                      ) > 0
+                        ? "Diskon −" +
+                          money(
+                            Object.values(discounts).reduce(
+                              (sum, value) => sum + Number(value || 0),
+                              0,
+                            ),
+                          )
+                        : "",
+                      Number(shipping) > 0
+                        ? "Ongkir " + money(Number(shipping))
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </small>
+                )}
+              </>
+            ) : (
+              <>
+                {advanceUsed > 0 && (
+                  <p className="rv-note">
+                    Pembayaran di muka digunakan {money(advanceUsed)} · Sisa
+                    dibayar {money(due)}
+                  </p>
+                )}
+                {counter && registered && (
                   <div
-                    className={(counter ? "" : "rv-two ") + "rv-payment-inputs"}
+                    className="rv-payment-timing"
+                    role="group"
+                    aria-label="Waktu pembayaran"
                   >
-                    <Field label="Metode">
-                      <select
-                        value={payment.method}
-                        onChange={(e) => set("method", e.target.value)}
-                        required
+                    <button
+                      type="button"
+                      aria-pressed={!payNow}
+                      onClick={() => setPayNow(false)}
+                    >
+                      Bayar nanti
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={payNow}
+                      onClick={() => setPayNow(true)}
+                    >
+                      Bayar sekarang
+                    </button>
+                  </div>
+                )}
+                {payLater ? (
+                  <p className="rv-payment-note">
+                    Dicatat sebagai utang pelanggan. Pembayaran bisa dimasukkan
+                    melalui halaman Utang.
+                  </p>
+                ) : (
+                  <>
+                    <div
+                      className={
+                        (counter ? "" : "rv-two ") + "rv-payment-inputs"
+                      }
+                    >
+                      <Field label="Metode">
+                        <select
+                          value={payment.method}
+                          onChange={(e) => set("method", e.target.value)}
+                          required
+                        >
+                          <option value="">Pilih metode</option>
+                          <option>Tunai</option>
+                          <option>QRIS</option>
+                          {!counter && (
+                            <option value="Utang">Belum bayar</option>
+                          )}
+                        </select>
+                      </Field>
+                      {!counter && payment.method !== "Utang" && (
+                        <Currency
+                          label="Dibayar (Rp)"
+                          value={
+                            payment.method === "Utang" ? "0" : payment.paid
+                          }
+                          onChange={(v) => set("paid", v)}
+                          min={registered ? 0 : due}
+                          max={due}
+                          required
+                        />
+                      )}
+                    </div>
+                    {guestDebt && !outcome && (
+                      <section
+                        className="rv-stack rv-guest-debt"
+                        aria-label="Pelanggan untuk tagihan"
                       >
-                        <option value="">Pilih metode</option>
-                        <option>Tunai</option>
-                        <option>QRIS</option>
-                        {!counter && (
-                          <option value="Utang" disabled={!registered}>
-                            Belum bayar
-                          </option>
+                        <strong>Pelanggan untuk tagihan</strong>
+                        <div
+                          className="rv-payment-timing"
+                          role="group"
+                          aria-label="Data pelanggan"
+                        >
+                          <button
+                            type="button"
+                            aria-pressed={debtMode === "existing"}
+                            onClick={() => setDebtMode("existing")}
+                          >
+                            Pilih pelanggan
+                          </button>
+                          <button
+                            type="button"
+                            aria-pressed={debtMode === "new"}
+                            onClick={() => setDebtMode("new")}
+                          >
+                            Tambah pelanggan
+                          </button>
+                        </div>
+                        {debtMode === "existing" ? (
+                          <CustomerPicker
+                            value={debtId}
+                            onChange={setDebtId}
+                            onGuestChange={() => {}}
+                          />
+                        ) : (
+                          <>
+                            <Field
+                              label="Nama pelanggan"
+                              required
+                              maxLength={120}
+                              value={debtName}
+                              onChange={(e) => setDebtName(e.target.value)}
+                            />
+                            <Field
+                              label="Nomor WhatsApp"
+                              type="tel"
+                              required
+                              maxLength={25}
+                              value={debtPhone}
+                              onChange={(e) => setDebtPhone(e.target.value)}
+                            />
+                          </>
                         )}
-                      </select>
-                    </Field>
-                    {!counter && payment.method !== "Utang" && (
-                      <Currency
-                        label="Dibayar (Rp)"
-                        value={payment.method === "Utang" ? "0" : payment.paid}
-                        onChange={(v) => set("paid", v)}
-                        min={registered ? 0 : due}
-                        max={due}
-                        required
+                      </section>
+                    )}
+                    {!counter && (
+                      <div className="rv-trip-adjustment-fields">
+                        <ItemCharges
+                          lines={lines}
+                          onChange={setLines}
+                          discounts={discounts}
+                          onDiscountChange={setDiscounts}
+                          disabled={!!order.prepayment}
+                        />
+                        {!hasItemShipping(lines) && shipping > 0 && (
+                          <p className="rv-note">
+                            Ongkir sebelumnya {money(shipping)}. Pilih tarif per
+                            produk untuk menggantinya.
+                          </p>
+                        )}
+                        {order.prepayment && (
+                          <p className="rv-note">
+                            Mengikuti pembayaran di muka yang sudah dicatat.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {!counter && (
+                      <div className="rv-payment-balance">
+                        <span className="rv-note">Sisa utang</span>
+                        <strong>{money(due - paidAmount)}</strong>
+                      </div>
+                    )}
+                    {!counter && payment.method === "Tunai" && (
+                      <details className="rv-extra">
+                        <summary>
+                          Hitung kembalian
+                          <ChevronDown />
+                        </summary>
+                        <Currency
+                          label="Uang tunai yang diserahkan (Rp)"
+                          value={payment.tender ?? ""}
+                          onChange={(v) => set("tender", v)}
+                        />
+                        <div className="rv-line">
+                          <span className="rv-note">Kembalian</span>
+                          <strong>
+                            {money(
+                              Math.max(
+                                0,
+                                Number(payment.tender) - Number(payment.paid),
+                              ),
+                            )}
+                          </strong>
+                        </div>
+                      </details>
+                    )}
+                    {!counter && payment.method === "QRIS" && (
+                      <CameraCapture
+                        label="Bukti QRIS (opsional)"
+                        photo={payment.proof}
+                        onChange={(photo) => set("proof", photo)}
+                        allowFile
                       />
                     )}
-                  </div>
-                  {!counter && (
-                    <div className="rv-trip-adjustment-fields">
-                      <ItemCharges
-                        lines={lines}
-                        onChange={setLines}
-                        discounts={discounts}
-                        onDiscountChange={setDiscounts}
-                        disabled={!!order.prepayment}
-                      />
-                      {!hasItemShipping(lines) && shipping > 0 && (
-                        <p className="rv-note">
-                          Ongkir sebelumnya {money(shipping)}. Pilih tarif per
-                          produk untuk menggantinya.
-                        </p>
-                      )}
-                      {order.prepayment && (
-                        <p className="rv-note">
-                          Mengikuti pembayaran di muka yang sudah dicatat.
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  {!counter && (
-                    <div className="rv-payment-balance">
-                      <span className="rv-note">Sisa utang</span>
-                      <strong>{money(due - paidAmount)}</strong>
-                    </div>
-                  )}
-                  {!counter && payment.method === "Tunai" && (
-                    <details className="rv-extra">
-                      <summary>
-                        Hitung kembalian
-                        <ChevronDown />
-                      </summary>
-                      <Currency
-                        label="Uang tunai yang diserahkan (Rp)"
-                        value={payment.tender ?? ""}
-                        onChange={(v) => set("tender", v)}
-                      />
-                      <div className="rv-line">
-                        <span className="rv-note">Kembalian</span>
-                        <strong>
-                          {money(
-                            Math.max(
-                              0,
-                              Number(payment.tender) - Number(payment.paid),
-                            ),
-                          )}
-                        </strong>
-                      </div>
-                    </details>
-                  )}
-                  {!counter && payment.method === "QRIS" && (
-                    <CameraCapture
-                      label="Bukti QRIS (opsional)"
-                      photo={payment.proof}
-                      onChange={(photo) => set("proof", photo)}
-                      allowFile
-                    />
-                  )}
-                </>
-              )}
-            </>
-          )}
-          {!outcome && (
-            <Submit disabled={!lines.length}>
-              {counter ? "Simpan pesanan" : "Catat pengantaran"}
-            </Submit>
-          )}
-        </div>
+                  </>
+                )}
+              </>
+            )}
+            {
+              <Submit
+                disabled={
+                  !lines.length ||
+                  (guestDebt &&
+                    (debtMode === "existing"
+                      ? !debtId
+                      : !debtName.trim() || !debtPhone.trim()))
+                }
+              >
+                {counter
+                  ? "Simpan pesanan"
+                  : guestDebt
+                    ? "Catat pengantaran dan utang"
+                    : "Catat pengantaran"}
+              </Submit>
+            }
+          </div>
+        )}
         {!counter && (
           <>
             <div className="rv-outcome-chips">
@@ -2833,7 +3102,7 @@ export function createApprovedPages(UI) {
           )}
           {!result && !error && <LoadingState />}
           {result && !groups.length && (
-            <Empty>Belum ada trip pada periode ini.</Empty>
+            <Empty icon={Truck}>Belum ada trip pada periode ini.</Empty>
           )}
           {(offset > 0 || result?.hasMore) && (
             <div className="rv-report-pagination">
@@ -2876,7 +3145,9 @@ export function createApprovedPages(UI) {
   }
   function DebtPaymentHistory({ onBack }) {
     const { data } = useApp();
-    const [period, setPeriod, query] = usePeriod(),
+    const [period, setPeriod, query] = usePeriod(
+        data.user.owner ? undefined : "today",
+      ),
       [search, setSearch] = useState(""),
       [offset, setOffset] = useState(0),
       [receiptId, setReceiptId] = useState(null),
@@ -2921,6 +3192,7 @@ export function createApprovedPages(UI) {
             }}
             today={data.today}
             label="Periode riwayat pembayaran"
+            recentOnly={!data.user.owner}
           />
           <div className="rv-section-heading">
             <h3>Pembayaran pelanggan</h3>
@@ -2942,6 +3214,7 @@ export function createApprovedPages(UI) {
                 <div className="rv-payment-record-top">
                   <Identity code={row.customer_code} name={row.customer} />
                   <strong>{money(row.amount)}</strong>
+                  <FinancialActions id={row.id} kind="payment" compact />
                 </div>
                 <div className="rv-payment-record-meta">
                   <span
@@ -2969,7 +3242,6 @@ export function createApprovedPages(UI) {
                     customer={row.customer}
                     onClick={() => setReceiptId(row.id)}
                   />
-                  <FinancialActions id={row.id} kind="payment" />
                 </div>
               </article>
             ))}
@@ -2982,7 +3254,7 @@ export function createApprovedPages(UI) {
             />
           )}
           {history && !history.rows.length && (
-            <Empty>Belum ada pembayaran pada pilihan ini.</Empty>
+            <Empty icon={Wallet}>Belum ada pembayaran pada pilihan ini.</Empty>
           )}
           {history && (offset > 0 || history.hasMore) && (
             <div className="rv-stock-log-pagination">
@@ -3054,7 +3326,9 @@ export function createApprovedPages(UI) {
                 <ChevronRight />
               </button>
             ))}
-            {!shown.length && <Empty>Belum ada pelanggan berutang.</Empty>}
+            {!shown.length && (
+              <Empty icon={Users}>Belum ada pelanggan berutang.</Empty>
+            )}
           </div>
         </main>
       </>
@@ -3162,7 +3436,7 @@ export function createApprovedPages(UI) {
         </label>
         <div className="rv-bill-top">
           <span className="rv-bill-date">
-            <CalendarDays size={11} />
+            <CalendarDays size={12} />
             <small className="rv-bill-date-label">Utang</small>
             <time dateTime={r.debt_at || r.recorded_at}>
               {debtDate(r.debt_at || r.recorded_at)}
@@ -3190,6 +3464,7 @@ export function createApprovedPages(UI) {
               "Belum lunas"
             )}
           </span>
+          <FinancialActions id={r.id} compact />
         </div>
         <div className="rv-bill-bottom">
           <ul className="rv-bill-products" aria-label="Rincian tagihan">
@@ -3254,7 +3529,6 @@ export function createApprovedPages(UI) {
             </details>
           </div>
         )}
-        <FinancialActions id={r.id} />
       </article>
     );
     return (

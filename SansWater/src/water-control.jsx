@@ -9,6 +9,7 @@ import {
   Plus,
 } from "lucide-react";
 import AppForm from "./AppForm.jsx";
+import Empty from "./EmptyState.jsx";
 import { LoadingState } from "./OverlayDialog.jsx";
 import { CaptureScreen } from "./DepartureCamera.jsx";
 import { api } from "./api.js";
@@ -197,10 +198,15 @@ export function createWaterControl({
                   dibuka besok.
                 </p>
               )}
-              <MeterCorrection
-                id={info.previous?.id}
-                onSaved={() => setRevision((v) => v + 1)}
-              />
+              <div className="rv-water-record-heading rv-water-meter-header">
+                <h3 id="rv-water-meter-title">
+                  <Droplets size={15} aria-hidden="true" /> Angka meteran
+                </h3>
+                <MeterCorrection
+                  id={info.previous?.id}
+                  onSaved={() => setRevision((v) => v + 1)}
+                />
+              </div>
               <AppForm
                 className="rv-stack rv-water-form"
                 validationDurationMs={2000}
@@ -247,12 +253,9 @@ export function createWaterControl({
                 <fieldset
                   className="rv-water-panel rv-stack"
                   id="rv-water-meter-panel"
-                  aria-label="Input laporan meteran air"
+                  aria-labelledby="rv-water-meter-title"
                   disabled={waiting}
                 >
-                  <legend className="rv-water-record-heading">
-                    <Droplets size={15} /> Angka meteran
-                  </legend>
                   {info.meters.map((meter) => (
                     <section className="rv-card rv-water-meter" key={meter.id}>
                       <div className="rv-two">
@@ -398,9 +401,9 @@ export function createWaterControl({
                         );
                       })
                     ) : (
-                      <p className="rv-note">
+                      <Empty icon={Package} compact>
                         Belum ada produk dengan kapasitas aktif.
-                      </p>
+                      </Empty>
                     )}
                   </div>
                   {comparison && (

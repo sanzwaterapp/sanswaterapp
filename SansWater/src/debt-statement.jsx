@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
-import { X, CheckCircle2, Download } from "lucide-react";
+import { X, CheckCircle2 } from "lucide-react";
+import ReceiptImageActions from "./ReceiptImageActions.jsx";
 import { ReceiptFooter } from "./PaymentReceipt.jsx";
 import OverlayDialog, { LoadingState } from "./OverlayDialog.jsx";
 import { money, timeLabel } from "./api.js";
@@ -21,42 +22,15 @@ export default function DebtStatement({
 }) {
   const [retry, setRetry] = useState(0);
   const paper = useRef(null);
-  const [saving, setSaving] = useState(false),
-    [saveError, setSaveError] = useState(""),
-    [exported, setExported] = useState("");
   const [rows, error] = useResource(
     "/customers/" + customer.id + "/debts?statement=" + retry,
   );
   const [issuedAt] = useState(() => new Date().toISOString());
   const statement = rows ? debtStatement(rows) : null;
-  async function saveImage() {
-    if (!paper.current || saving) return;
-    setSaving(true);
-    setSaveError("");
-    try {
-      await document.fonts.ready;
-      const { toPng } = await import("html-to-image");
-      const url = await toPng(paper.current, {
-        pixelRatio: 2,
-        backgroundColor: "#ffffff",
-        preferredFontFormat: "woff2",
-      });
-      const link = document.createElement("a");
-      link.download =
-        "Nota-utang-" +
-        (customer.code || customer.name).replace(/[^a-zA-Z0-9_-]/g, "-") +
-        ".png";
-      link.href = url;
-      link.click();
-      setExported(url);
-    } catch {
-      setSaveError(
-        "Gambar belum dapat disimpan. Coba lagi atau ambil screenshot nota.",
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
+  const filename =
+    "Nota-utang-" +
+    (customer.code || customer.name).replace(/[^a-zA-Z0-9_-]/g, "-") +
+    ".png";
   return (
     <OverlayDialog
       className="rv-debt-statement-dialog"
@@ -64,15 +38,13 @@ export default function DebtStatement({
       aria-labelledby="rv-statement-title"
     >
       <div className="rv-statement-toolbar">
-        <button
-          type="button"
-          className="rv-statement-download"
-          onClick={saveImage}
-          disabled={!statement || saving}
-        >
-          <Download size={14} />
-          {saving ? "Menyiapkan…" : "Simpan gambar"}
-        </button>
+        <ReceiptImageActions
+          paper={paper}
+          snapshot={error ? null : rows}
+          filename={filename}
+          title="Nota utang"
+          depotName={depotName}
+        />
         <button
           type="button"
           className="rv-icon-button"
@@ -82,22 +54,6 @@ export default function DebtStatement({
           <X size={19} />
         </button>
       </div>
-      {saveError && (
-        <p className="rv-statement-save-error" role="alert">
-          {saveError}
-        </p>
-      )}
-      {exported && (
-        <div className="rv-statement-export-ready" role="status">
-          Gambar nota siap.{" "}
-          <a
-            href={exported}
-            download={"Nota-utang-" + (customer.code || "pelanggan") + ".png"}
-          >
-            Unduh PNG
-          </a>
-        </div>
-      )}
       {error ? (
         <div className="rv-statement-loading">
           <p role="alert" className="rv-error">

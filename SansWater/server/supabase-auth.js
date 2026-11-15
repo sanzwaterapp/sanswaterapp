@@ -96,7 +96,7 @@ export function createSupabaseAuth(options = {}) {
       session.access_token,
       Math.min(43200, session.expires_in || 3600),
     ),
-    cookie("depot_sb_refresh", session.refresh_token, 43200),
+    cookie("depot_sb_refresh", session.refresh_token, 30 * 86400),
   ];
   async function check(access) {
     try {

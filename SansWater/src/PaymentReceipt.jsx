@@ -1,12 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
-import {
-  Banknote,
-  Download,
-  Phone,
-  ReceiptText,
-  UserRound,
-  X,
-} from "lucide-react";
+import React, { useRef } from "react";
+import { Banknote, Phone, ReceiptText, UserRound, X } from "lucide-react";
+import ReceiptImageActions from "./ReceiptImageActions.jsx";
 import OverlayDialog, { LoadingState } from "./OverlayDialog.jsx";
 import { isSanzBrand } from "./BrandWordmark.jsx";
 import { dateLabel, money, timeLabel } from "./api.js";
@@ -95,8 +89,6 @@ export function ReceiptFooter({ depotName, outstanding }) {
 
 export default function PaymentReceipt({ receipt, depotName, onClose, error }) {
   const paper = useRef(null);
-  const [image, setImage] = useState(null);
-  const [attempt, setAttempt] = useState(0);
   const debtPayment = receipt?.kind === "debt-payment";
   const paymentOnly = debtPayment || receipt?.kind === "payment";
   const request = receipt?.kind === "request";
@@ -113,37 +105,6 @@ export default function PaymentReceipt({ receipt, depotName, onClose, error }) {
   let content;
   const filename =
     receipt && "Nota-" + receipt.id.slice(0, 8).toUpperCase() + ".png";
-  useEffect(() => {
-    if (!receipt || !paper.current) return;
-    const node = paper.current;
-    let active = true;
-    let url;
-    setImage(null);
-    async function renderImage() {
-      try {
-        await document.fonts.ready;
-        const { toBlob } = await import("html-to-image");
-        if (!active) return;
-        const blob = await toBlob(node, {
-          pixelRatio: 2,
-          backgroundColor: "#ffffff",
-          preferredFontFormat: "woff2",
-        });
-        if (!blob) throw new Error("Gambar kosong");
-        if (!active) return;
-        url = URL.createObjectURL(blob);
-        setImage({ receipt, url });
-      } catch {
-        if (active) setImage({ receipt, error: true });
-      }
-    }
-    renderImage();
-    return () => {
-      active = false;
-      if (url) URL.revokeObjectURL(url);
-    };
-  }, [receipt, depotName, attempt]);
-  const readyImage = image?.receipt === receipt ? image : null;
   if (receipt) {
     const total = paymentOnly ? receipt.amount : receipt.total;
     const paid = paymentOnly ? receipt.amount : receipt.paid;
@@ -278,24 +239,13 @@ export default function PaymentReceipt({ receipt, depotName, onClose, error }) {
       onClose={onClose}
     >
       <div className="rv-statement-toolbar">
-        {readyImage?.url ? (
-          <a
-            className="rv-statement-download"
-            href={readyImage.url}
-            download={filename}
-          >
-            <Download size={14} /> Unduh gambar
-          </a>
-        ) : (
-          <button
-            type="button"
-            className="rv-statement-download"
-            disabled={!readyImage?.error}
-            onClick={() => setAttempt((value) => value + 1)}
-          >
-            <Download size={14} /> Unduh gambar
-          </button>
-        )}
+        <ReceiptImageActions
+          paper={paper}
+          snapshot={receipt}
+          filename={filename}
+          title={title}
+          depotName={depotName}
+        />
         <button
           type="button"
           className="rv-icon-button"
@@ -305,11 +255,6 @@ export default function PaymentReceipt({ receipt, depotName, onClose, error }) {
           <X size={19} />
         </button>
       </div>
-      {readyImage?.error && (
-        <p className="rv-statement-save-error" role="alert">
-          Gambar nota gagal dibuat. Ketuk Unduh gambar untuk mencoba lagi.
-        </p>
-      )}
       {content ||
         (error ? (
           <p className="rv-statement-loading rv-error" role="alert">

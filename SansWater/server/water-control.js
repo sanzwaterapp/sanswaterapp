@@ -449,7 +449,10 @@ export function registerWaterControl(route, db, d) {
       before = decode(row);
     if (ctx.body.revision !== before.revision)
       fail("Meteran sudah berubah. Buka ulang laporan.", 409);
-    const reason = text(ctx.body.reason, "Alasan koreksi", 500);
+    const reason =
+      ctx.body.reason === undefined
+        ? undefined
+        : text(ctx.body.reason, "Alasan koreksi", 500);
     if (
       !Array.isArray(ctx.body.readings) ||
       ctx.body.readings.length !== 3 ||
@@ -457,14 +460,12 @@ export function registerWaterControl(route, db, d) {
     )
       fail("Lengkapi ketiga meteran.");
     const parent = row.previous_id
-      ? decode(d.find("water_checks", row.previous_id))
+      ? d.find("water_checks", row.previous_id)
       : null;
     const readings = before.readings.map((old) => {
       const input = ctx.body.readings.find((r) => r.meterId === old.meterId);
       if (!input) fail("Meteran belum lengkap.");
-      const opening = parent
-          ? parent.readings.find((r) => r.meterId === old.meterId).closing
-          : reading(input.opening),
+      const opening = reading(input.opening ?? old.opening),
         closing = reading(input.closing);
       if (closing < opening)
         fail("Angka akhir tidak boleh kurang dari angka awal.");
@@ -496,12 +497,27 @@ export function registerWaterControl(route, db, d) {
         reason,
       });
     }
+    if (parent) {
+      const previous = JSON.parse(parent.readings);
+      const next = previous.map((old) => {
+        const closing = readings.find((r) => r.meterId === old.meterId).opening;
+        if (closing < old.opening)
+          fail(
+            "Angka awal koreksi lebih kecil dari angka awal shift sebelumnya.",
+            409,
+          );
+        return { ...old, closing, liters: rounded(closing - old.opening) };
+      });
+      if (next.some((r, i) => r.closing !== previous[i].closing))
+        save(parent, next);
+    }
     const child = d.get(
       "SELECT * FROM water_checks WHERE previous_id=?",
       row.id,
     );
     if (child) {
-      const next = JSON.parse(child.readings).map((old) => {
+      const previous = JSON.parse(child.readings);
+      const next = previous.map((old) => {
         const opening = readings.find((r) => r.meterId === old.meterId).closing;
         if (old.closing < opening)
           fail(
@@ -510,7 +526,8 @@ export function registerWaterControl(route, db, d) {
           );
         return { ...old, opening, liters: rounded(old.closing - opening) };
       });
-      save(child, next);
+      if (next.some((r, i) => r.opening !== previous[i].opening))
+        save(child, next);
     }
     save(row, readings);
     return { ok: true };

@@ -56,20 +56,17 @@ const menuItems = [
     "reports",
   ],
   ["display", "Tampilan TV", "Pantau antrean pesanan", TvMinimal, "display"],
-  ["payroll", "Payroll", "Galon dan gaji per staf", Calculator],
-  [
-    "attendance",
-    "Rekap absensi",
-    "Kehadiran karyawan",
-    Camera,
-    "attendanceView",
-  ],
+  ["payroll", "Payroll", "Pendapatan staff", Calculator],
+  ["attendance", "Rekap absensi", "Kehadiran karyawan", Camera, "owner"],
   ["settings", "Pengaturan", "Durasi dan tampilan aplikasi", Settings2],
 ];
 
 export function menuItemsFor(user) {
   return menuItems.filter(
     ([, , , , permission]) =>
-      !permission || permission.split("|").some((key) => can(user, key)),
+      !permission ||
+      permission
+        .split("|")
+        .some((key) => (key === "owner" ? user?.owner : can(user, key))),
   );
 }

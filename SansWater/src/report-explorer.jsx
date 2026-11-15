@@ -1,3 +1,4 @@
+import EmptyState from "./EmptyState.jsx";
 import React, { useState } from "react";
 import {
   ChevronDown,
@@ -41,7 +42,7 @@ export function createPayroll({
     ["mineralShift2", "Mineral · Shift 2"],
   ];
   const number = (value) =>
-    Number(value).toLocaleString("id-ID", { maximumFractionDigits: 3 });
+    Number(value).toLocaleString("id-ID", { maximumFractionDigits: 1 });
   function Editor({ result }) {
     const { act, busy } = useApp();
     const [draft, setDraft] = useState(result.config);
@@ -311,7 +312,11 @@ export function createPayroll({
                   </div>
                 </article>
               ))}
-              {!drivers.length && <small>Belum ada pengantaran.</small>}
+              {!drivers.length && (
+                <EmptyState icon={Truck} compact>
+                  Belum ada pengantaran.
+                </EmptyState>
+              )}
             </div>
           </section>
         </div>
@@ -328,10 +333,10 @@ export function createPayroll({
         )}
         <section
           className="rv-card rv-payroll-salary-summary"
-          aria-label="Jumlah gaji karyawan"
+          aria-label="Jumlah pendapatan karyawan"
         >
           <div className="rv-section-heading">
-            <h3>Jumlah gaji</h3>
+            <h3>Jumlah pendapatan</h3>
             <strong>
               {money(
                 Array.from(totals.values()).reduce(
@@ -533,7 +538,7 @@ export function createCashFlowList({ useResource }) {
 }
 
 export function createFinancialActions({ useApp, useResource }) {
-  function Editor({ id, kind, onClose }) {
+  function Editor({ id, kind, startDeleting, onClose }) {
     const { act } = useApp(),
       [row, error] = useResource(
         kind === "invoice" ? "/invoices/" + id + "/edit" : "/payments/" + id,
@@ -542,11 +547,20 @@ export function createFinancialActions({ useApp, useResource }) {
     return (
       <OverlayDialog
         onClose={onClose}
-        className="rv-finance-editor"
-        aria-label="Koreksi transaksi Owner"
+        className={
+          "rv-finance-editor" +
+          (startDeleting ? " rv-finance-delete-dialog" : "")
+        }
+        aria-label={
+          startDeleting ? "Hapus transaksi" : "Koreksi transaksi Owner"
+        }
       >
         <div className="rv-section-heading">
-          <h3>Koreksi {kind === "invoice" ? "transaksi" : "pembayaran"}</h3>
+          <h3>
+            {startDeleting && <Trash2 size={17} aria-hidden="true" />}
+            {startDeleting ? "Hapus" : "Koreksi"}{" "}
+            {kind === "invoice" ? "transaksi" : "pembayaran"}
+          </h3>
           <button type="button" onClick={onClose} aria-label="Tutup">
             <X size={18} />
           </button>
@@ -558,6 +572,7 @@ export function createFinancialActions({ useApp, useResource }) {
             key={row.revision || row.version}
             row={row}
             kind={kind}
+            startDeleting={startDeleting}
             act={act}
             onClose={onClose}
           />
@@ -565,7 +580,7 @@ export function createFinancialActions({ useApp, useResource }) {
       </OverlayDialog>
     );
   }
-  function Form({ row, kind, act, onClose }) {
+  function Form({ row, kind, startDeleting, act, onClose }) {
     const invoice = kind === "invoice",
       [draft, setDraft] = useState({
         ...row,
@@ -574,7 +589,7 @@ export function createFinancialActions({ useApp, useResource }) {
       }),
       [reason, setReason] = useState(""),
       [error, setError] = useState(""),
-      [deleting, setDeleting] = useState(false),
+      [deleting, setDeleting] = useState(startDeleting),
       [saving, setSaving] = useState(false);
     async function save(remove = false) {
       if (saving) return;
@@ -744,10 +759,10 @@ export function createFinancialActions({ useApp, useResource }) {
           </>
         )}
         {deleting && (
-          <p className="rv-error">
+          <p className="rv-finance-delete-note">
             {invoice
-              ? "Transaksi dan pembayaran terkait dibatalkan. Stok dikembalikan; bagian pembayaran untuk tagihan lain tetap tercatat."
-              : "Pembayaran dibatalkan dan saldo hutang diperbarui."}
+              ? "Stok dikembalikan. Tagihan dan pembayaran transaksi ini dibatalkan."
+              : "Pembayaran dibatalkan dan saldo utang diperbarui."}
           </p>
         )}
         <label className="rv-field">
@@ -764,40 +779,93 @@ export function createFinancialActions({ useApp, useResource }) {
             {error}
           </p>
         )}
-        <button
-          className={deleting ? "rv-danger" : "rv-primary"}
-          disabled={saving}
-          type="submit"
-        >
-          {saving ? "Menyimpan…" : deleting ? "Ya, batalkan" : "Simpan koreksi"}
-        </button>
-        <button
-          type="button"
-          className="rv-text-button"
-          disabled={saving}
-          onClick={() => setDeleting(!deleting)}
-        >
-          {deleting
-            ? "Kembali ke koreksi"
-            : "Hapus " + (invoice ? "transaksi dan pembayaran" : "pembayaran")}
-        </button>
+        {startDeleting ? (
+          <div className="rv-finance-delete-buttons">
+            <button
+              type="button"
+              className="rv-secondary"
+              disabled={saving}
+              onClick={onClose}
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              className="rv-primary rv-finance-delete-confirm"
+              disabled={saving}
+            >
+              {saving ? "Menghapus…" : "Hapus transaksi"}
+            </button>
+          </div>
+        ) : (
+          <>
+            <button
+              className={deleting ? "rv-danger" : "rv-primary"}
+              disabled={saving}
+              type="submit"
+            >
+              {saving
+                ? "Menyimpan…"
+                : deleting
+                  ? "Ya, batalkan"
+                  : "Simpan koreksi"}
+            </button>
+            <button
+              type="button"
+              className="rv-text-button"
+              disabled={saving}
+              onClick={() => setDeleting(!deleting)}
+            >
+              {deleting
+                ? "Kembali ke koreksi"
+                : "Hapus " +
+                  (invoice ? "transaksi dan pembayaran" : "pembayaran")}
+            </button>
+          </>
+        )}
       </AppForm>
     );
   }
-  return function FinancialActions({ id, kind = "invoice" }) {
+  return function FinancialActions({
+    id,
+    kind = "invoice",
+    compact = false,
+    showDelete = false,
+    deleteOnly = false,
+  }) {
     const { data } = useApp(),
-      [open, setOpen] = useState(false);
+      [action, setAction] = useState(null);
     if (!data.user.owner) return null;
     return (
       <>
-        <button
-          type="button"
-          className="rv-secondary rv-owner-correct"
-          onClick={() => setOpen(true)}
-        >
-          <SquarePen size={13} /> Koreksi
-        </button>
-        {open && <Editor id={id} kind={kind} onClose={() => setOpen(false)} />}
+        {!deleteOnly && (
+          <button
+            type="button"
+            className={
+              "rv-secondary rv-owner-correct" + (compact ? " is-compact" : "")
+            }
+            onClick={() => setAction("correct")}
+          >
+            <SquarePen size={13} /> Koreksi
+          </button>
+        )}
+        {(showDelete || deleteOnly) && (
+          <button
+            type="button"
+            className="rv-secondary rv-owner-delete"
+            onClick={() => setAction("delete")}
+          >
+            <Trash2 size={13} /> Hapus transaksi
+          </button>
+        )}
+        {action && (
+          <Editor
+            id={id}
+            kind={kind}
+            startDeleting={action === "delete"}
+            onClose={() => setAction(null)}
+          />
+        )}
       </>
     );
   };
@@ -834,7 +902,9 @@ export function createReportExplorer(UI, { transactionsOnly = false } = {}) {
         {showItems && !row && <Pending error={error} />}
         {showItems && row && (
           <div className="rv-report-items" aria-label="Rincian transaksi">
-            <FinancialActions id={id} />
+            <div className="rv-owner-actions">
+              <FinancialActions id={id} showDelete={transactionsOnly} />
+            </div>
             <ul className="rv-report-item-list">
               {row.items.map((line, index) => (
                 <li className="rv-report-item" key={index}>
@@ -932,15 +1002,18 @@ export function createReportExplorer(UI, { transactionsOnly = false } = {}) {
                 )}
               </span>
             )}
-            <strong>{money(row.total)}</strong>
+            {transactionsOnly ? (
+              <strong>{money(row.total)}</strong>
+            ) : (
+              <span className="rv-report-status-amount">
+                {methods && (
+                  <span className="rv-report-payment-chip">{methods}</span>
+                )}
+                <strong>{money(row.total)}</strong>
+              </span>
+            )}
             <ChevronDown size={15} />
           </span>
-          {!transactionsOnly && (
-            <span className="rv-transaction-meta">
-              {orderTime}
-              {methods && <strong>{methods}</strong>}
-            </span>
-          )}
         </button>
         {transactionsOnly && (
           <div className="rv-transaction-card-meta">
@@ -957,6 +1030,14 @@ export function createReportExplorer(UI, { transactionsOnly = false } = {}) {
               customer={row.customer_name}
               onClick={() => setShowReceipt(true)}
             />
+          </div>
+        )}
+        {!transactionsOnly && (
+          <div className="rv-report-transaction-meta-row">
+            {orderTime}
+            <div className="rv-owner-actions rv-report-delete-actions">
+              <FinancialActions id={row.id} deleteOnly />
+            </div>
           </div>
         )}
         {(open || showReceipt) && (

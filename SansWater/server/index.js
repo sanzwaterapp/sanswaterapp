@@ -13,6 +13,8 @@ if (provider === "supabase") {
   cloud = await createCloudStore(db);
 }
 const dev = process.argv.includes("--dev");
+const distArg = process.argv.find((arg) => arg.startsWith("--dist="));
+const distPath = distArg?.slice("--dist=".length);
 let vite;
 if (dev) {
   const { createServer } = await import("vite");
@@ -25,6 +27,7 @@ const app = createApp({
   db,
   cloud,
   dev,
+  distPath,
   staticHandler: vite ? (req, res) => vite.middlewares(req, res) : null,
 });
 app.server.listen(port, host, () =>

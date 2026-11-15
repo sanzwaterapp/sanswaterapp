@@ -30,6 +30,7 @@ import {
   has,
   requireAccess,
   staffFinancialPeriod,
+  recentOperationalPeriod,
   fail,
   text,
   integer,
@@ -110,22 +111,56 @@ export function createApp(options = {}) {
   });
   route("GET", "/api/events", "login", () => ({}));
   route("GET", "/api/sync-version", "login", () => ({}));
+  const authRefreshPaths = new Set([
+    "/api/session",
+    "/api/state",
+    "/api/sync-version",
+  ]);
+  const sessionLifetime = 30 * 86400;
+  const sessionRenewAfter = 7 * 86400;
+  const sessionExpiry = () =>
+    new Date(Date.parse(d.now()) + sessionLifetime * 1000).toISOString();
   const orderWithPayment = (row) => ({
+    completed_at:
+      row.status === "done"
+        ? (d.get(
+            "SELECT MAX(recorded_at) at FROM invoices WHERE order_id=?",
+            row.id,
+          )?.at ?? null)
+        : null,
     ...decodeOrder(row),
     prepayment: d.orderPrepayment(row.id),
     progress: d.deliveryProgress(row),
     revision: d.quantityRevision(row),
   });
-  const userByToken = async (req, headers) => {
+  const userByToken = async (req, headers, renew = false) => {
     const token = authCookie(req, "depot_session");
     if (!token) return null;
     const row = d.get(
-      "SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? AND u.active=1",
+      "SELECT u.*,s.expires_at session_expires_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? AND u.active=1",
       hash(token),
       d.now(),
     );
     if (!row) return null;
-    if (!supabaseAuth) return safeUser(row);
+    function keepSession(sessionRow) {
+      if (
+        renew &&
+        Date.parse(sessionRow.session_expires_at) - Date.parse(d.now()) <=
+          (sessionLifetime - sessionRenewAfter) * 1000
+      ) {
+        d.run(
+          "UPDATE sessions SET expires_at=? WHERE token_hash=?",
+          sessionExpiry(),
+          hash(token),
+        );
+        headers["Set-Cookie"] = [
+          cookie(token),
+          ...[].concat(headers["Set-Cookie"] || []),
+        ];
+      }
+      return safeUser(sessionRow);
+    }
+    if (!supabaseAuth) return keepSession(row);
     const verified = await supabaseAuth.verify(req);
     if (!verified || verified.user.app_metadata?.depot_user_id !== row.id) {
       d.run("DELETE FROM sessions WHERE token_hash=?", hash(token));
@@ -137,24 +172,29 @@ export function createApp(options = {}) {
     }
     // Recheck after the remote request: staff may have been disabled or logged out meanwhile.
     const current = d.get(
-      "SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? AND u.active=1",
+      "SELECT u.*,s.expires_at session_expires_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>? AND u.active=1",
       hash(token),
       d.now(),
     );
     if (!current) return null;
     if (verified.session)
       headers["Set-Cookie"] = supabaseAuth.cookies(verified.session);
-    return safeUser(current);
+    return keepSession(current);
   };
   const cookie = (token, expire = false) =>
-    `depot_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${expire ? 0 : 43200}${process.env.SECURE_COOKIE === "true" ? "; Secure" : ""}`;
+    `depot_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${expire ? 0 : sessionLifetime}${process.env.SECURE_COOKIE === "true" ? "; Secure" : ""}`;
   function authenticate(user) {
     const token = randomBytes(32).toString("hex");
+    d.run(
+      "DELETE FROM sessions WHERE user_id=? AND expires_at<=?",
+      user.id,
+      d.now(),
+    );
     d.run(
       "INSERT INTO sessions VALUES(?,?,?)",
       hash(token),
       user.id,
-      new Date(new Date(d.now()).getTime() + 43200000).toISOString(),
+      sessionExpiry(),
     );
     return token;
   }
@@ -331,16 +371,13 @@ export function createApp(options = {}) {
     if (supabaseAuth) await supabaseAuth.signOut(ctx.req);
     return { ok: true };
   });
+  const hasOperationalAccess = (user) =>
+    ["orders", "trips", "counter", "customers", "debts", "reports"].some(
+      (permission) => has(user, permission),
+    );
   route("GET", "/api/state", "login", (ctx) => {
     const u = ctx.user,
-      operational = [
-        "orders",
-        "trips",
-        "counter",
-        "customers",
-        "debts",
-        "reports",
-      ].some((p) => has(u, p)),
+      operational = hasOperationalAccess(u),
       today = dayWib(d.now()),
       since = new Date(
         new Date(d.now()).getTime() - 90 * 86400000,
@@ -380,7 +417,7 @@ export function createApp(options = {}) {
               })),
           }))
       : [];
-    const attendance = has(u, "attendanceView")
+    const attendance = u.owner
       ? d.all(
           "SELECT a.*,u.name FROM attendance a JOIN users u ON u.id=a.user_id WHERE day=? ORDER BY created_at",
           today,
@@ -463,17 +500,7 @@ export function createApp(options = {}) {
         : [],
       orders,
       dailyCounts: operational
-        ? Object.fromEntries(
-            d
-              .all(
-                "SELECT status,COUNT(*) count FROM orders WHERE created_at>=? AND created_at<? GROUP BY status",
-                new Date(today + "T00:00:00+07:00").toISOString(),
-                new Date(
-                  new Date(today + "T00:00:00+07:00").getTime() + 86400000,
-                ).toISOString(),
-              )
-              .map((r) => [r.status, r.count]),
-          )
+        ? d.orderCounts(d.period(new URLSearchParams({ from: today })))
         : {},
       trips,
       attendance,
@@ -883,6 +910,9 @@ export function createApp(options = {}) {
       10,
     ).toUpperCase();
     if (!/^[A-Z]+$/.test(prefix)) fail("Awalan kode berupa huruf.");
+    return { suggested: suggestCustomerCode(prefix) };
+  });
+  function suggestCustomerCode(prefix) {
     const nums = d
       .all("SELECT code FROM customers WHERE code LIKE ?", prefix + "%")
       .map((c) => c.code.match(new RegExp("^" + prefix + "(\\d+)$")))
@@ -891,8 +921,8 @@ export function createApp(options = {}) {
     const used = new Set(nums);
     let next = 1;
     while (used.has(next)) next++;
-    return { suggested: prefix + next };
-  });
+    return prefix + next;
+  }
   route("PATCH", "/api/customer-groups/:prefix", "customers", (ctx) => {
     const previous = d.get(
       "SELECT prefix,name FROM customer_groups WHERE prefix=?",
@@ -1011,12 +1041,10 @@ export function createApp(options = {}) {
     );
     return { rows: rows.slice(0, 10), hasMore: rows.length > 10 };
   });
-  route("POST", "/api/customers", "customers", (ctx) => {
-    const c = customerData(ctx.body),
+  function createCustomer(user, body) {
+    const c = customerData(body),
       customerId = id(),
-      photoId = ctx.body.photo
-        ? d.photo(ctx.user, ctx.body.photo, "house")
-        : null;
+      photoId = body.photo ? d.photo(user, body.photo, "house") : null;
     d.run(
       "INSERT INTO customers(id,code,name,whatsapp,location,photo_id,created_at,group_prefix) VALUES(?,?,?,?,?,?,?,?)",
       customerId,
@@ -1028,9 +1056,12 @@ export function createApp(options = {}) {
       d.now(),
       c.groupPrefix,
     );
-    d.audit(ctx.user, "customer.create", customerId, null, c);
-    return { id: customerId };
-  });
+    d.audit(user, "customer.create", customerId, null, c);
+    return d.find("customers", customerId);
+  }
+  route("POST", "/api/customers", "customers", (ctx) => ({
+    id: createCustomer(ctx.user, ctx.body).id,
+  }));
   route("PATCH", "/api/customers/:id", "customers", (ctx) => {
     const previous = d.find("customers", ctx.params.id),
       c = customerData(ctx.body, previous),
@@ -1082,35 +1113,6 @@ export function createApp(options = {}) {
   route("POST", "/api/orders", "orders", (ctx) => {
     const order = d.order(ctx.user, ctx.body);
     return orderWithPayment(d.find("orders", order.id));
-  });
-  route("DELETE", "/api/orders/:id", "login", (ctx) => {
-    if (!ctx.user.owner)
-      fail("Hanya admin (Owner) yang dapat menghapus pesanan.", 403);
-    const row = d.find("orders", ctx.params.id);
-    if (ctx.body.confirmed !== true)
-      fail("Konfirmasi penghapusan pesanan terlebih dahulu.");
-    if (row.version !== ctx.body.version)
-      fail("Pesanan sudah berubah. Muat ulang sebelum menghapus.", 409);
-    if (
-      row.kind !== "delivery" ||
-      d.get("SELECT id FROM invoices WHERE order_id=? LIMIT 1", row.id) ||
-      d.get("SELECT order_id FROM order_prepayments WHERE order_id=?", row.id)
-    )
-      fail(
-        "Pesanan sudah memiliki catatan transaksi atau pembayaran dan tidak dapat dihapus.",
-        409,
-      );
-    if (
-      row.current_trip_id ||
-      d.get("SELECT order_id FROM trip_orders WHERE order_id=? LIMIT 1", row.id)
-    )
-      fail(
-        "Pesanan sudah masuk trip dan tidak dapat dihapus dari daftar pesanan.",
-        409,
-      );
-    d.audit(ctx.user, "order.delete", row.id, row, { deleted: true });
-    d.run("DELETE FROM orders WHERE id=?", row.id);
-    return { ok: true, id: row.id };
   });
   route("PATCH", "/api/orders/:id/items", "login", (ctx) => {
     const row = d.find("orders", ctx.params.id);
@@ -1414,8 +1416,66 @@ export function createApp(options = {}) {
         "Koreksi pembayaran menjadi Rp0 sebelum membatalkan pesanan lunas.",
         409,
       );
-    if (b.outcome === "done") result = d.complete(ctx.user, row, b, trip.id);
-    else {
+    if (
+      b.debtCustomer !== undefined &&
+      (b.outcome !== "done" ||
+        row.customer_id ||
+        b.method !== "Utang" ||
+        b.paid !== 0)
+    )
+      fail(
+        "Utang pembeli umum hanya dapat dicatat saat menyelesaikan pengantaran tanpa pembayaran.",
+      );
+    if (b.outcome === "done") {
+      if (b.debtCustomer !== undefined) {
+        const input = b.debtCustomer;
+        if (!input || typeof input !== "object" || Array.isArray(input))
+          fail("Pilih atau isi data pelanggan untuk utang.");
+        const customer = input.id
+          ? d.find("customers", text(input.id, "Pelanggan", 100))
+          : createCustomer(ctx.user, {
+              code: suggestCustomerCode("UM"),
+              name: input.name,
+              whatsapp: input.whatsapp,
+            });
+        if (
+          d.get(
+            "SELECT key FROM settings WHERE key=?",
+            "customer.archived:" + customer.id,
+          )
+        )
+          fail("Pelanggan sudah diarsipkan.");
+        d.run(
+          "UPDATE orders SET customer_id=?,name=?,code=? WHERE id=?",
+          customer.id,
+          customer.name,
+          customer.code,
+          row.id,
+        );
+        d.audit(
+          ctx.user,
+          "order.customer.link",
+          row.id,
+          { customerId: null },
+          { customerId: customer.id },
+        );
+        result = d.complete(
+          ctx.user,
+          {
+            ...row,
+            customer_id: customer.id,
+            name: customer.name,
+            code: customer.code,
+          },
+          b,
+          trip.id,
+        );
+        if (result.invoice.left <= 0)
+          fail("Transaksi ini tidak memiliki sisa utang.");
+      } else {
+        result = d.complete(ctx.user, row, b, trip.id);
+      }
+    } else {
       if (
         d.get(
           "SELECT id FROM invoices WHERE order_id=? AND trip_id=?",
@@ -1435,7 +1495,7 @@ export function createApp(options = {}) {
       "UPDATE trip_orders SET outcome=?,reason=?,recorded_at=?,items=? WHERE trip_id=? AND order_id=?",
       result.partial ? "partial" : b.outcome,
       reason,
-      d.now(),
+      result.invoice?.recorded_at || d.now(),
       result.invoice ? JSON.stringify(result.invoice.items) : attempt.items,
       trip.id,
       row.id,
@@ -1598,8 +1658,19 @@ export function createApp(options = {}) {
         "p.amount>0",
         "NOT EXISTS(SELECT 1 FROM order_prepayments op WHERE op.payment_id=p.id) AND NOT EXISTS(SELECT 1 FROM audit a WHERE a.object_id=p.id AND a.action='payment.create' AND json_extract(a.after_json,'$.origin')='sale') AND NOT EXISTS(SELECT 1 FROM audit a WHERE a.action='order.complete' AND json_extract(a.after_json,'$.paymentId')=p.id)",
       ];
-    if (ctx.query.get("period") !== "all") {
-      const { start, end } = d.period(ctx.query);
+    const allTime = ctx.query.get("period") === "all";
+    if (!ctx.user.owner || !allTime) {
+      const now = d.now();
+      const query = allTime
+        ? new URLSearchParams({
+            from: dayWib(new Date(Date.parse(now) - 86400000)),
+            to: dayWib(now),
+          })
+        : ctx.query;
+      const period = d.period(query);
+      const { start, end } = ctx.user.owner
+        ? period
+        : recentOperationalPeriod(period, now);
       clauses.push("p.created_at>=?", "p.created_at<?");
       params.push(start, end);
     }
@@ -1643,6 +1714,10 @@ export function createApp(options = {}) {
       ctx.params.id,
     );
     if (!row) fail("Pembayaran tidak ditemukan.", 404);
+    if (!ctx.user.owner) {
+      const day = dayWib(row.created_at);
+      recentOperationalPeriod({ from: day, to: day }, d.now());
+    }
     const { prepayment, metadata, immediate, ...payment } = row;
     if (isSaleReceipt({ prepayment, metadata, immediate }))
       fail("Pembayaran ini merupakan pembayaran langsung penjualan.", 404);
@@ -1844,8 +1919,81 @@ export function createApp(options = {}) {
       )
       .map(decodeInvoice);
   });
+  route("GET", "/api/delivery-performance", "login", (ctx) => {
+    const today = dayWib(d.now());
+    const { start, end } = d.period(
+      new URLSearchParams({ from: today, to: today }),
+    );
+    return d.deliveryPerformance(
+      {
+        condition: " WHERE i.recorded_at>=? AND i.recorded_at<?",
+        params: [start, end],
+      },
+      ctx.user.id,
+    );
+  });
+  route("GET", "/api/home-summary", "login", (ctx) => {
+    const now = d.now();
+    const period = recentOperationalPeriod(
+      d.period(
+        new URLSearchParams({ from: ctx.query.get("day") || dayWib(now) }),
+      ),
+      now,
+    );
+    const args = [ctx.user.id, period.start, period.end];
+    const depot = d.get(
+      `SELECT COUNT(DISTINCT i.id) services, COALESCE(SUM(json_extract(line.value,'$.qty')),0) items
+        FROM invoices i LEFT JOIN json_each(i.items) line ON true
+        WHERE i.actor_id=? AND i.trip_id IS NULL AND i.recorded_at>=? AND i.recorded_at<?`,
+      ...args,
+    );
+    const receipts = d.get(
+      `SELECT COALESCE(SUM(CASE WHEN method='Tunai' THEN amount END),0) cash,
+        COALESCE(SUM(CASE WHEN method='QRIS' THEN amount END),0) qris
+        FROM payments WHERE actor_id=? AND created_at>=? AND created_at<?`,
+      ...args,
+    );
+    return {
+      day: period.from,
+      orderCounts: hasOperationalAccess(ctx.user) ? d.orderCounts(period) : {},
+      depotServices: depot.services,
+      depotItems: depot.items,
+      receipts,
+      attendance: d.all(
+        `SELECT a.id,a.created_at,${attendanceShift} shift FROM attendance a
+          WHERE a.user_id=? AND a.day=? ORDER BY a.created_at DESC,a.rowid DESC LIMIT 2`,
+        ctx.user.id,
+        period.from,
+      ),
+      deliveryPerformance: d.deliveryPerformance(
+        {
+          condition: " WHERE i.recorded_at>=? AND i.recorded_at<?",
+          params: [period.start, period.end],
+        },
+        ctx.user.id,
+      ),
+    };
+  });
+  // Existing attendance audit records persist alongside attendance in Supabase.
+  const attendanceShift = `(SELECT json_extract(audit.after_json,'$.shift')
+    FROM audit WHERE audit.object_id=a.id AND audit.action='attendance.in'
+    ORDER BY audit.created_at DESC,audit.id DESC LIMIT 1)`;
   route("POST", "/api/attendance", "login", (ctx) => {
-    const day = dayWib(d.now());
+    const recordedAt = d.now(),
+      day = dayWib(recordedAt),
+      shift = ctx.body.shift;
+    if (shift !== undefined) {
+      integer(shift, "Shift absensi", 1, 2);
+      if (
+        d.get(
+          `SELECT 1 FROM attendance a WHERE a.user_id=? AND a.day=? AND ${attendanceShift}=?`,
+          ctx.user.id,
+          day,
+          shift,
+        )
+      )
+        fail("Shift ini sudah dicatat hari ini.", 409);
+    }
     const photoId = d.photo(ctx.user, ctx.body.photo, "attendance"),
       recordId = id();
     d.run(
@@ -1853,19 +2001,17 @@ export function createApp(options = {}) {
       recordId,
       ctx.user.id,
       day,
-      d.now(),
+      recordedAt,
       photoId,
     );
-    d.audit(ctx.user, "attendance.in", recordId, null, { day });
-    return d.find("attendance", recordId);
+    d.audit(ctx.user, "attendance.in", recordId, null, { day, shift });
+    return { ...d.find("attendance", recordId), shift: shift ?? null };
   });
   route("GET", "/api/attendance", "login", (ctx) => {
     const p = d.period(ctx.query),
-      actor = has(ctx.user, "attendanceView")
-        ? ctx.query.get("actor") || ""
-        : ctx.user.id;
+      actor = ctx.user.owner ? ctx.query.get("actor") || "" : ctx.user.id;
     if (
-      !has(ctx.user, "attendanceView") &&
+      !ctx.user.owner &&
       ctx.query.get("actor") &&
       ctx.query.get("actor") !== ctx.user.id
     )
@@ -1887,7 +2033,7 @@ export function createApp(options = {}) {
       total,
       offset,
       rows: d.all(
-        "SELECT a.*,u.name" +
+        `SELECT a.*,u.name,${attendanceShift} shift` +
           join +
           where +
           " ORDER BY a.created_at DESC,a.rowid DESC LIMIT 50 OFFSET ?",
@@ -1912,8 +2058,16 @@ export function createApp(options = {}) {
         ctx.user.id,
         dayWib(d.now()),
       ) || null,
+    shifts: d.all(
+      `SELECT a.id,a.day,a.created_at,a.photo_id,${attendanceShift} shift FROM attendance a
+        WHERE a.user_id=? AND a.day=? AND ${attendanceShift} IN (1,2)
+        ORDER BY a.created_at DESC,a.rowid DESC`,
+      ctx.user.id,
+      dayWib(d.now()),
+    ),
     rows: d.all(
-      "SELECT id,day,created_at,photo_id FROM attendance WHERE user_id=? ORDER BY created_at DESC,rowid DESC LIMIT 14",
+      `SELECT a.id,a.day,a.created_at,a.photo_id,${attendanceShift} shift FROM attendance a
+        WHERE a.user_id=? ORDER BY a.created_at DESC,a.rowid DESC LIMIT 14`,
       ctx.user.id,
     ),
   }));
@@ -2078,7 +2232,6 @@ export function createApp(options = {}) {
     const allowed =
       u.owner ||
       p.owner_id === u.id ||
-      (p.kind === "attendance" && has(u, "attendanceView")) ||
       (p.kind === "house" &&
         ["customers", "orders", "trips"].some((x) => has(u, x))) ||
       (p.kind === "proof" && has(u, "reports")) ||
@@ -2217,7 +2370,7 @@ export function createApp(options = {}) {
         "/api/health",
       ].includes(url.pathname)
         ? null
-        : await userByToken(req, headers);
+        : await userByToken(req, headers, authRefreshPaths.has(url.pathname));
       if (match.permission && !user) fail("Silakan masuk kembali.", 401);
       if (match.permission && match.permission !== "login")
         requireAccess(user, match.permission);

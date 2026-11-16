@@ -1,6 +1,12 @@
 import React from "react";
 import { durationBand, readableColor } from "./duration-settings.js";
 export default function DurationChip({ minutes, settings }) {
+  if (minutes == null)
+    return (
+      <span className="rv-time" title="Waktu mulai Antar belum tercatat">
+        —
+      </span>
+    );
   const band = durationBand(minutes, settings);
   return (
     <span

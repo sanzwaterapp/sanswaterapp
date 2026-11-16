@@ -9,6 +9,7 @@ import {
   Camera,
   CheckCircle2,
   ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import AppForm from "./AppForm.jsx";
 import { LoadingState } from "./OverlayDialog.jsx";
@@ -226,11 +227,11 @@ export function createAccountMenu({
               />
             )}
             {showHistory && info.rows.length > 0 && (
-              <section
-                className="rv-account-history"
-                aria-label="Riwayat absensi"
-              >
-                <h3>Riwayat absensi</h3>
+              <details className="rv-account-history">
+                <summary>
+                  Riwayat absensi
+                  <ChevronDown size={15} aria-hidden="true" />
+                </summary>
                 <div className="rv-account-attendance-log">
                   {info.rows.map((row) => {
                     const label =
@@ -263,7 +264,7 @@ export function createAccountMenu({
                     );
                   })}
                 </div>
-              </section>
+              </details>
             )}
           </>
         )}

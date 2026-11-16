@@ -21,7 +21,14 @@ import Empty from "./EmptyState.jsx";
 export function createMeterCorrection({ useApp, useResource }) {
   function Editor({ row, onClose }) {
     const { act } = useApp(),
-      [readings, setReadings] = useState(row.readings),
+      [readings, setReadings] = useState(() =>
+        row.readings.map(({ meterId, name, opening, closing }) => ({
+          meterId,
+          name,
+          opening: String(opening),
+          closing: String(closing),
+        })),
+      ),
       [error, setError] = useState(""),
       [busy, setBusy] = useState(false);
     return (
@@ -35,7 +42,14 @@ export function createMeterCorrection({ useApp, useResource }) {
             await act(() =>
               api("/water-reports/" + row.id, {
                 method: "PATCH",
-                body: { revision: row.revision, readings },
+                body: {
+                  revision: row.revision,
+                  readings: readings.map(({ meterId, opening, closing }) => ({
+                    meterId,
+                    opening: Number(opening),
+                    closing: Number(closing),
+                  })),
+                },
               }),
             );
             onClose();
@@ -57,27 +71,34 @@ export function createMeterCorrection({ useApp, useResource }) {
                     required
                     type="number"
                     min="0"
+                    max="1000000000000"
                     step="0.000001"
                     value={r[key]}
-                    onChange={(e) =>
-                      setReadings(
-                        readings.map((v, i) =>
-                          i === index
-                            ? { ...v, [key]: Number(e.target.value) }
-                            : v,
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setReadings((current) =>
+                        current.map((meter, i) =>
+                          i === index ? { ...meter, [key]: value } : meter,
                         ),
-                      )
-                    }
+                      );
+                    }}
                   />
                 </label>
               ))}
             </div>
           </section>
         ))}
-        <small className="rv-note">
-          Koreksi angka awal menyesuaikan akhir shift sebelumnya. Koreksi angka
-          akhir menyesuaikan awal shift berikutnya.
-        </small>
+        {readings.some(
+          ({ opening, closing }) =>
+            opening !== "" &&
+            closing !== "" &&
+            Number(closing) < Number(opening),
+        ) && (
+          <small className="rv-note" role="status">
+            Pemakaian tercatat 0 L pada meter yang angka akhirnya lebih kecil
+            dari angka awal.
+          </small>
+        )}
         {error && (
           <p className="rv-error" role="alert">
             {error}
@@ -249,16 +270,17 @@ function Activity({ row }) {
   return (
     <div className="rv-water-activity">
       {row.deliveredUnits > 0 && (
-        <span aria-label={row.deliveredUnits + " unit pengantaran"}>
-          <Truck size={12} />
-          {row.deliveredUnits} unit
+        <span>
+          <Truck size={12} aria-hidden="true" />
+          {row.deliveredUnits} item diantar
           {row.deliveryOrders > 0 && " · " + row.deliveryOrders + " pesanan"}
         </span>
       )}
       {row.counterUnits > 0 && (
-        <span aria-label={row.counterUnits + " unit di depot"}>
-          <Store size={12} />
-          {row.counterUnits} unit
+        <span>
+          <Store size={12} aria-hidden="true" />
+          {row.counterUnits} item di depot
+          {row.counterOrders > 0 && " · " + row.counterOrders + " transaksi"}
         </span>
       )}
     </div>

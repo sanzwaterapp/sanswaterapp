@@ -6,6 +6,8 @@ Mulai dari **[DEPLOY-VERCEL.md](DEPLOY-VERCEL.md)**. Hasil pemeriksaan, arsitekt
 
 Filter **Minggu ini** di seluruh aplikasi mencakup **7 hari terakhir, termasuk hari ini**, mengikuti tanggal operasional WIB server. Contoh: pada 16 November 2026, rentangnya 10–16 November 2026. Jalankan `node --test tests/period-range.test.js` dari folder ini untuk memeriksa batas kalender.
 
+Durasi dan kategori waktu pengantaran dihitung dari pesanan masuk sampai pertama kali berstatus **Antar**. Waktu selesai transaksi tetap tersimpan sebagai waktu selesai; durasi tidak bertambah saat transaksi diselesaikan atau pesanan diantar ulang. Riwayat lama memakai waktu keberangkatan trip tanpa mengubah catatan transaksi.
+
 ## Revisi 2 — 15 November 2026
 
 - Antrean Aktif mendahulukan pesanan yang belum diantar, lalu pengantaran; durasi terlama tetap dipertahankan, termasuk antarhalaman. Trip memiliki filter periode dan halaman riwayat tersendiri.

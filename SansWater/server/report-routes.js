@@ -843,8 +843,12 @@ function registerPayroll(route, d) {
     return next;
   });
   route("GET", "/api/payroll", "login", (ctx) => {
-    const full = has(ctx.user, "reports");
-    const period = staffFinancialPeriod(ctx.user, scope(ctx.query), d.now());
+    const ownView = ctx.query.get("view") === "own";
+    const full = !ownView && has(ctx.user, "reports");
+    const requestedPeriod = scope(ctx.query);
+    const period = ownView
+      ? requestedPeriod
+      : staffFinancialPeriod(ctx.user, requestedPeriod, d.now());
     if (
       !full &&
       ctx.query.get("actor") &&

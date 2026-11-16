@@ -41,6 +41,7 @@ import {
   decodeProduct,
   decodeInvoice,
   PERMISSIONS,
+  driverRoleMarker,
 } from "./domain.js";
 
 const displayStatusGroups = {
@@ -129,6 +130,18 @@ export function createApp(options = {}) {
           )?.at ?? null)
         : null,
     ...decodeOrder(row),
+    first_departure_at:
+      row.first_departure_at ||
+      (row.kind === "delivery" &&
+      (row.current_trip_id ||
+        ["delivery", "done", "failed", "partial", "cancel"].includes(
+          row.status,
+        ))
+        ? d.get(
+            `SELECT ${d.departureTimeSql} at FROM orders o WHERE o.id=?`,
+            row.id,
+          )?.at
+        : null),
     prepayment: d.orderPrepayment(row.id),
     progress: d.deliveryProgress(row),
     revision: d.quantityRevision(row),
@@ -198,14 +211,19 @@ export function createApp(options = {}) {
     );
     return token;
   }
-  function perms(value, role) {
+  function perms(value, role, previous) {
     if (!Array.isArray(value) || value.some((p) => !PERMISSIONS.includes(p)))
       fail("Daftar akses belum benar.");
-    if (role !== undefined && !["staff", "manager"].includes(role))
+    if (role === undefined && previous?.role === "driver") role = "driver";
+    if (role !== undefined && !["staff", "manager", "driver"].includes(role))
       fail("Peran akun belum benar.");
     const permissions = new Set(value);
     if (role === "manager") permissions.add("reports");
-    if (role === "staff") permissions.delete("reports");
+    if (role === "staff" || role === "driver") permissions.delete("reports");
+    if (role === "driver") {
+      permissions.add("trips");
+      permissions.add(driverRoleMarker);
+    }
     return JSON.stringify([...permissions]);
   }
   const username = (value) => {
@@ -1377,7 +1395,7 @@ export function createApp(options = {}) {
         JSON.stringify(d.deliveryProgress(row).remainingItems),
       );
       d.run(
-        "UPDATE orders SET status='delivery',current_trip_id=?,first_departure_at=COALESCE(first_departure_at,?),version=version+1 WHERE id=?",
+        `UPDATE orders AS o SET status='delivery',current_trip_id=?,first_departure_at=COALESCE(${d.departureTimeSql},?),version=version+1 WHERE id=?`,
         tripId,
         time,
         row.id,
@@ -1619,7 +1637,7 @@ export function createApp(options = {}) {
       );
     }
     const rows = d.all(
-      "SELECT o.*,u.name courier,CASE WHEN o.kind='counter' THEN 0 ELSE MAX(0,CAST((unixepoch(COALESCE(o.first_departure_at,?))-unixepoch(o.received_at))/60 AS INTEGER)) END queue_minutes FROM orders o LEFT JOIN trips t ON t.id=o.current_trip_id LEFT JOIN users u ON u.id=t.courier_id WHERE " +
+      `SELECT o.*,u.name courier,CASE WHEN o.kind='counter' THEN 0 ELSE MAX(0,COALESCE(CAST((unixepoch(COALESCE(${d.departureTimeSql},CASE WHEN o.status NOT IN ('delivery','done') THEN ? END),'subsec')-unixepoch(o.received_at,'subsec'))/60 AS INTEGER),0)) END queue_minutes FROM orders o LEFT JOIN trips t ON t.id=o.current_trip_id LEFT JOIN users u ON u.id=t.courier_id WHERE ` +
         clauses.join(" AND ") +
         " ORDER BY (o.status='delivery') ASC,queue_minutes DESC,o.received_at ASC,o.id ASC LIMIT ?",
       queueAt,
@@ -1934,23 +1952,37 @@ export function createApp(options = {}) {
   });
   route("GET", "/api/home-summary", "login", (ctx) => {
     const now = d.now();
-    const period = recentOperationalPeriod(
-      d.period(
-        new URLSearchParams({ from: ctx.query.get("day") || dayWib(now) }),
-      ),
-      now,
-    );
+    const activityOnly = ctx.query.get("view") === "activity";
+    const period = activityOnly
+      ? d.period(ctx.query)
+      : recentOperationalPeriod(
+          d.period(
+            new URLSearchParams({ from: ctx.query.get("day") || dayWib(now) }),
+          ),
+          now,
+        );
     const args = [ctx.user.id, period.start, period.end];
-    const depot = d.get(
-      `SELECT COUNT(DISTINCT i.id) services, COALESCE(SUM(json_extract(line.value,'$.qty')),0) items
-        FROM invoices i LEFT JOIN json_each(i.items) line ON true
-        WHERE i.actor_id=? AND i.trip_id IS NULL AND i.recorded_at>=? AND i.recorded_at<?`,
-      ...args,
-    );
     const receipts = d.get(
       `SELECT COALESCE(SUM(CASE WHEN method='Tunai' THEN amount END),0) cash,
         COALESCE(SUM(CASE WHEN method='QRIS' THEN amount END),0) qris
         FROM payments WHERE actor_id=? AND created_at>=? AND created_at<?`,
+      ...args,
+    );
+    const attendance =
+      period.from === period.to
+        ? d.all(
+            `SELECT a.id,a.created_at,${attendanceShift} shift FROM attendance a
+            WHERE a.user_id=? AND a.day=? ORDER BY a.created_at DESC,a.rowid DESC LIMIT 2`,
+            ctx.user.id,
+            period.from,
+          )
+        : [];
+    if (activityOnly)
+      return { from: period.from, to: period.to, receipts, attendance };
+    const depot = d.get(
+      `SELECT COUNT(DISTINCT i.id) services, COALESCE(SUM(json_extract(line.value,'$.qty')),0) items
+        FROM invoices i LEFT JOIN json_each(i.items) line ON true
+        WHERE i.actor_id=? AND i.trip_id IS NULL AND i.recorded_at>=? AND i.recorded_at<?`,
       ...args,
     );
     return {
@@ -1959,12 +1991,7 @@ export function createApp(options = {}) {
       depotServices: depot.services,
       depotItems: depot.items,
       receipts,
-      attendance: d.all(
-        `SELECT a.id,a.created_at,${attendanceShift} shift FROM attendance a
-          WHERE a.user_id=? AND a.day=? ORDER BY a.created_at DESC,a.rowid DESC LIMIT 2`,
-        ctx.user.id,
-        period.from,
-      ),
+      attendance,
       deliveryPerformance: d.deliveryPerformance(
         {
           condition: " WHERE i.recorded_at>=? AND i.recorded_at<?",
@@ -2090,10 +2117,13 @@ export function createApp(options = {}) {
       permissions,
       d.now(),
     );
-    d.audit(ctx.user, "staff.create", userId, null, {
-      name: b.name,
-      permissions: JSON.parse(permissions),
-    });
+    d.audit(
+      ctx.user,
+      "staff.create",
+      userId,
+      null,
+      safeUser(d.find("users", userId)),
+    );
     return { id: userId };
   });
   route("PATCH", "/api/staff/:id", "staff", (ctx) => {
@@ -2116,7 +2146,8 @@ export function createApp(options = {}) {
       fail("Akun staf sudah dihapus dari daftar.", 409);
     if (b.active !== undefined && b.active !== true)
       fail("Gunakan Hapus staf untuk menghapus akun dari daftar.");
-    const permissions = perms(b.permissions, b.role);
+    const before = safeUser(previous);
+    const permissions = perms(b.permissions, b.role, before);
     d.run(
       "UPDATE users SET name=?,active=?,permissions=?,username=? WHERE id=?",
       text(b.name, "Nama staf"),
@@ -2126,12 +2157,13 @@ export function createApp(options = {}) {
       previous.id,
     );
     d.run("DELETE FROM sessions WHERE user_id=?", previous.id);
-    d.audit(ctx.user, "staff.update", previous.id, safeUser(previous), {
-      name: b.name,
-      username: b.username || previous.username,
-      active: true,
-      permissions: JSON.parse(permissions),
-    });
+    d.audit(
+      ctx.user,
+      "staff.update",
+      previous.id,
+      before,
+      safeUser(d.find("users", previous.id)),
+    );
     return { ok: true };
   });
   route("DELETE", "/api/staff/:id", "staff", (ctx) => {

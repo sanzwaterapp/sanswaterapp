@@ -81,14 +81,26 @@ export function verifyPassword(password, stored) {
   const result = scryptSync(String(password), salt, 64);
   return timingSafeEqual(result, Buffer.from(key, "hex"));
 }
+// Keep the role in the existing account metadata used by SQLite and cloud sync.
+export const driverRoleMarker = "role:driver";
 export function safeUser(row) {
+  const permissions = JSON.parse(row.permissions);
   return {
     id: row.id,
     name: row.name,
     username: row.username,
     owner: !!row.owner,
     active: !!row.active,
-    permissions: JSON.parse(row.permissions),
+    role: row.owner
+      ? "owner"
+      : permissions.includes("reports")
+        ? "manager"
+        : permissions.includes(driverRoleMarker)
+          ? "driver"
+          : "staff",
+    permissions: permissions.filter(
+      (permission) => permission !== driverRoleMarker,
+    ),
   };
 }
 export const decodeProduct = (row) => ({
@@ -829,18 +841,31 @@ export function createDomain(
       ).map((row) => [row.status, row.count]),
     );
   }
+  // Stop at the first transition to Antar, including older orders whose
+  // first_departure_at can only be recovered from their trip history.
+  const departureTimeSql = `COALESCE(o.first_departure_at,
+    CASE WHEN o.current_trip_id IS NOT NULL OR o.status IN ('delivery','done','failed','partial','cancel') THEN COALESCE(
+      (SELECT MIN(first_trip.departed_at) FROM trip_orders first_attempt
+       JOIN trips first_trip ON first_trip.id=first_attempt.trip_id
+       WHERE first_attempt.order_id=o.id),
+      (SELECT MIN(invoice_trip.departed_at) FROM invoices prior_invoice
+       JOIN trips invoice_trip ON invoice_trip.id=prior_invoice.trip_id
+       WHERE prior_invoice.order_id=o.id),
+      (SELECT departed_at FROM trips WHERE id=o.current_trip_id)
+    ) END)`;
   function deliveryPerformance({ condition, params }, courierId = null) {
+    const stoppedAt = `COALESCE(${departureTimeSql},t.departed_at)`;
     return all(
       `SELECT CASE WHEN EXISTS(SELECT 1 FROM invoices earlier WHERE earlier.order_id=i.order_id AND earlier.rowid<i.rowid) THEN i.id ELSE o.id END id,
                 o.id order_id,o.code,o.name,
                 o.received_at,
-                i.recorded_at completed_at,u.name courier,
-                MAX(0,(unixepoch(i.recorded_at,'subsec')-unixepoch(o.received_at,'subsec'))) seconds
+                i.recorded_at completed_at,${stoppedAt} first_departure_at,u.name courier,
+                MAX(0,(unixepoch(${stoppedAt},'subsec')-unixepoch(o.received_at,'subsec'))) seconds
                  FROM invoices i JOIN orders o ON o.id=i.order_id
                  JOIN trips t ON t.id=i.trip_id JOIN users u ON u.id=t.courier_id` +
         condition +
         (courierId ? " AND t.courier_id=?" : "") +
-        " AND o.kind='delivery' AND unixepoch(o.received_at) IS NOT NULL AND unixepoch(i.recorded_at) IS NOT NULL ORDER BY seconds DESC,i.recorded_at DESC,o.id",
+        ` AND o.kind='delivery' AND unixepoch(o.received_at) IS NOT NULL AND unixepoch(${stoppedAt}) IS NOT NULL ORDER BY seconds DESC,i.recorded_at DESC,o.id`,
       ...params,
       ...(courierId ? [courierId] : []),
     );
@@ -938,6 +963,7 @@ export function createDomain(
     period,
     report,
     deliveryPerformance,
+    departureTimeSql,
     orderCounts,
     stockMove,
     allocate,

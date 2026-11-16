@@ -1,4 +1,3 @@
-import EmptyState from "./EmptyState.jsx";
 import React, { useState } from "react";
 import {
   ChevronDown,
@@ -48,10 +47,7 @@ export function createPayroll({
     const [draft, setDraft] = useState(result.config);
     const [error, setError] = useState("");
     const [notice, setNotice] = useState("");
-    const drivers = result.rows.filter(
-      (row) =>
-        row.components.delivery.liters > 0 || row.components.delivery.items > 0,
-    );
+    const drivers = result.rows.filter((row) => row.deliveryOrders > 0);
     const totals = new Map();
     function amount(item, units, listed = true) {
       const total = item?.actor
@@ -256,69 +252,66 @@ export function createPayroll({
                 </div>
               </section>
             ))}
-          <section
-            className="rv-card rv-payroll-shift-block rv-payroll-delivery-block"
-            aria-label="Antar"
-          >
-            <h4>
-              <Truck size={13} />
-              Antar
-            </h4>
-            <div className="rv-payroll-driver-cards">
-              {drivers.map((driver) => (
-                <article
-                  className="rv-payroll-driver-variable rv-payroll-volume rv-payroll-delivery"
-                  key={driver.id}
-                  aria-label={"Pengantaran " + driver.name}
-                >
-                  <header className="rv-payroll-product-heading">
-                    <strong>{driver.name}</strong>
-                  </header>
-                  <div className="rv-payroll-driver-rate">
-                    <Field
-                      label="Rp / galon atau item"
-                      aria-label={
-                        "Antar " + driver.name + " · Rp per galon atau item"
-                      }
-                      type="number"
-                      inputMode="numeric"
-                      min="0"
-                      max="10000000"
-                      step="1"
-                      required
-                      readOnly={result.readOnly}
-                      value={draft.drivers[driver.id]?.rate ?? 0}
-                      onChange={(event) =>
-                        setDraft({
-                          ...draft,
-                          drivers: {
-                            ...draft.drivers,
-                            [driver.id]: {
-                              actor: driver.id,
-                              rate: event.target.value,
+          {drivers.length > 0 && (
+            <section
+              className="rv-card rv-payroll-shift-block rv-payroll-delivery-block"
+              aria-label="Antar"
+            >
+              <h4>
+                <Truck size={13} />
+                Antar
+              </h4>
+              <div className="rv-payroll-driver-cards">
+                {drivers.map((driver) => (
+                  <article
+                    className="rv-payroll-driver-variable rv-payroll-volume rv-payroll-delivery"
+                    key={driver.id}
+                    aria-label={"Pengantaran " + driver.name}
+                  >
+                    <header className="rv-payroll-product-heading">
+                      <strong>{driver.name}</strong>
+                    </header>
+                    <div className="rv-payroll-driver-rate">
+                      <Field
+                        label="Rp / galon atau item"
+                        aria-label={
+                          "Antar " + driver.name + " · Rp per galon atau item"
+                        }
+                        type="number"
+                        inputMode="numeric"
+                        min="0"
+                        max="10000000"
+                        step="1"
+                        required
+                        readOnly={result.readOnly}
+                        value={draft.drivers[driver.id]?.rate ?? 0}
+                        onChange={(event) =>
+                          setDraft({
+                            ...draft,
+                            drivers: {
+                              ...draft.drivers,
+                              [driver.id]: {
+                                actor: driver.id,
+                                rate: event.target.value,
+                              },
                             },
-                          },
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="rv-payroll-delivery-formula">
-                    <span>
-                      {number(driver.components.delivery.gallons)} galon +{" "}
-                      {number(driver.components.delivery.items || 0)} item
-                    </span>
-                    <span>=</span>
-                    <strong>{money(driverAmounts[driver.id])}</strong>
-                  </div>
-                </article>
-              ))}
-              {!drivers.length && (
-                <EmptyState icon={Truck} compact>
-                  Belum ada pengantaran.
-                </EmptyState>
-              )}
-            </div>
-          </section>
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="rv-payroll-delivery-formula">
+                      <span>
+                        {number(driver.components.delivery.gallons)} galon +{" "}
+                        {number(driver.components.delivery.items || 0)} item
+                      </span>
+                      <span>=</span>
+                      <strong>{money(driverAmounts[driver.id])}</strong>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
         {error && (
           <p role="alert" className="rv-error">

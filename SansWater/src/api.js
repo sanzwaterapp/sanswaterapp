@@ -149,22 +149,20 @@ export const filterLabels = {
 };
 export function duration(order, now = Date.now()) {
   if (order.kind === "counter") return 0;
-  return Math.max(
-    0,
-    Math.floor(
-      ((order.completed_at || order.first_departure_at
-        ? Date.parse(order.completed_at || order.first_departure_at)
-        : now) -
-        new Date(order.received_at).getTime()) /
-        60000,
-    ),
-  );
+  const received = Date.parse(order.received_at);
+  const stopped = order.first_departure_at
+    ? Date.parse(order.first_departure_at)
+    : ["delivery", "done"].includes(order.status)
+      ? NaN
+      : now;
+  if (!Number.isFinite(received) || !Number.isFinite(stopped)) return null;
+  return Math.max(0, Math.floor((stopped - received) / 60000));
 }
 export function sortDisplayOrders(orders, now = Date.now()) {
   return [...orders].sort(
     (a, b) =>
       Number(a.status === "delivery") - Number(b.status === "delivery") ||
-      duration(b, now) - duration(a, now) ||
+      (duration(b, now) ?? 0) - (duration(a, now) ?? 0) ||
       Date.parse(a.received_at) - Date.parse(b.received_at) ||
       String(a.id).localeCompare(String(b.id)),
   );

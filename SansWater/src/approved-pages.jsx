@@ -452,7 +452,7 @@ export function createApprovedPages(UI) {
       >
         <div className="rv-section-heading">
           <h3 id="rv-delivery-time-title">
-            <Timer size={15} /> Waktu pengantaran
+            <Timer size={15} /> Waktu sampai Antar
           </h3>
           <span className="rv-delivery-count">
             {orders ? orders.length : "—"} selesai
@@ -461,7 +461,7 @@ export function createApprovedPages(UI) {
         <div
           className="rv-delivery-tabs"
           role="group"
-          aria-label="Kategori waktu pengantaran"
+          aria-label="Kategori waktu sampai Antar"
           style={{
             gridTemplateColumns: `repeat(${DELIVERY_CATEGORIES.length > 3 ? 2 : DELIVERY_CATEGORIES.length}, minmax(0, 1fr))`,
           }}
@@ -521,12 +521,18 @@ export function createApprovedPages(UI) {
                         settings={data.settings}
                       />
                       <span className="rv-delivery-clock-range">
-                        <time dateTime={order.received_at}>
+                        <time
+                          dateTime={order.received_at}
+                          title="Waktu pesanan diterima"
+                        >
                           {timeLabel(order.received_at)}
                         </time>
                         <span aria-hidden="true">→</span>
-                        <time dateTime={order.completed_at}>
-                          {timeLabel(order.completed_at)}
+                        <time
+                          dateTime={order.first_departure_at}
+                          title="Mulai Antar"
+                        >
+                          {timeLabel(order.first_departure_at)}
                         </time>
                       </span>
                     </span>
@@ -570,6 +576,7 @@ export function createApprovedPages(UI) {
       ),
       dates = periodDates(data.today, period),
       [calendarOpen, setCalendarOpen] = useState(false),
+      isToday = dates.from === data.today && dates.to === data.today,
       [report, error] = useResource(
         can(data.user, "reports")
           ? "/reports?" +
@@ -579,16 +586,43 @@ export function createApprovedPages(UI) {
           : null,
         { keepPrevious: true, resetKey: data.user.id + ":" + query },
       ),
-      [staffSummary, staffSummaryError] = useResource(
+      [todaySummary, todaySummaryError] = useResource(
         data.user.owner
           ? null
-          : "/home-summary?day=" + encodeURIComponent(dates.from),
+          : "/home-summary?day=" + encodeURIComponent(data.today),
       ),
-      selectedSummary = staffSummary?.day === dates.from ? staffSummary : null,
+      todayActivity = todaySummary?.day === data.today ? todaySummary : null,
+      [activity, activityError] = useResource(
+        data.user.owner || isToday
+          ? null
+          : "/home-summary?view=activity&" + query,
+      ),
+      selectedSummary = isToday
+        ? todayActivity
+        : activity?.from === dates.from && activity?.to === dates.to
+          ? activity
+          : null,
+      [payroll, payrollError] = useResource(
+        data.user.owner ? null : "/payroll?view=own&" + query,
+      ),
+      ownPayroll =
+        payroll?.from === dates.from && payroll?.to === dates.to
+          ? payroll.rows.find((row) => row.id === data.user.id)
+          : null,
+      isDriver = data.user.role === "driver",
+      payrollQuantity = ownPayroll
+        ? isDriver
+          ? ownPayroll.components.delivery.units
+          : Object.entries(ownPayroll.components).reduce(
+              (total, [key, part]) =>
+                total + (key === "delivery" ? 0 : part.gallons),
+              0,
+            )
+        : null,
       stats = report?.stats,
       counts = data.user.owner
         ? report?.orderCounts
-        : selectedSummary?.orderCounts,
+        : todayActivity?.orderCounts,
       periodLabel = {
         today: "hari ini",
         yesterday: "kemarin",
@@ -683,113 +717,87 @@ export function createApprovedPages(UI) {
           )}
           {!data.user.owner && (
             <div className="rv-home-sales rv-staff-hero">
-              <div
-                className="rv-home-periods rv-staff-home-periods"
-                role="group"
-                aria-label="Periode Beranda"
-              >
-                {[
-                  ["today", "Hari ini"],
-                  ["yesterday", "Kemarin"],
-                ].map(([kind, label]) => (
-                  <button
-                    key={kind}
-                    type="button"
-                    aria-pressed={period.kind === kind}
-                    onClick={() => setPeriod({ ...period, kind })}
-                  >
-                    {label}
-                  </button>
-                ))}
+              <div className="rv-staff-home-periods">
+                <PeriodFilters
+                  value={period}
+                  onChange={setPeriod}
+                  today={data.today}
+                  label="Periode Beranda"
+                />
               </div>
-              <div className="rv-staff-hero-heading">
-                <h2>Aktivitas saya</h2>
-                <time dateTime={dates.from}>
-                  <CalendarDays size={13} aria-hidden="true" />{" "}
-                  {dateLabel(dates.from)}
-                </time>
-              </div>
-              <dl className="rv-staff-hero-metrics" aria-live="polite">
-                <div>
-                  <dt>
-                    <Truck size={15} aria-hidden="true" /> Pengantaran selesai
-                  </dt>
-                  <dd>
-                    {selectedSummary
-                      ? selectedSummary.deliveryPerformance.length.toLocaleString(
-                          "id-ID",
-                        )
-                      : "—"}{" "}
-                    <small>Pesanan</small>
-                  </dd>
-                </div>
-                <div>
-                  <dt>
-                    <Droplets size={15} aria-hidden="true" /> Jumlah pesanan
-                  </dt>
-                  <dd>
-                    {selectedSummary?.depotItems?.toLocaleString("id-ID") ??
-                      "—"}{" "}
-                    <small>Item</small>
-                  </dd>
-                </div>
-              </dl>
               <dl
-                className="rv-staff-hero-receipts"
-                aria-label="Penerimaan saya"
+                className="rv-staff-hero-metrics"
+                aria-label="Ringkasan pribadi"
                 aria-live="polite"
               >
-                <div>
+                <div className="rv-staff-metric-centered">
                   <dt>
-                    <Banknote size={14} aria-hidden="true" /> Tunai
+                    <Droplets size={15} aria-hidden="true" />{" "}
+                    {isDriver ? "Jumlah item" : "Jumlah galon"}
                   </dt>
-                  <dd>
-                    {selectedSummary?.receipts
-                      ? money(selectedSummary.receipts.cash)
-                      : "—"}
+                  <dd className="rv-staff-payroll-quantity">
+                    {payrollQuantity?.toLocaleString("id-ID", {
+                      maximumFractionDigits: 1,
+                    }) ?? "—"}{" "}
+                    <small>{isDriver ? "item" : "galon"}</small>
                   </dd>
                 </div>
-                <div>
+                <div className="rv-staff-metric-centered">
                   <dt>
-                    <ScanLine size={14} aria-hidden="true" /> QRIS
+                    <Wallet size={15} aria-hidden="true" /> Pendapatan pribadi
                   </dt>
-                  <dd>
-                    {selectedSummary?.receipts
-                      ? money(selectedSummary.receipts.qris)
-                      : "—"}
+                  <dd className="rv-staff-payroll-amount">
+                    {ownPayroll ? money(ownPayroll.amount) : "—"}
                   </dd>
                 </div>
-              </dl>
-              <div className="rv-staff-hero-attendance" aria-live="polite">
-                <strong>
-                  <Camera size={14} aria-hidden="true" /> Absensi saya
-                </strong>
-                {selectedSummary?.attendance.length ? (
-                  <div className="rv-staff-hero-shifts">
-                    {selectedSummary.attendance
-                      .slice()
-                      .reverse()
-                      .map((entry) => (
-                        <span key={entry.id}>
-                          <b>
-                            {entry.shift ? "Shift " + entry.shift : "Masuk"}
-                          </b>
-                          <time dateTime={entry.created_at}>
-                            {timeLabel(entry.created_at)} WIB
-                          </time>
-                        </span>
-                      ))}
+                {isDriver && (
+                  <div className="rv-staff-payroll-deliveries">
+                    <dt>
+                      <Truck size={15} aria-hidden="true" /> Pengantaran selesai
+                    </dt>
+                    <dd>
+                      {ownPayroll?.deliveryOrders.toLocaleString("id-ID") ??
+                        "—"}{" "}
+                      <small>Pesanan</small>
+                    </dd>
                   </div>
-                ) : (
-                  <span>
-                    {staffSummaryError
-                      ? "Gagal dimuat"
-                      : selectedSummary
-                        ? "Belum ada absensi"
-                        : "Memuat…"}
-                  </span>
                 )}
-              </div>
+                {dates.from === dates.to && (
+                  <div className="rv-staff-hero-attendance">
+                    <dt>
+                      <Camera size={14} aria-hidden="true" /> Absensi saya
+                    </dt>
+                    <dd className="rv-staff-hero-shifts">
+                      {selectedSummary?.attendance.length
+                        ? selectedSummary.attendance
+                            .slice()
+                            .reverse()
+                            .map((entry) => (
+                              <span key={entry.id}>
+                                <b>
+                                  {entry.shift
+                                    ? "Shift " + entry.shift
+                                    : "Masuk"}
+                                </b>
+                                <time dateTime={entry.created_at}>
+                                  {timeLabel(entry.created_at)} WIB
+                                </time>
+                              </span>
+                            ))
+                        : (isToday ? todaySummaryError : activityError)
+                          ? "Gagal dimuat"
+                          : selectedSummary
+                            ? "Belum ada absensi"
+                            : "Memuat…"}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+              {payrollError && !ownPayroll && (
+                <p className="rv-staff-payroll-error" role="status">
+                  Payroll belum dapat dimuat.
+                </p>
+              )}
             </div>
           )}
         </section>
@@ -805,6 +813,36 @@ export function createApprovedPages(UI) {
           />
         )}
         <main className="rv-body rv-home-body">
+          {!data.user.owner && (
+            <section
+              className="rv-card rv-staff-transactions"
+              aria-labelledby="rv-staff-transactions-title"
+            >
+              <div className="rv-staff-transactions-header">
+                <h3 id="rv-staff-transactions-title">
+                  <Wallet size={15} aria-hidden="true" /> Uang transaksi{" "}
+                  {periodLabel}
+                </h3>
+              </div>
+              <dl className="rv-staff-transaction-amounts" aria-live="polite">
+                {[
+                  ["Tunai", "cash", Banknote],
+                  ["QRIS / Transfer", "qris", ScanLine],
+                ].map(([label, key, Icon]) => (
+                  <div key={key}>
+                    <dt>
+                      <Icon size={14} aria-hidden="true" /> {label}
+                    </dt>
+                    <dd>
+                      {selectedSummary?.receipts
+                        ? money(selectedSummary.receipts[key])
+                        : "—"}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          )}
           {can(data.user, "reports") && (
             <>
               <div className="rv-home-money">
@@ -834,7 +872,8 @@ export function createApprovedPages(UI) {
           <div className="rv-card rv-home-order-summary">
             <div className="rv-section-heading">
               <h3>
-                <ClipboardList size={14} /> Pesanan {periodLabel}
+                <ClipboardList size={14} /> Pesanan{" "}
+                {data.user.owner ? periodLabel : "hari ini"}
               </h3>
               <span className="rv-attendance-count">
                 {counts
@@ -857,7 +896,9 @@ export function createApprovedPages(UI) {
                     className="rv-daily-status-row"
                     key={key}
                     disabled={!canAccessPage(data.user, "orders")}
-                    onClick={() => go("orders?" + key + "&" + query)}
+                    onClick={() =>
+                      go("orders?" + key + (data.user.owner ? "&" + query : ""))
+                    }
                   >
                     <span
                       className={
@@ -889,11 +930,11 @@ export function createApprovedPages(UI) {
             orders={
               data.user.owner
                 ? report?.deliveryPerformance
-                : selectedSummary?.deliveryPerformance
+                : todayActivity?.deliveryPerformance
             }
-            periodLabel={periodLabel}
-            periodKey={period.kind + ":" + query}
-            error={data.user.owner ? error : staffSummaryError}
+            periodLabel={data.user.owner ? periodLabel : "hari ini"}
+            periodKey={data.user.owner ? period.kind + ":" + query : data.today}
+            error={data.user.owner ? error : todaySummaryError}
           />
           {data.user.owner && dates.from === dates.to && (
             <AttendanceList query={query} />

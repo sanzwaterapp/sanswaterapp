@@ -308,6 +308,7 @@ export function registerWaterControl(route, db, d) {
       deliveredUnits: 0,
       counterUnits: 0,
       deliveryOrders: 0,
+      counterOrders: 0,
       legacyInvoices: 0,
       ungroupedLiters: 0,
       groups: [
@@ -348,8 +349,13 @@ export function registerWaterControl(route, db, d) {
         "ungroupedLiters",
       ])
         summary[field] += row[field];
-      for (const field of ["deliveredUnits", "counterUnits", "deliveryOrders"])
-        summary[field] += row.activity[field];
+      for (const field of [
+        "deliveredUnits",
+        "counterUnits",
+        "deliveryOrders",
+        "counterOrders",
+      ])
+        summary[field] += row.activity?.[field] ?? 0;
       for (const group of summary.groups) {
         const source = check.comparison.find((g) => g.group === group.group);
         for (const field of [
@@ -459,77 +465,41 @@ export function registerWaterControl(route, db, d) {
       new Set(ctx.body.readings.map((r) => r.meterId)).size !== 3
     )
       fail("Lengkapi ketiga meteran.");
-    const parent = row.previous_id
-      ? d.find("water_checks", row.previous_id)
-      : null;
     const readings = before.readings.map((old) => {
       const input = ctx.body.readings.find((r) => r.meterId === old.meterId);
       if (!input) fail("Meteran belum lengkap.");
       const opening = reading(input.opening ?? old.opening),
         closing = reading(input.closing);
-      if (closing < opening)
-        fail("Angka akhir tidak boleh kurang dari angka awal.");
-      return { ...old, opening, closing, liters: rounded(closing - opening) };
+      return {
+        ...old,
+        opening,
+        closing,
+        liters: rounded(Math.max(0, closing - opening)),
+      };
     });
-    function save(raw, next) {
-      const prior = decode(raw),
-        snapshot = JSON.parse(raw.comparison_snapshot || "null");
-      if (snapshot?.scope === "shift") {
-        const sales = Object.fromEntries(
-          prior.comparison.map((g) => [g.group, g.salesLiters]),
-        );
-        snapshot.groups = waterComparison(
-          next,
-          sales,
-          prior.stock.opening,
-          prior.stock.closing,
-        );
-      }
-      d.run(
-        "UPDATE water_checks SET readings=?,usage_liters=?,comparison_snapshot=? WHERE id=?",
-        JSON.stringify(next),
-        rounded(next.reduce((s, r) => s + r.liters, 0)),
-        JSON.stringify(snapshot),
-        raw.id,
+    const snapshot = JSON.parse(row.comparison_snapshot || "null");
+    if (snapshot?.scope === "shift") {
+      const sales = Object.fromEntries(
+        before.comparison.map((group) => [group.group, group.salesLiters]),
       );
-      d.audit(ctx.user, "water.correct", raw.id, prior, {
-        ...decode(d.find("water_checks", raw.id)),
-        reason,
-      });
+      snapshot.groups = waterComparison(
+        readings,
+        sales,
+        before.stock.opening,
+        before.stock.closing,
+      );
     }
-    if (parent) {
-      const previous = JSON.parse(parent.readings);
-      const next = previous.map((old) => {
-        const closing = readings.find((r) => r.meterId === old.meterId).opening;
-        if (closing < old.opening)
-          fail(
-            "Angka awal koreksi lebih kecil dari angka awal shift sebelumnya.",
-            409,
-          );
-        return { ...old, closing, liters: rounded(closing - old.opening) };
-      });
-      if (next.some((r, i) => r.closing !== previous[i].closing))
-        save(parent, next);
-    }
-    const child = d.get(
-      "SELECT * FROM water_checks WHERE previous_id=?",
+    d.run(
+      "UPDATE water_checks SET readings=?,usage_liters=?,comparison_snapshot=? WHERE id=?",
+      JSON.stringify(readings),
+      rounded(readings.reduce((total, meter) => total + meter.liters, 0)),
+      JSON.stringify(snapshot),
       row.id,
     );
-    if (child) {
-      const previous = JSON.parse(child.readings);
-      const next = previous.map((old) => {
-        const opening = readings.find((r) => r.meterId === old.meterId).closing;
-        if (old.closing < opening)
-          fail(
-            "Angka koreksi melebihi akhir shift berikutnya. Koreksi akhir shift berikutnya terlebih dahulu.",
-            409,
-          );
-        return { ...old, opening, liters: rounded(old.closing - opening) };
-      });
-      if (next.some((r, i) => r.opening !== previous[i].opening))
-        save(child, next);
-    }
-    save(row, readings);
+    d.audit(ctx.user, "water.correct", row.id, before, {
+      ...decode(d.find("water_checks", row.id)),
+      reason,
+    });
     return { ok: true };
   });
   route("POST", "/api/water-control", "waterControl", (ctx) => {

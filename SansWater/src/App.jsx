@@ -671,7 +671,11 @@ export function App() {
                 ["transactions", "Transaksi", ReceiptText],
                 ["debt", "Hutang", Timer],
               ]
-                .filter(([p]) => canAccessPage(data.user, p))
+                .filter(
+                  ([p]) =>
+                    canAccessPage(data.user, p) &&
+                    (p !== "trips" || data.user.role === "driver"),
+                )
                 .map(([p, label, Icon]) => (
                   <button
                     key={p}
@@ -2566,22 +2570,27 @@ const staffPages = [
   ["Status Delivery", ["display"]],
   ["Kontrol air", ["waterControl"]],
 ];
+const staffRoleLabels = {
+  staff: "Staff",
+  manager: "Manager",
+  driver: "Driver",
+};
 function Staff() {
   const { data, act } = useApp(),
     [form, setForm] = useState(null),
     [passwordAccount, setPasswordAccount] = useState(null);
-  const presets = {
-    staff: ["orders", "trips", "customers", "counter", "debts", "payroll"],
-    manager: [...new Set(staffPages.flatMap(([, keys]) => keys)), "reports"],
-  };
-  function setPermission(key, checked) {
-    setForm({
-      ...form,
-      permissions: checked
-        ? [...form.permissions, key]
-        : form.permissions.filter((p) => p !== key),
-    });
-  }
+  const staffPreset = [
+    "orders",
+    "trips",
+    "customers",
+    "counter",
+    "debts",
+    "payroll",
+  ];
+  const managerPreset = [
+    ...new Set(staffPages.flatMap(([, keys]) => keys)),
+    "reports",
+  ];
   const staffEditor = form ? (
     <AppForm
       className={
@@ -2666,10 +2675,7 @@ function Staff() {
         <>
           <Field label="Peran akun">
             <select
-              value={
-                form.role ||
-                (form.permissions.includes("reports") ? "manager" : "staff")
-              }
+              value={form.role}
               onChange={(e) => {
                 const role = e.target.value;
                 setForm({
@@ -2678,16 +2684,24 @@ function Staff() {
                   permissions: form.id
                     ? [
                         ...form.permissions.filter(
-                          (permission) => permission !== "reports",
+                          (key) =>
+                            key !== "reports" &&
+                            (role !== "driver" || key !== "trips"),
                         ),
                         ...(role === "manager" ? ["reports"] : []),
+                        ...(role === "driver" ? ["trips"] : []),
                       ]
-                    : presets[role],
+                    : role === "manager"
+                      ? managerPreset
+                      : staffPreset,
                 });
               }}
             >
-              <option value="staff">Staff</option>
-              <option value="manager">Manager</option>
+              {Object.entries(staffRoleLabels).map(([role, label]) => (
+                <option value={role} key={role}>
+                  {label}
+                </option>
+              ))}
             </select>
           </Field>
           <h3>Akses halaman</h3>
@@ -2697,6 +2711,7 @@ function Staff() {
                 <input
                   type="checkbox"
                   checked={keys.some((key) => form.permissions.includes(key))}
+                  disabled={form.role === "driver" && keys.includes("trips")}
                   onChange={(e) =>
                     setForm({
                       ...form,
@@ -2725,8 +2740,8 @@ function Staff() {
               name: "",
               username: "",
               password: "",
-              preset: "staff",
-              permissions: presets.staff,
+              role: "staff",
+              permissions: staffPreset,
             })
           }
         >
@@ -2815,9 +2830,7 @@ function Staff() {
                         <strong>{u.name}</strong>
                         <span className="rv-note">
                           {u.username}
-                          {u.permissions.includes("reports")
-                            ? " · Manager"
-                            : " · Staff"}
+                          {" · " + staffRoleLabels[u.role]}
                         </span>
                       </span>
                       <span className="rv-stock-badge rv-stock-unlimited">

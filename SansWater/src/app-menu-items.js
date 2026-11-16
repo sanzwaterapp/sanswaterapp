@@ -9,10 +9,12 @@ import {
   Droplets,
   Calculator,
   Camera,
+  Truck,
 } from "lucide-react";
 import { can } from "./api.js";
 
 const menuItems = [
+  ["trips", "Trip", "Pengantaran pesanan", Truck, "trips"],
   [
     "customers",
     "Pelanggan",
@@ -63,10 +65,11 @@ const menuItems = [
 
 export function menuItemsFor(user) {
   return menuItems.filter(
-    ([, , , , permission]) =>
-      !permission ||
-      permission
-        .split("|")
-        .some((key) => (key === "owner" ? user?.owner : can(user, key))),
+    ([page, , , , permission]) =>
+      (page !== "trips" || user?.role !== "driver") &&
+      (!permission ||
+        permission
+          .split("|")
+          .some((key) => (key === "owner" ? user?.owner : can(user, key)))),
   );
 }

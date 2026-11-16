@@ -54,6 +54,7 @@ import {
   KeyRound,
 } from "lucide-react";
 import DurationChip from "./DurationChip.jsx";
+import { createAttendanceReport } from "./attendance-report.jsx";
 import DurationCategoryEditor from "./DurationCategoryEditor.jsx";
 import CategoryEditor from "./category-editor.jsx";
 import { readPreferences, normalizePreferences } from "./app-preferences.js";
@@ -2894,88 +2895,13 @@ function Staff() {
     </>
   );
 }
-function Attendance() {
-  const { data } = useApp(),
-    [offset, setOffset] = useState(0),
-    [period, setPeriod, query] = usePeriod();
-  const [report, error] = useResource(
-    "/attendance?" + query + "&offset=" + offset,
-  );
-  return (
-    <>
-      <Header
-        title="Absensi"
-        icon={Camera}
-        back="other"
-        filters={
-          <PeriodFilters
-            value={period}
-            onChange={(v) => {
-              setPeriod(v);
-              setOffset(0);
-            }}
-            today={data.today}
-          />
-        }
-      />
-      <main className="rv-body rv-feature">
-        <section className="rv-card">
-          <OwnAttendance showHistory={false} />
-        </section>
-        {error && <p className="rv-error">{error}</p>}
-        <section className="rv-card rv-stack">
-          <div className="rv-section-heading">
-            <h3>Rekap absensi</h3>
-            <span>{report?.total || 0} catatan</span>
-          </div>
-          {report?.summary.map((row) => (
-            <div className="rv-line" key={row.user_id}>
-              <strong>{row.name}</strong>
-              <span>
-                {row.days} hari · {row.entries} kali absen
-              </span>
-            </div>
-          ))}
-          {report?.rows.map((row) => (
-            <div className="rv-attendance-row" key={row.id}>
-              <strong>{row.name}</strong>
-              <span>
-                {dateLabel(row.day)} ·{" "}
-                {row.shift ? "Shift " + row.shift + " · " : ""}
-                {timeLabel(row.created_at)}
-              </span>
-              <PhotoButton
-                id={row.photo_id}
-                label={"Foto absensi " + row.name}
-              />
-            </div>
-          ))}
-          {report && !report.rows.length && (
-            <Empty icon={Camera} compact>
-              Belum ada absensi pada periode ini.
-            </Empty>
-          )}
-          {!!(offset || report?.hasMore) && (
-            <div className="rv-two">
-              <button
-                disabled={!offset}
-                onClick={() => setOffset(Math.max(0, offset - 50))}
-              >
-                Sebelumnya
-              </button>
-              <button
-                disabled={!report?.hasMore}
-                onClick={() => setOffset(offset + 50)}
-              >
-                Berikutnya
-              </button>
-            </div>
-          )}
-        </section>
-      </main>
-    </>
-  );
-}
+const Attendance = createAttendanceReport({
+  useApp,
+  usePeriod,
+  useResource,
+  Header,
+  PhotoButton,
+});
 function Corrections() {
   const { act } = useApp(),
     [reload, setReload] = useState(0),
@@ -3266,6 +3192,7 @@ function Audit() {
     "customer-group.update": "Nama kelompok diubah",
     "customer-group.delete": "Kelompok pelanggan dihapus",
     "attendance.in": "Absensi masuk",
+    "attendance.delete": "Hapus absensi",
     "staff.create": "Akun baru",
     "staff.archive": "Staf dihapus dari daftar",
     "staff.update": "Akses staf",

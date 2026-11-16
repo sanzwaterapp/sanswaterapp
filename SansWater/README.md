@@ -4,6 +4,8 @@ Folder **SansWater** berisi aplikasi React/Vite dan API Node.js 24 untuk Vercel 
 
 Mulai dari **[DEPLOY-VERCEL.md](DEPLOY-VERCEL.md)**. Hasil pemeriksaan, arsitektur dan batas penggunaan ada di **[VERIFIKASI.md](VERIFIKASI.md)**.
 
+Filter **Minggu ini** di seluruh aplikasi mencakup **7 hari terakhir, termasuk hari ini**, mengikuti tanggal operasional WIB server. Contoh: pada 16 November 2026, rentangnya 10–16 November 2026. Jalankan `node --test tests/period-range.test.js` dari folder ini untuk memeriksa batas kalender.
+
 ## Revisi 2 — 15 November 2026
 
 - Antrean Aktif mendahulukan pesanan yang belum diantar, lalu pengantaran; durasi terlama tetap dipertahankan, termasuk antarhalaman. Trip memiliki filter periode dan halaman riwayat tersendiri.

@@ -505,11 +505,12 @@ export function createDomain(
     ).map(({ method }) => method);
     return { ...row, ...order, methods };
   }
-  function transactionCash(query) {
-    const { start, end } = period(query);
+  function transactionCash(user, query) {
+    const { start, end } = staffFinancialPeriod(user, period(query), now());
     const { cashHolders } = salesBreakdown(db, start, end);
     return cashFlowSummary(db, start, end, cashHolders, {
       includeActive: true,
+      actorId: user.owner ? null : user.id,
     });
   }
   function allocate(paymentId, invoiceIds, amount) {
@@ -918,14 +919,18 @@ export function createDomain(
             " AND trip_id IS NOT NULL)",
           ...params,
         );
-    const breakdown = salesBreakdown(db, start, end);
+    const { cashHolders, productTotals } = salesBreakdown(db, start, end);
     return {
       stats: { ...stats, cash, qris, debt },
       water,
-      ...breakdown,
+      productTotals,
+      ...(user.owner ? { cashHolders } : {}),
       funds: cashFundReport(db, start, end),
       receipts: reportReceipts(db, start, end, stats.sales),
-      ...cashFlowSummary(db, start, end, breakdown.cashHolders),
+      ...cashFlowSummary(db, start, end, cashHolders, {
+        actorId: user.owner ? null : user.id,
+        includeActive: !user.owner,
+      }),
       ...(!summaryOnly && user.owner
         ? {
             deliveryPerformance: deliveryPerformance({ condition, params }),

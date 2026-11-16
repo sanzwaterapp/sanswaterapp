@@ -17,10 +17,9 @@ export function registerReportRoutes(route, d) {
   registerFinancialCorrections(route, d);
   registerPayroll(route, d);
   registerExplorer(route, d, { prefix: "/api/report-", permission: "reports" });
-  route("GET", "/api/transactions/cash", "login", (ctx) => {
-    staffFinancialPeriod(ctx.user, d.period(ctx.query), d.now());
-    return d.transactionCash(ctx.query);
-  });
+  route("GET", "/api/transactions/cash", "login", (ctx) =>
+    d.transactionCash(ctx.user, ctx.query),
+  );
   registerExplorer(route, d, {
     prefix: "/api/transactions/",
     permission: "login",

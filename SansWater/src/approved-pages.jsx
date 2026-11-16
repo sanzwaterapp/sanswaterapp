@@ -1015,15 +1015,16 @@ export function createApprovedPages(UI) {
   }
   const CashFlowList = createCashFlowList(UI);
   function CashHolders({ rows = [], net, query, summaryOnly = false }) {
+    const { data } = useApp();
     const [opened, setOpened] = useState({});
+    const title = data.user.owner
+      ? "Laporan kas semua akun"
+      : "Laporan kas saya";
     return (
-      <section
-        className="rv-card rv-cash-holders"
-        aria-label="Laporan kas per akun"
-      >
+      <section className="rv-card rv-cash-holders" aria-label={title}>
         <div className="rv-section-heading">
           <h3>
-            <Banknote size={15} /> Laporan kas per akun
+            <Banknote size={15} /> {title}
           </h3>
           <strong>{money(net)}</strong>
         </div>
@@ -3948,7 +3949,9 @@ export function createApprovedPages(UI) {
                 >
                   <header>
                     <Banknote size={15} />
-                    <h3>Laporan kas {periodLabel}</h3>
+                    <h3>
+                      Laporan kas{data.user.owner ? "" : " saya"} {periodLabel}
+                    </h3>
                   </header>
                   <div className="rv-report-total">
                     <strong className="rv-report-metric-value">
@@ -3993,13 +3996,27 @@ export function createApprovedPages(UI) {
                         <dt>
                           <Banknote size={13} aria-hidden="true" /> Tunai
                         </dt>
-                        <dd>{money(report.stats.cash)}</dd>
+                        <dd>
+                          {money(
+                            report.staffCash.reduce(
+                              (sum, row) => sum + row.cash,
+                              0,
+                            ),
+                          )}
+                        </dd>
                       </div>
                       <div>
                         <dt>
                           <ScanLine size={13} aria-hidden="true" /> QRIS
                         </dt>
-                        <dd>{money(report.stats.qris)}</dd>
+                        <dd>
+                          {money(
+                            report.staffCash.reduce(
+                              (sum, row) => sum + row.qris,
+                              0,
+                            ),
+                          )}
+                        </dd>
                       </div>
                     </dl>
                   </footer>

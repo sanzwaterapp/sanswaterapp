@@ -1,5 +1,11 @@
 // Cash uses payment timestamps and the selected expense day, never invoice sales.
-export function cashFlowSummary(db, start, end, holders = [], { includeActive = false } = {}) {
+export function cashFlowSummary(
+  db,
+  start,
+  end,
+  holders = [],
+  { includeActive = false, actorId = null } = {},
+) {
   const from = new Date(Date.parse(start) + 25200000)
     .toISOString()
     .slice(0, 10);
@@ -19,9 +25,12 @@ export function cashFlowSummary(db, start, end, holders = [], { includeActive = 
       SUM(CASE WHEN from_method='Tunai' THEN amount ELSE 0 END) cash,
       SUM(CASE WHEN from_method='QRIS' THEN amount ELSE 0 END) qris FROM cash_entries
       WHERE kind='expense' AND voided_at IS NULL AND day>=? AND day<? GROUP BY actor_id
-    ) e ON e.actor_id=u.id WHERE p.actor_id IS NOT NULL OR e.actor_id IS NOT NULL OR (?=1 AND u.active=1) ORDER BY u.name,u.id`,
+    ) e ON e.actor_id=u.id
+    WHERE (? IS NULL OR u.id=?)
+      AND (p.actor_id IS NOT NULL OR e.actor_id IS NOT NULL OR (?=1 AND u.active=1))
+    ORDER BY u.name,u.id`,
     )
-    .all(start, end, from, to, includeActive ? 1 : 0);
+    .all(start, end, from, to, actorId, actorId, includeActive ? 1 : 0);
   const incoming = rows.reduce((sum, r) => sum + r.cash + r.qris, 0),
     outgoing = rows.reduce((sum, r) => sum + r.outgoing, 0);
   const sources = new Map();
@@ -68,8 +77,14 @@ export function registerCashFlowRoutes(route, d) {
   route("GET", "/api/report-cashflow", "reports", (ctx) => {
     const p = d.period(ctx.query),
       offset = Number(ctx.query.get("offset") || 0),
-      actor = ctx.query.get("actor"),
+      requestedActor = ctx.query.get("actor"),
       fund = ctx.query.get("fund");
+    if (!ctx.user.owner && requestedActor && requestedActor !== ctx.user.id)
+      throw Object.assign(
+        new Error("Laporan kas akun lain hanya tersedia untuk Owner."),
+        { status: 403 },
+      );
+    const actor = ctx.user.owner ? requestedActor : ctx.user.id;
     if (!Number.isSafeInteger(offset) || offset < 0 || offset > 10000000) {
       const e = new Error("Halaman belum benar.");
       e.status = 400;

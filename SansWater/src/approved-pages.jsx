@@ -593,7 +593,7 @@ export function createApprovedPages(UI) {
       ),
       todayActivity = todaySummary?.day === data.today ? todaySummary : null,
       [activity, activityError] = useResource(
-        data.user.owner || isToday
+        data.user.owner || isToday || dates.from !== dates.to
           ? null
           : "/home-summary?view=activity&" + query,
       ),
@@ -813,36 +813,6 @@ export function createApprovedPages(UI) {
           />
         )}
         <main className="rv-body rv-home-body">
-          {!data.user.owner && (
-            <section
-              className="rv-card rv-staff-transactions"
-              aria-labelledby="rv-staff-transactions-title"
-            >
-              <div className="rv-staff-transactions-header">
-                <h3 id="rv-staff-transactions-title">
-                  <Wallet size={15} aria-hidden="true" /> Uang transaksi{" "}
-                  {periodLabel}
-                </h3>
-              </div>
-              <dl className="rv-staff-transaction-amounts" aria-live="polite">
-                {[
-                  ["Tunai", "cash", Banknote],
-                  ["QRIS / Transfer", "qris", ScanLine],
-                ].map(([label, key, Icon]) => (
-                  <div key={key}>
-                    <dt>
-                      <Icon size={14} aria-hidden="true" /> {label}
-                    </dt>
-                    <dd>
-                      {selectedSummary?.receipts
-                        ? money(selectedSummary.receipts[key])
-                        : "—"}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          )}
           {can(data.user, "reports") && (
             <>
               <div className="rv-home-money">

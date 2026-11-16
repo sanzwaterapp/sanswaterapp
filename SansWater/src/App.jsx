@@ -674,7 +674,7 @@ export function App() {
                 .filter(
                   ([p]) =>
                     canAccessPage(data.user, p) &&
-                    (p !== "trips" || data.user.role === "driver"),
+                    (p !== "trips" || data.user.role !== "staff"),
                 )
                 .map(([p, label, Icon]) => (
                   <button

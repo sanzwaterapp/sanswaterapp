@@ -137,7 +137,8 @@ export function createCashPage(UI) {
       data.cashFunds?.find((f) => f.key === key)?.name || key;
     const dates = periodDates(data.today, period);
     const multiDay = dates.from !== dates.to;
-    const summary = ledger?.expenseSummary;
+    const canViewSummary = can(data.user, "reports");
+    const summary = canViewSummary ? ledger?.expenseSummary : null;
     const dayGroups = new Map();
     for (const row of ledger?.rows || []) {
       if (!dayGroups.has(row.day)) dayGroups.set(row.day, []);
@@ -306,7 +307,6 @@ export function createCashPage(UI) {
               }}
               today={data.today}
               label="Periode pengeluaran"
-              recentOnly={!data.user.owner}
             />
           }
         >
@@ -457,7 +457,9 @@ export function createCashPage(UI) {
             </section>
           )}
           <div className="rv-section-heading rv-expense-history-heading">
-            <h3>Riwayat pengeluaran</h3>
+            <h3>
+              {canViewSummary ? "Riwayat pengeluaran" : "Pengeluaran saya"}
+            </h3>
           </div>
           <div className="rv-expense-history-filters">
             <select
@@ -487,12 +489,7 @@ export function createCashPage(UI) {
               {EXPENSE_CATEGORIES.map((category) => (
                 <option key={category}>{category}</option>
               ))}
-              {(categoryFilter === UNCATEGORIZED_EXPENSE ||
-                !!summary?.byCategory[UNCATEGORIZED_EXPENSE]) && (
-                <option value={UNCATEGORIZED_EXPENSE}>
-                  Belum dikategorikan
-                </option>
-              )}
+              <option value={UNCATEGORIZED_EXPENSE}>Belum dikategorikan</option>
             </select>
           </div>
           <div className="rv-cash-entry-list">

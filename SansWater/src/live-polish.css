@@ -942,6 +942,42 @@
   padding: 8px;
   min-height: 37px;
 }
+#depot-order-payment-review .rv-phone .rv-payroll-driver-summary {
+  margin: 0;
+  padding: 4px 10px 10px;
+  text-align: left;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-driver-summary > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: baseline;
+  padding: 8px 2px;
+  border-bottom: 1px solid #efddc5;
+  font-size: 12px;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-driver-summary dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-driver-summary small {
+  font-weight: 500;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-driver-summary > .rv-payroll-driver-earnings {
+  margin-top: 7px;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: #f4e4cf;
+  color: #764717;
+  font-weight: 700;
+}
+#depot-order-payment-review .rv-phone .rv-payroll-driver-earnings dd {
+  font-size: 15px;
+}
 #depot-order-payment-review .rv-phone .rv-payroll-driver-variable .rv-section-heading {
   margin: 0;
   font-size: 12px;

@@ -11,7 +11,6 @@ import {
   id,
   integer,
   requireAccess,
-  recentOperationalPeriod,
   text,
 } from "./domain.js";
 
@@ -80,6 +79,7 @@ export function registerCashRoutes(route, db, d) {
   });
   route("GET", "/api/cash-ledger", "login", (ctx) => {
     readAccess(ctx.user);
+    const canViewSummary = has(ctx.user, "reports");
     const period = d.period(
         ctx.query.get("period") === "all"
           ? new URLSearchParams({
@@ -90,7 +90,12 @@ export function registerCashRoutes(route, db, d) {
       ),
       conditions = ["e.day>=?", "e.day<=?"],
       args = [period.from, period.to];
-    if (!ctx.user.owner) recentOperationalPeriod(period, d.now());
+    validDay(period.from);
+    validDay(period.to);
+    if (!canViewSummary) {
+      conditions.push("e.actor_id=?");
+      args.push(ctx.user.id);
+    }
     const filter = ctx.query.get("fund"),
       kind = ctx.query.get("kind");
     if (filter && filter !== "all") {
@@ -106,7 +111,7 @@ export function registerCashRoutes(route, db, d) {
     }
     const categorySlots = EXPENSE_CATEGORIES.map(() => "?").join(",");
     const expenseSummary =
-      kind === "expense"
+      canViewSummary && kind === "expense"
         ? d.all(
             `SELECT CASE WHEN e.category IN (${categorySlots}) THEN e.category ELSE ? END category,
              SUM(e.amount) amount FROM cash_entries e
@@ -149,7 +154,9 @@ export function registerCashRoutes(route, db, d) {
       offset,
     );
     return {
-      funds: cashFundReport(db, period.start, period.end),
+      ...(canViewSummary && {
+        funds: cashFundReport(db, period.start, period.end),
+      }),
       ...(expenseSummary && {
         expenseSummary: {
           byCategory: Object.fromEntries(

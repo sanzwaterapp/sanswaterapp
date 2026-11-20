@@ -271,42 +271,68 @@ export function createPayroll({
                     <header className="rv-payroll-product-heading">
                       <strong>{driver.name}</strong>
                     </header>
-                    <div className="rv-payroll-driver-rate">
-                      <Field
-                        label="Rp / galon atau item"
-                        aria-label={
-                          "Antar " + driver.name + " · Rp per galon atau item"
-                        }
-                        type="number"
-                        inputMode="numeric"
-                        min="0"
-                        max="10000000"
-                        step="1"
-                        required
-                        readOnly={result.readOnly}
-                        value={draft.drivers[driver.id]?.rate ?? 0}
-                        onChange={(event) =>
-                          setDraft({
-                            ...draft,
-                            drivers: {
-                              ...draft.drivers,
-                              [driver.id]: {
-                                actor: driver.id,
-                                rate: event.target.value,
-                              },
-                            },
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="rv-payroll-delivery-formula">
-                      <span>
-                        {number(driver.components.delivery.gallons)} galon +{" "}
-                        {number(driver.components.delivery.items || 0)} item
-                      </span>
-                      <span>=</span>
-                      <strong>{money(driverAmounts[driver.id])}</strong>
-                    </div>
+                    {result.readOnly ? (
+                      <dl className="rv-payroll-driver-summary">
+                        <div>
+                          <dt>Tarif</dt>
+                          <dd>
+                            {money(draft.drivers[driver.id]?.rate ?? 0)}
+                            <small> / galon atau item</small>
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Volume antar</dt>
+                          <dd>
+                            {number(driver.components.delivery.gallons)} galon +{" "}
+                            {number(driver.components.delivery.items || 0)} item
+                          </dd>
+                        </div>
+                        <div className="rv-payroll-driver-earnings">
+                          <dt>Pendapatan</dt>
+                          <dd>{money(driverAmounts[driver.id])}</dd>
+                        </div>
+                      </dl>
+                    ) : (
+                      <>
+                        <div className="rv-payroll-driver-rate">
+                          <Field
+                            label="Rp / galon atau item"
+                            aria-label={
+                              "Antar " +
+                              driver.name +
+                              " · Rp per galon atau item"
+                            }
+                            type="number"
+                            inputMode="numeric"
+                            min="0"
+                            max="10000000"
+                            step="1"
+                            required
+                            value={draft.drivers[driver.id]?.rate ?? 0}
+                            onChange={(event) =>
+                              setDraft({
+                                ...draft,
+                                drivers: {
+                                  ...draft.drivers,
+                                  [driver.id]: {
+                                    actor: driver.id,
+                                    rate: event.target.value,
+                                  },
+                                },
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="rv-payroll-delivery-formula">
+                          <span>
+                            {number(driver.components.delivery.gallons)} galon +{" "}
+                            {number(driver.components.delivery.items || 0)} item
+                          </span>
+                          <span>=</span>
+                          <strong>{money(driverAmounts[driver.id])}</strong>
+                        </div>
+                      </>
+                    )}
                   </article>
                 ))}
               </div>

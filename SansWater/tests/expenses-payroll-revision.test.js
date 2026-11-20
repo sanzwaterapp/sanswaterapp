@@ -103,7 +103,7 @@ test("expense totals span all pages and own payroll allows older periods", async
     username: "staff",
     password,
     role: "staff",
-    permissions: [],
+    permissions: ["expenses"],
   });
   await staff("/login", { username: "staff", password });
   for (const from of ["2026-11-14", "2026-11-01", "2026-10-15"]) {
@@ -126,4 +126,69 @@ test("expense totals span all pages and own payroll allows older periods", async
     403,
   );
   await staff("/payroll?from=2026-11-01&to=2026-11-21", undefined, 400);
+
+  const driver = client();
+  const manager = client();
+  const accounts = [
+    ["driver", driver],
+    ["manager", manager],
+  ];
+  const accountIds = {};
+  for (const [role, request] of accounts) {
+    const { id: accountId } = await owner("/staff", {
+      name: `QA ${role}`,
+      username: role,
+      password,
+      role,
+      permissions: ["expenses"],
+    });
+    accountIds[role] = accountId;
+    await request("/login", { username: role, password });
+  }
+  for (const [request, accountId] of [
+    [staff, staffId],
+    [driver, accountIds.driver],
+  ]) {
+    const own = await request("/cash-entries", {
+      ...expense,
+      expenseGroup: "Produk",
+      note: "Belanja akun sendiri",
+    });
+    const history = await request(`${ledger}&category=Produk&actor=${user.id}`);
+    assert.deepEqual(
+      history.rows.map(({ id, actor_id }) => [id, actor_id]),
+      [[own.id, accountId]],
+    );
+    assert.equal(history.total, 1);
+    assert.equal(history.hasMore, false);
+    assert.equal("expenseSummary" in history, false);
+    assert.equal("funds" in history, false);
+  }
+  const managerHistory = await manager(`${ledger}&category=Produk&offset=30`);
+  assert.equal(managerHistory.total, 34);
+  assert.equal(managerHistory.expenseSummary.byCategory.Produk, 33000);
+  assert.equal(managerHistory.expenseSummary.total, 33500);
+
+  await owner("/cash-entries", {
+    ...expense,
+    day: "2026-11-16",
+    expenseGroup: "Produk",
+    note: "Pengeluaran owner sebelumnya",
+  });
+  for (const request of [staff, driver]) {
+    const older = await request("/cash-entries", {
+      ...expense,
+      day: "2026-11-16",
+      expenseGroup: "Produk",
+      note: "Pengeluaran akun sebelumnya",
+    });
+    for (const from of ["2026-11-14", "2026-11-01", "2026-10-01"]) {
+      const history = await request(`${ledger}&from=${from}&to=${today}`);
+      assert.equal(history.total, 2);
+      assert.ok(history.rows.some((row) => row.id === older.id));
+      assert.equal("expenseSummary" in history, false);
+      assert.equal("funds" in history, false);
+    }
+    await request(`${ledger}&from=2026-11-01&to=2026-11-21`, undefined, 400);
+  }
 });

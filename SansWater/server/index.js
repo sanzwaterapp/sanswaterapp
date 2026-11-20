@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { openDatabase } from "./database.js";
 import { createCloudStore } from "./cloud-store.js";
 import { runtimeConfig } from "./runtime-config.js";
+import { createRealtimeSession } from "./realtime-session.js";
 if (existsSync(".env")) process.loadEnvFile(".env");
 const { provider, port, host } = runtimeConfig();
 let db, cloud;
@@ -26,6 +27,7 @@ if (dev) {
 const app = createApp({
   db,
   cloud,
+  realtimeSession: cloud ? createRealtimeSession() : null,
   dev,
   distPath,
   staticHandler: vite ? (req, res) => vite.middlewares(req, res) : null,

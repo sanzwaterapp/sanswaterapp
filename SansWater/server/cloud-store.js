@@ -110,6 +110,7 @@ export async function createCloudStore(
     ownsPool = false,
     queueTimeoutMs = 20000,
     bootstrapBatchSize = 1000,
+    leanProjection = false,
   } = {},
 ) {
   const namespace = identifier(schema);
@@ -119,6 +120,9 @@ export async function createCloudStore(
   }
   const tables = businessTables(db),
     tableSet = new Set(tables);
+  const projectionFilter = leanProjection
+    ? "AND r.entity <> 'idempotency'"
+    : "";
   if (
     !Number.isInteger(bootstrapBatchSize) ||
     bootstrapBatchSize < 1 ||
@@ -279,7 +283,7 @@ export async function createCloudStore(
       const state = (
         await client.query(
           `SELECT s.*, COALESCE((SELECT jsonb_agg(jsonb_build_object('entity',r.entity,'row_id',r.row_id,'payload',r.payload) ORDER BY r.entity,r.row_id)
-        FROM ${namespace}.records r WHERE s.store_id=$1 AND $2<=s.revision AND r.revision > $2),'[]'::jsonb) AS records
+        FROM ${namespace}.records r WHERE s.store_id=$1 AND $2<=s.revision AND r.revision > $2 ${projectionFilter}),'[]'::jsonb) AS records
         FROM ${namespace}.state s WHERE singleton=true`,
           [local?.store_id || null, local?.revision ?? -1],
         )
@@ -306,8 +310,8 @@ export async function createCloudStore(
         for (;;) {
           const batch = (
             await client.query(
-              `SELECT entity,row_id,payload FROM ${namespace}.records
-             WHERE payload IS NOT NULL AND ($1::text IS NULL OR (entity,row_id)>($1::text,$2::bigint))
+              `SELECT entity,row_id,payload FROM ${namespace}.records r
+             WHERE payload IS NOT NULL ${projectionFilter} AND ($1::text IS NULL OR (entity,row_id)>($1::text,$2::bigint))
              ORDER BY entity,row_id LIMIT $3`,
               [cursor?.entity ?? null, cursor?.row_id ?? 0, bootstrapBatchSize],
             )
@@ -323,6 +327,25 @@ export async function createCloudStore(
       db.exec("DELETE FROM _cloud_dirty");
       return {
         rollback,
+        prepareReplay: leanProjection
+          ? async (userId, key) => {
+              // The advisory write lock is already held. Reserve a rowid above every
+              // stored replay, including records absent from the SQLite projection.
+              const {
+                rows: [row],
+              } = await client.query(
+                `SELECT COALESCE((SELECT row_id FROM ${namespace}.records
+               WHERE entity='idempotency' ORDER BY row_id DESC LIMIT 1),0)+1 AS next_row_id,
+             (SELECT jsonb_build_object('fingerprint',payload->>'fingerprint','response',payload->>'response')
+               FROM ${namespace}.records WHERE entity='idempotency' AND payload IS NOT NULL
+               AND payload->>'user_id'=$1 AND payload->>'key'=$2 LIMIT 1) AS previous`,
+                [userId, key],
+              );
+              const rowId = Number(row.next_row_id);
+              if (!Number.isSafeInteger(rowId)) throw unavailable();
+              return { rowId, previous: row.previous };
+            }
+          : null,
         async commit() {
           if (done) throw new Error("Store scope already closed");
           try {
@@ -342,6 +365,7 @@ export async function createCloudStore(
                 next,
               );
             }
+            if (leanProjection) db.exec("DELETE FROM idempotency");
             await client.query("COMMIT");
             remoteOpen = false;
             db.exec("COMMIT");
@@ -375,6 +399,32 @@ export async function createCloudStore(
   }
   const store = {
     begin,
+    readSyncSession: leanProjection
+      ? async (tokenHash, now) => {
+          try {
+            const {
+              rows: [state],
+            } = await pool.query({
+              text: `SELECT store_id,revision,schema_version,initialized,
+           (SELECT jsonb_build_object('userId',u.payload->>'id','expiresAt',s.payload->>'expires_at')
+            FROM ${namespace}.records s JOIN ${namespace}.records u
+              ON u.entity='users' AND u.payload->>'id'=s.payload->>'user_id' AND u.payload->>'active'='1'
+            WHERE s.entity='sessions' AND s.payload->>'token_hash'=$1 AND s.payload->>'expires_at'>$2 LIMIT 1) AS session
+           FROM ${namespace}.state WHERE singleton=true`,
+              values: [tokenHash, now],
+              query_timeout: 3000,
+            });
+            if (!state?.initialized || state.schema_version !== version)
+              throw unavailable();
+            return {
+              session: state.session,
+              version: state.store_id + ":" + state.revision,
+            };
+          } catch (error) {
+            throw Object.assign(unavailable(), { cause: error });
+          }
+        }
+      : null,
     currentVersion: () => committedVersion,
     async probeVersion() {
       let client,
@@ -439,7 +489,7 @@ export async function createCloudStore(
     },
   };
   try {
-    await store.run(() => {});
+    if (!leanProjection) await store.run(() => {});
   } catch (error) {
     await store.close();
     throw error;

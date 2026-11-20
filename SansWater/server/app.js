@@ -97,21 +97,30 @@ export function createApp(options = {}) {
   let localRevision = 0;
   const localStore = "local-" + id();
   const localVersion = () => localStore + ":" + localRevision;
-  const feed = createChangeFeed({
-    probe: options.cloud ? () => options.cloud.probeVersion() : null,
-    synchronize: options.cloud
-      ? async () => {
-          await options.cloud.run(() => {});
-          return options.cloud.currentVersion();
-        }
-      : null,
-    day: () => dayWib(d.now()),
-    interval: options.syncInterval ?? 15000,
-    heartbeat: options.syncHeartbeat ?? 25000,
-    maxAge: options.eventsMaxAge ?? 0,
-  });
-  route("GET", "/api/events", "login", () => ({}));
+  const feed =
+    options.liveEvents === false
+      ? null
+      : createChangeFeed({
+          probe: options.cloud ? () => options.cloud.probeVersion() : null,
+          synchronize: options.cloud
+            ? async () => {
+                await options.cloud.run(() => {});
+                return options.cloud.currentVersion();
+              }
+            : null,
+          day: () => dayWib(d.now()),
+          interval: options.syncInterval ?? 15000,
+          heartbeat: options.syncHeartbeat ?? 25000,
+          maxAge: options.eventsMaxAge ?? 0,
+        });
+  if (feed) route("GET", "/api/events", "login", () => ({}));
   route("GET", "/api/sync-version", "login", () => ({}));
+  route(
+    "GET",
+    "/api/realtime-session",
+    "login",
+    ({ user }) => options.realtimeSession?.(user.id) ?? null,
+  );
   const authRefreshPaths = new Set([
     "/api/session",
     "/api/state",
@@ -2295,7 +2304,7 @@ export function createApp(options = {}) {
     };
     if (!options.dev)
       headers["Content-Security-Policy"] =
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'";
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' wss://*.supabase.co; media-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'";
     try {
       const url = new URL(req.url, "http://localhost");
       if (!url.pathname.startsWith("/api/")) {
@@ -2346,6 +2355,36 @@ export function createApp(options = {}) {
       if (!match) fail("Layanan tidak ditemukan.", 404);
       if (match.permission && !authCookie(req, "depot_session"))
         fail("Silakan masuk kembali.", 401);
+      if (
+        req.method === "GET" &&
+        options.cloud?.readSyncSession &&
+        !supabaseAuth &&
+        ["/api/sync-version", "/api/realtime-session"].includes(url.pathname)
+      ) {
+        const now = d.now();
+        const { session, version } = await options.cloud.readSyncSession(
+          hash(authCookie(req, "depot_session")),
+          now,
+        );
+        if (!session) fail("Silakan masuk kembali.", 401);
+        const credential = url.pathname === "/api/realtime-session";
+        const renewSoon =
+          Date.parse(session.expiresAt) - Date.parse(now) <=
+          (sessionLifetime - sessionRenewAfter) * 1000;
+        if (credential || !renewSoon) {
+          const data = credential
+            ? (options.realtimeSession?.(session.userId) ?? null)
+            : { version, day: dayWib(now) };
+          res.writeHead(200, {
+            ...headers,
+            "X-Data-Version": version,
+            "Content-Type": "application/json; charset=utf-8",
+          });
+          res.end(JSON.stringify(data));
+          return;
+        }
+        // Keep the existing cookie-renewal path for long-running sessions.
+      }
       let body = {};
       if (!["GET", "HEAD"].includes(req.method)) {
         const origin = req.headers.origin,
@@ -2426,13 +2465,16 @@ export function createApp(options = {}) {
         const fingerprint = hash(
           req.method + url.pathname + JSON.stringify(body),
         );
+        let replay = await cloudScope?.prepareReplay?.(user.id, key);
         const execute = () =>
           transaction(db, () => {
-            const previous = d.get(
-              "SELECT * FROM idempotency WHERE user_id=? AND key=?",
-              user.id,
-              key,
-            );
+            const previous =
+              replay?.previous ??
+              d.get(
+                "SELECT * FROM idempotency WHERE user_id=? AND key=?",
+                user.id,
+                key,
+              );
             if (previous) {
               if (previous.fingerprint !== fingerprint)
                 fail(
@@ -2443,7 +2485,8 @@ export function createApp(options = {}) {
             }
             const value = match.handler(ctx);
             d.run(
-              "INSERT INTO idempotency VALUES(?,?,?,?,?)",
+              "INSERT INTO idempotency(rowid,user_id,key,fingerprint,response,created_at) VALUES(?,?,?,?,?,?)",
+              replay?.rowId ?? null,
               user.id,
               key,
               fingerprint,
@@ -2480,6 +2523,7 @@ export function createApp(options = {}) {
             if (match.permission !== "login")
               requireAccess(freshUser, match.permission);
             ctx.user = freshUser;
+            replay = await cloudScope.prepareReplay?.(freshUser.id, key);
             // Re-run against fresh authoritative data; a concurrent commit can
             // change stock, revoke access, close a shift or complete this key.
             result = photoStorage.reuse(captured.photos, execute);
@@ -2497,8 +2541,8 @@ export function createApp(options = {}) {
         committedVersion = options.cloud?.currentVersion() || localVersion();
       }
       headers["X-Data-Version"] = committedVersion;
-      feed.notify(committedVersion);
-      if (url.pathname === "/api/events") {
+      feed?.notify(committedVersion);
+      if (feed && url.pathname === "/api/events") {
         const token = hash(authCookie(req, "depot_session") || "");
         feed.add(req, res, {
           headers,
@@ -2514,7 +2558,11 @@ export function createApp(options = {}) {
         return;
       }
       if (url.pathname === "/api/state")
-        result = { ...result, syncVersion: committedVersion };
+        result = {
+          ...result,
+          syncVersion: committedVersion,
+          realtimeEnabled: !!options.realtimeSession,
+        };
       if (url.pathname === "/api/sync-version")
         result = { version: committedVersion, day: dayWib(d.now()) };
       if (result?.[deferredPhoto]) result = await result[deferredPhoto]();
@@ -2568,7 +2616,7 @@ export function createApp(options = {}) {
     photoStorage,
     changeFeed: feed,
     close: async () => {
-      feed.close();
+      feed?.close();
       await new Promise((resolveClose) => {
         if (!server.listening) resolveClose();
         else server.close(resolveClose);

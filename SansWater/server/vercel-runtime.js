@@ -7,6 +7,7 @@ import { createCloudStore, createPostgresPool } from "./cloud-store.js";
 import { runtimeConfig } from "./runtime-config.js";
 import { createLoginLimiter } from "./login-limiter.js";
 import { GasPhotoClient } from "./gas-photo-client.js";
+import { createRealtimeSession } from "./realtime-session.js";
 
 const deploymentDefaults = Object.freeze({
   NODE_ENV: "production",
@@ -137,7 +138,7 @@ export async function createVercelRuntime() {
     // it from Supabase; success is still acknowledged only after PG COMMIT.
     db = openDatabase(":memory:");
     pool = createPostgresPool();
-    cloud = await createCloudStore(db, { pool });
+    cloud = await createCloudStore(db, { pool, leanProjection: true });
     const app = createApp({
       db,
       cloud,
@@ -146,7 +147,8 @@ export async function createVercelRuntime() {
       maxBodyBytes: 4_000_000,
       maxResponseBytes: 4_000_000,
       acceptParsedBody: true,
-      eventsMaxAge: 240000,
+      liveEvents: false,
+      realtimeSession: createRealtimeSession(environment),
       loginLimiter: createLoginLimiter(pool),
       photoStorage: {
         driver: "gas",

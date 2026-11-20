@@ -50,7 +50,18 @@ SQLite hanya menjadi proyeksi **sementara di memori**, bukan penyimpanan utama. 
 
 Cache foto privat maksimal 96 MiB secara bawaan berada di direktori sementara yang berbeda untuk tiap instance. Cache dapat hilang saat instance berganti; foto asli tetap di Drive. Izin selalu diperiksa sebelum foto dikirim, dan respons foto tidak disimpan di browser/CDN publik.
 
-Koneksi pembaruan SSE diperbarui setiap sekitar empat menit, dengan sinyal versi kecil. Tab tersembunyi berhenti berlangganan. Tidak ada pengambilan ulang seluruh laporan setiap 30 detik. Instansiasi baru tetap menggunakan egress; penggunaan bulanan harus dipantau, tidak dijamin nol atau selalu di bawah suatu angka.
+Vercel menolak koneksi SSE dan hanya menangani permintaan singkat. Browser mengambil data ketika versi berubah. Saat tab disembunyikan, koneksi dan pemeriksaan berkala berhenti.
+
+Pemeriksaan versi dan penerbitan token Realtime membaca status versi dan sesi langsung dari Supabase. Instance Vercel menunda pemuatan proyeksi hingga dibutuhkan oleh permintaan bisnis. Riwayat pencegah transaksi ganda diambil satu kunci per penyimpanan dan tetap tersimpan di Supabase. Cadangan masih mencakup seluruh riwayat.
+
+## Mengaktifkan Supabase Realtime
+
+1. Di proyek uji, jalankan `setup-realtime.sql` melalui SQL Editor Supabase sebagai admin setelah schema bisnis tersedia. Skrip ini menambah trigger revisi, peran pembaca kanal privat, dan indeks untuk pencarian kunci pencegah transaksi ganda. Isi siaran hanya nomor versi yang ditulis bersama transaksi.
+2. Siapkan kunci tanda tangan ES256 yang diterima proyek Supabase dan memiliki `kid`. Ikuti [panduan impor kunci](https://supabase.com/docs/guides/auth/signing-keys). Gunakan proyek uji untuk memverifikasi penerbitan token serta keanggotaan kanal sebelum mengubah pengaturan kunci produksi.
+3. Tambahkan `SUPABASE_URL`, `SUPABASE_ANON_KEY` (publishable atau anon key), dan `DEPOT_REALTIME_SIGNING_JWK` (private JWK JSON satu baris) ke environment server untuk proyek yang sama. Kunci tanda tangan tetap di server. Gunakan proyek dan kredensial terpisah untuk uji coba.
+4. Uji dua perangkat dengan akun berbeda. Buat pesanan pada perangkat pertama, lalu ubah statusnya pada perangkat kedua. Coba putus-sambung jaringan dan pastikan perubahan yang terlewat muncul. Periksa bahwa akun tanpa sesi ditolak di `/api/realtime-session` dan tab yang disembunyikan berhenti berlangganan. Setelah produksi aktif, pantau Fluid Provisioned Memory di Vercel serta koneksi dan pesan Realtime di Supabase.
+
+Ketika Realtime tidak dikonfigurasi atau gagal tersambung, aplikasi mengecek versi sekitar setiap 30 detik selama tab terlihat. Saat tersambung, pemeriksaan cadangan berjalan sekitar setiap dua menit dan saat baru bergabung. Untuk mematikan Realtime, hapus `DEPOT_REALTIME_SIGNING_JWK` dari environment dan deploy ulang.
 
 ## Backup dan rahasia
 
@@ -78,7 +89,6 @@ Pencarian pada pemilih pelanggan menggunakan server dengan jeda 220 ms, maksimal
 
 Pembaruan state mengirim hash untuk 14 kelompok data. Browser mengirim hash yang sudah dimiliki, sehingga server hanya mengembalikan kelompok yang berubah. Refresh bersamaan tetap digabung dan hasil sesi lama ditolak. Ini menghemat transfer ke browser; bukan penghapusan seluruh kebutuhan transfer dari Supabase.
 
-Koneksi SSE yang diam lebih dari 75 detik diperiksa dan disambungkan kembali dengan backoff. Dalam kondisi normal, sinyal versi yang sama tetap tidak mengunduh ulang state. Tab tersembunyi menghentikan koneksi dan timer pemantau.
 
 Saat mutasi menyertakan foto, validasi awal dibatalkan dahulu, lalu upload dan verifikasi GAS berjalan di luar lock transaksi bisnis. Sesudah itu sesi, izin dan aturan bisnis diperiksa kembali pada data Supabase terbaru sebelum commit. Kegagalan upload tidak mengakui transaksi berhasil. ID foto stabil untuk permintaan yang sama, termasuk saat retry lintas instance. Jika upload berhasil tetapi validasi akhir ditolak, file privat yang belum direferensikan dapat tertinggal di Drive; pembersihan file tersebut belum otomatis.
 

@@ -1,154 +1,192 @@
 import { api } from "./api.js";
 import { coversVersion } from "./sync-version.js";
 
-// This is a signal channel. Business data still goes through authenticated APIs.
+async function subscribeToChanges(session, onChange, onStatus) {
+  const { RealtimeClient } = await import("@supabase/realtime-js");
+  const { url, publicKey, topic, token } = session;
+  const endpoint = new URL("/realtime/v1", url);
+  endpoint.protocol = "wss:";
+  const client = new RealtimeClient(endpoint.href, {
+    params: { apikey: publicKey },
+  });
+  await client.setAuth(token);
+  client
+    .channel(topic, { config: { private: true } })
+    .on("broadcast", { event: "revision" }, ({ payload }) => onChange(payload))
+    .subscribe(onStatus);
+  return () => {
+    void client.disconnect().catch(() => {});
+    void client.removeAllChannels().catch(() => {});
+  };
+}
+
 export function connectLiveUpdates({
   getState,
   refresh,
   onStatus = () => {},
   onUnauthorized,
-  EventSourceImpl = globalThis.EventSource,
   documentImpl = document,
   windowImpl = window,
-  probe = () => api("/sync-version"),
+  request = api,
+  subscribe = subscribeToChanges,
   setTimer = setTimeout,
   clearTimer = clearTimeout,
-  watchdogMs = 75000,
 }) {
-  let stopped = false,
-    source = null,
-    retry = null,
-    scheduled = null,
-    watchdog = null,
-    requested = null,
-    delay = 5000;
-  const visible = () => documentImpl.visibilityState !== "hidden";
-  function disconnect() {
-    source?.close();
-    source = null;
-    clearTimer(retry);
-    retry = null;
-    clearTimer(watchdog);
-    watchdog = null;
+  let active;
+
+  function stop() {
+    const scope = active;
+    active = null;
+    if (!scope) return;
+    scope.controller.abort();
+    clearTimer(scope.poll);
+    clearTimer(scope.retry);
+    clearTimer(scope.refresh);
+    scope.channel?.close?.();
   }
-  function watch() {
-    clearTimer(watchdog);
-    if (stopped || !visible() || watchdogMs <= 0) return;
-    watchdog = setTimer(() => {
-      watchdog = null;
-      if (stopped || !visible()) return;
-      disconnect();
-      onStatus("reconnecting");
-      lightweightProbe();
-      retry = setTimer(connect, delay);
-      delay = Math.min(60000, delay * 2);
-    }, watchdogMs);
-  }
-  function queue(version) {
-    if (stopped || !visible()) return;
-    if (!requested || !coversVersion(requested, version)) requested = version;
-    if (scheduled) return;
-    scheduled = setTimer(() => {
-      scheduled = null;
-      const minimum = requested;
-      requested = null;
-      Promise.resolve(refresh(minimum)).catch(() => onStatus("offline"));
-    }, 150);
-  }
-  function notice(value, force = false) {
-    if (stopped || !visible()) return;
-    const current = getState();
-    if (!current) return;
-    onStatus("connected");
-    if (
-      force ||
-      !coversVersion(current.syncVersion, value.version) ||
-      current.today !== value.day
-    )
-      queue(value.version);
-  }
-  async function lightweightProbe() {
-    try {
-      notice(await probe());
-    } catch (error) {
-      if (!stopped) {
-        if (error.status === 401) onUnauthorized?.();
-        else onStatus("offline");
-      }
-    }
-  }
-  function connect() {
-    if (stopped || !visible()) return;
-    disconnect();
-    if (!EventSourceImpl) {
-      lightweightProbe();
-      retry = setTimer(connect, 60000);
-      return;
-    }
-    const current = new EventSourceImpl("/api/events");
-    source = current;
-    watch();
-    function signal(event) {
-      if (source !== current || stopped) return;
-      try {
-        const value = JSON.parse(event.data);
-        if (typeof value.version !== "string" || typeof value.day !== "string")
-          return;
-        delay = 5000;
-        watch();
-        notice(value, event.type === "available");
-      } catch {
-        /* Ignore incomplete signals. */
-      }
-    }
-    for (const name of ["ready", "change", "pulse", "available"])
-      current.addEventListener(name, signal);
-    current.addEventListener("unavailable", () => {
-      if (source === current) {
-        watch();
-        onStatus("offline");
-      }
-    });
-    current.addEventListener("auth", () => {
-      if (source === current) {
-        disconnect();
-        onUnauthorized?.();
-      }
-    });
-    current.addEventListener("renew", () => {
-      if (source !== current || stopped) return;
-      disconnect();
-      retry = setTimer(connect, 1000);
-    });
-    current.onerror = () => {
-      if (source !== current || stopped) return;
-      disconnect();
-      onStatus("reconnecting");
-      lightweightProbe();
-      retry = setTimer(connect, delay);
-      delay = Math.min(60000, delay * 2);
+
+  function start() {
+    stop();
+    if (documentImpl.visibilityState === "hidden") return;
+    const scope = {
+      controller: new AbortController(),
+      retryDelay: 30000,
+      connected: false,
     };
+    active = scope;
+    const current = () => active === scope;
+    async function get(path) {
+      const controller = new AbortController();
+      const abort = () => controller.abort();
+      const stopSignal = scope.controller.signal;
+      stopSignal.addEventListener("abort", abort, { once: true });
+      const deadline = setTimer(abort, 12000);
+      try {
+        return await request(path, { signal: controller.signal });
+      } finally {
+        clearTimer(deadline);
+        stopSignal.removeEventListener("abort", abort);
+      }
+    }
+
+    function reportError(error) {
+      if (!current()) return;
+      if (error.status === 401) {
+        stop();
+        onUnauthorized?.();
+      } else onStatus("offline");
+    }
+
+    function notice({ version, day } = {}) {
+      const state = getState();
+      if (!current() || !state || typeof version !== "string") return;
+      onStatus("connected");
+      if (
+        coversVersion(state.syncVersion, version) &&
+        (!day || day === state.today)
+      )
+        return;
+      if (!coversVersion(scope.pending, version)) scope.pending = version;
+      if (scope.refresh == null)
+        scope.refresh = setTimer(() => {
+          scope.refresh = null;
+          const minimum = scope.pending;
+          scope.pending = null;
+          if (current()) Promise.resolve(refresh(minimum)).catch(reportError);
+        }, 150);
+    }
+
+    function scheduleProbe() {
+      clearTimer(scope.poll);
+      if (current()) {
+        const delay = scope.connected ? 120000 : 30000;
+        scope.poll = setTimer(check, delay + Math.random() * 5000);
+      }
+    }
+
+    async function check() {
+      clearTimer(scope.poll);
+      if (!current()) return;
+      if (scope.checking) {
+        scope.checkAgain = true;
+        return;
+      }
+      scope.checking = true;
+      try {
+        notice(await get("/sync-version"));
+      } catch (error) {
+        reportError(error);
+      } finally {
+        scope.checking = false;
+        if (scope.checkAgain && current()) {
+          scope.checkAgain = false;
+          void check();
+        } else scheduleProbe();
+      }
+    }
+
+    async function connect() {
+      if (!current()) return;
+      const channel = {};
+      scope.channel = channel;
+      const isCurrent = () => current() && scope.channel === channel;
+
+      function reconnect(delay) {
+        if (!isCurrent()) return;
+        scope.channel = null;
+        scope.connected = false;
+        channel.close?.();
+        clearTimer(scope.retry);
+        void check();
+        scope.retry = setTimer(connect, delay);
+      }
+
+      function retry() {
+        reconnect(scope.retryDelay);
+        scope.retryDelay = Math.min(scope.retryDelay * 2, 300000);
+      }
+
+      try {
+        const session = await get("/realtime-session");
+        if (!isCurrent() || !session) return;
+        // Refresh credentials before expiry and check for changes after the next join.
+        scope.retry = setTimer(
+          () => reconnect(0),
+          (session.validFor - 60) * 1000,
+        );
+        const close = await subscribe(
+          session,
+          (event) => {
+            if (isCurrent()) notice(event);
+          },
+          (status) => {
+            if (!isCurrent()) return;
+            if (status === "SUBSCRIBED") {
+              scope.connected = true;
+              scope.retryDelay = 30000;
+              void check();
+            } else retry();
+          },
+        );
+        if (isCurrent()) channel.close = close;
+        else close();
+      } catch (error) {
+        if (!isCurrent()) return;
+        if (error.status === 401) reportError(error);
+        else retry();
+      }
+    }
+
+    void check();
+    if (getState()?.realtimeEnabled) void connect();
   }
-  const visibility = () => {
-    if (!visible()) {
-      disconnect();
-      clearTimer(scheduled);
-      scheduled = null;
-      requested = null;
-    } else connect();
-  };
-  const online = () => {
-    delay = 5000;
-    connect();
-  };
-  documentImpl.addEventListener("visibilitychange", visibility);
-  windowImpl.addEventListener("online", online);
-  connect();
+
+  documentImpl.addEventListener("visibilitychange", start);
+  windowImpl.addEventListener("online", start);
+  start();
   return () => {
-    stopped = true;
-    disconnect();
-    clearTimer(scheduled);
-    documentImpl.removeEventListener("visibilitychange", visibility);
-    windowImpl.removeEventListener("online", online);
+    stop();
+    documentImpl.removeEventListener("visibilitychange", start);
+    windowImpl.removeEventListener("online", start);
   };
 }

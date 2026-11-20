@@ -152,9 +152,11 @@ export function duration(order, now = Date.now()) {
   const received = Date.parse(order.received_at);
   const stopped = order.first_departure_at
     ? Date.parse(order.first_departure_at)
-    : ["delivery", "done"].includes(order.status)
-      ? NaN
-      : now;
+    : ["failed", "cancel"].includes(order.status)
+      ? Date.parse(order.terminal_at)
+      : ["delivery", "done"].includes(order.status)
+        ? NaN
+        : now;
   if (!Number.isFinite(received) || !Number.isFinite(stopped)) return null;
   return Math.max(0, Math.floor((stopped - received) / 60000));
 }

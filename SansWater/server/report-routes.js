@@ -844,10 +844,9 @@ function registerPayroll(route, d) {
   route("GET", "/api/payroll", "login", (ctx) => {
     const ownView = ctx.query.get("view") === "own";
     const full = !ownView && has(ctx.user, "reports");
-    const requestedPeriod = scope(ctx.query);
-    const period = ownView
-      ? requestedPeriod
-      : staffFinancialPeriod(ctx.user, requestedPeriod, d.now());
+    const period = scope(ctx.query);
+    if (!full && period.to > dayWib(d.now()))
+      fail("Periode payroll tidak boleh melewati hari ini.");
     if (
       !full &&
       ctx.query.get("actor") &&

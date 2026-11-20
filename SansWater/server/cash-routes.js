@@ -1,4 +1,8 @@
 import { CASH_METHODS } from "../src/cash-funds.js";
+import {
+  EXPENSE_CATEGORIES,
+  UNCATEGORIZED_EXPENSE,
+} from "../src/expense-categories.js";
 import { cashFundReport, listCashFunds } from "./cash-ledger.js";
 import {
   dayWib,
@@ -100,6 +104,32 @@ export function registerCashRoutes(route, db, d) {
       conditions.push("e.kind=?");
       args.push(kind);
     }
+    const categorySlots = EXPENSE_CATEGORIES.map(() => "?").join(",");
+    const expenseSummary =
+      kind === "expense"
+        ? d.all(
+            `SELECT CASE WHEN e.category IN (${categorySlots}) THEN e.category ELSE ? END category,
+             SUM(e.amount) amount FROM cash_entries e
+             WHERE ${conditions.join(" AND ")} AND e.voided_at IS NULL GROUP BY 1`,
+            ...EXPENSE_CATEGORIES,
+            UNCATEGORIZED_EXPENSE,
+            ...args,
+          )
+        : null;
+    const category = ctx.query.get("category");
+    if (category && category !== "all") {
+      if (kind !== "expense")
+        fail("Pilih jenis pengeluaran untuk filter kategori.");
+      if (category === UNCATEGORIZED_EXPENSE) {
+        conditions.push(`e.category NOT IN (${categorySlots})`);
+        args.push(...EXPENSE_CATEGORIES);
+      } else {
+        if (!EXPENSE_CATEGORIES.includes(category))
+          fail("Kategori pengeluaran belum benar.");
+        conditions.push("e.category=?");
+        args.push(category);
+      }
+    }
     const offset = integer(
       Number(ctx.query.get("offset") || 0),
       "Halaman",
@@ -120,6 +150,14 @@ export function registerCashRoutes(route, db, d) {
     );
     return {
       funds: cashFundReport(db, period.start, period.end),
+      ...(expenseSummary && {
+        expenseSummary: {
+          byCategory: Object.fromEntries(
+            expenseSummary.map(({ category, amount }) => [category, amount]),
+          ),
+          total: expenseSummary.reduce((sum, row) => sum + row.amount, 0),
+        },
+      }),
       rows,
       total,
       offset,
@@ -153,11 +191,15 @@ export function registerCashRoutes(route, db, d) {
       fromHolder === toHolder
     )
       fail("Tujuan perpindahan harus berbeda.");
-    const category =
-      b.kind === "expense"
-        ? text(b.category, "Kategori pengeluaran", 60)
-        : "Transfer / setoran";
-    const note = b.note ? text(b.note, "Catatan", 500) : "";
+    // Older clients stored the description in category. Keep their entries readable.
+    const categorized = Object.hasOwn(b, "expenseGroup");
+    if (categorized && !EXPENSE_CATEGORIES.includes(b.expenseGroup))
+      fail("Pilih kategori pengeluaran.");
+    const category = categorized
+      ? b.expenseGroup
+      : text(b.category, "Keterangan pengeluaran", 60);
+    const note =
+      categorized || b.note ? text(b.note, "Keterangan pengeluaran", 500) : "";
     let stockId = null;
     if (b.stockId) {
       if (b.kind !== "expense") fail("Stok terkait hanya untuk pengeluaran.");

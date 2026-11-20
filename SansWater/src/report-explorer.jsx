@@ -387,7 +387,6 @@ export function createPayroll({
               onChange={setPeriod}
               today={data.today}
               label="Periode payroll"
-              recentOnly={!full}
             />
           }
         />

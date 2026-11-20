@@ -151,6 +151,13 @@ export function createApp(options = {}) {
             row.id,
           )?.at
         : null),
+    terminal_at:
+      !row.first_departure_at && ["failed", "cancel"].includes(row.status)
+        ? (d.get(
+            `SELECT ${d.terminalTimeSql} at FROM orders o WHERE o.id=?`,
+            row.id,
+          )?.at ?? null)
+        : null,
     prepayment: d.orderPrepayment(row.id),
     progress: d.deliveryProgress(row),
     revision: d.quantityRevision(row),
@@ -1646,7 +1653,7 @@ export function createApp(options = {}) {
       );
     }
     const rows = d.all(
-      `SELECT o.*,u.name courier,CASE WHEN o.kind='counter' THEN 0 ELSE MAX(0,COALESCE(CAST((unixepoch(COALESCE(${d.departureTimeSql},CASE WHEN o.status NOT IN ('delivery','done') THEN ? END),'subsec')-unixepoch(o.received_at,'subsec'))/60 AS INTEGER),0)) END queue_minutes FROM orders o LEFT JOIN trips t ON t.id=o.current_trip_id LEFT JOIN users u ON u.id=t.courier_id WHERE ` +
+      `SELECT o.*,u.name courier,CASE WHEN o.kind='counter' THEN 0 ELSE MAX(0,COALESCE(CAST((unixepoch(COALESCE(${d.departureTimeSql},${d.terminalTimeSql},CASE WHEN o.status NOT IN ('delivery','done','failed','cancel') THEN ? END),'subsec')-unixepoch(o.received_at,'subsec'))/60 AS INTEGER),0)) END queue_minutes FROM orders o LEFT JOIN trips t ON t.id=o.current_trip_id LEFT JOIN users u ON u.id=t.courier_id WHERE ` +
         clauses.join(" AND ") +
         " ORDER BY (o.status='delivery') ASC,queue_minutes DESC,o.received_at ASC,o.id ASC LIMIT ?",
       queueAt,

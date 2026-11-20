@@ -854,6 +854,12 @@ export function createDomain(
        WHERE prior_invoice.order_id=o.id),
       (SELECT departed_at FROM trips WHERE id=o.current_trip_id)
     ) END)`;
+  const terminalTimeSql = `CASE WHEN o.status IN ('failed','cancel') THEN (
+    SELECT MAX(a.created_at) FROM audit a WHERE a.object_id=o.id AND (
+      (a.action='order.status' AND json_extract(a.after_json,'$.status')=o.status) OR
+      (a.action='trip.result' AND json_extract(a.after_json,'$.outcome')=o.status)
+    )
+  ) END`;
   function deliveryPerformance({ condition, params }, courierId = null) {
     const stoppedAt = `COALESCE(${departureTimeSql},t.departed_at)`;
     return all(
@@ -969,6 +975,7 @@ export function createDomain(
     report,
     deliveryPerformance,
     departureTimeSql,
+    terminalTimeSql,
     orderCounts,
     stockMove,
     allocate,

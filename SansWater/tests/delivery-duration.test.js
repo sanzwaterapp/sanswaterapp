@@ -71,11 +71,11 @@ async function fixture(t) {
   t.after(() => app.close());
   function client() {
     let cookie = "";
-    return async (path, body) => {
+    return async (path, body, method = body === undefined ? "GET" : "POST") => {
       const response = await fetch(
         `http://127.0.0.1:${app.server.address().port}/api${path}`,
         {
-          method: body === undefined ? "GET" : "POST",
+          method,
           headers: {
             cookie,
             "Content-Type": "application/json",
@@ -200,6 +200,41 @@ test("semua endpoint riwayat menghentikan durasi saat Antar, waktu selesai tetap
   assert.equal(duration(paged.orders[0]), 20);
 });
 
+test("pesanan batal sebelum Antar berhenti di waktu pembatalan", async (t) => {
+  const f = await fixture(t);
+  const order = await f.order();
+  f.advance(departed);
+  await f.owner(
+    `/orders/${order.id}/status`,
+    {
+      version: order.version,
+      status: "cancel",
+      reason: "Pelanggan membatalkan",
+    },
+    "PATCH",
+  );
+  f.advance(finished);
+  const list = await f.owner(
+    "/orders?filter=failed&from=2026-11-16&to=2026-11-16",
+  );
+  const canceled = list.orders.find((row) => row.id === order.id);
+  assert.equal(canceled.status, "cancel");
+  assert.equal(canceled.terminal_at, departed);
+  assert.equal(canceled.queue_minutes, 20);
+  assert.equal(duration(canceled, Date.parse(finished)), 20);
+  assert.equal(duration(canceled, Date.parse("2026-11-20")), 20);
+  const display = await f.owner("/display?filter=cancel");
+  assert.equal(duration(display.orders[0], Date.parse(finished)), 20);
+  assert.equal(
+    duration({ ...canceled, status: "failed" }, Date.parse(finished)),
+    20,
+  );
+  assert.equal(
+    duration({ ...canceled, terminal_at: null }, Date.parse(finished)),
+    null,
+  );
+});
+
 test("antar ulang melewati tengah malam dan riwayat lama tetap memakai keberangkatan pertama", async (t) => {
   const f = await fixture(t);
   const order = await f.order();
@@ -210,6 +245,11 @@ test("antar ulang melewati tengah malam dan riwayat lama tetap memakai keberangk
     outcome: "failed",
     reason: "Rumah kosong",
   });
+  const failed = (await f.owner("/state")).orders.find(
+    (row) => row.id === order.id,
+  );
+  assert.equal(failed.status, "failed");
+  assert.equal(duration(failed, Date.parse("2026-11-20")), 20);
   f.advance("2026-11-16T17:10:00.000Z");
   const retry = await f.trip(order.id);
   f.advance("2026-11-16T17:40:00.000Z");

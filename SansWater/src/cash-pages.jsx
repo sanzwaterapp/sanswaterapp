@@ -13,6 +13,10 @@ import AppForm from "./AppForm.jsx";
 import { LoadingState } from "./OverlayDialog.jsx";
 import { api, money, dateLabel, timeLabel, can } from "./api.js";
 import { CASH_METHODS } from "./cash-funds.js";
+import {
+  EXPENSE_CATEGORIES,
+  UNCATEGORIZED_EXPENSE,
+} from "./expense-categories.js";
 import PeriodFilters from "./period-filters.jsx";
 import { CashMethodDetails } from "./report-explorer.jsx";
 import { staffColor } from "./stock-history-display.js";
@@ -112,12 +116,15 @@ export function createCashPage(UI) {
       ),
       [revision, setRevision] = useState(0),
       [filter, setFilter] = useState("all"),
+      [categoryFilter, setCategoryFilter] = useState("all"),
       [offset, setOffset] = useState(0),
       [ledger, error] = useResource(
         "/cash-ledger?" +
           query +
           "&kind=expense&fund=" +
           filter +
+          "&category=" +
+          encodeURIComponent(categoryFilter) +
           "&offset=" +
           offset +
           "&revision=" +
@@ -130,6 +137,7 @@ export function createCashPage(UI) {
       data.cashFunds?.find((f) => f.key === key)?.name || key;
     const dates = periodDates(data.today, period);
     const multiDay = dates.from !== dates.to;
+    const summary = ledger?.expenseSummary;
     const dayGroups = new Map();
     for (const row of ledger?.rows || []) {
       if (!dayGroups.has(row.day)) dayGroups.set(row.day, []);
@@ -154,11 +162,18 @@ export function createCashPage(UI) {
         style={staffColor(row.actor_id)}
       >
         <div className="rv-cash-entry-top">
-          <strong title={row.category + (row.note ? " · " + row.note : "")}>
-            {row.kind === "expense"
-              ? row.note?.trim() || row.category
-              : "Perpindahan kas lama"}
-          </strong>
+          <div className="rv-cash-entry-caption">
+            <strong title={row.category + (row.note ? " · " + row.note : "")}>
+              {row.kind === "expense"
+                ? row.note?.trim() || row.category
+                : "Perpindahan kas lama"}
+            </strong>
+            {EXPENSE_CATEGORIES.includes(row.category) && (
+              <span className="rv-cash-entry-category-chip">
+                {row.category}
+              </span>
+            )}
+          </div>
           <b>{money(row.amount)}</b>
         </div>
         <div className="rv-cash-entry-meta">
@@ -305,7 +320,8 @@ export function createCashPage(UI) {
                   fromFund: data.cashFunds?.[0]?.key || "",
                   fromMethod: "Tunai",
                   amount: "",
-                  category: "",
+                  expenseGroup: "",
+                  note: "",
                 })
               }
             >
@@ -348,10 +364,24 @@ export function createCashPage(UI) {
                 label="Pengeluaran"
                 placeholder="Mis. listrik, gaji, pembelian Gas"
                 required
-                maxLength={60}
-                value={form.category}
-                onChange={(e) => update("category", e.target.value)}
+                maxLength={500}
+                value={form.note}
+                onChange={(e) => update("note", e.target.value)}
               />
+              <Field label="Kategori pengeluaran">
+                <select
+                  required
+                  value={form.expenseGroup}
+                  onChange={(e) => update("expenseGroup", e.target.value)}
+                >
+                  <option value="" disabled>
+                    Pilih kategori
+                  </option>
+                  {EXPENSE_CATEGORIES.map((category) => (
+                    <option key={category}>{category}</option>
+                  ))}
+                </select>
+              </Field>
               <div className="rv-two">
                 <Currency
                   label="Nominal (Rp)"
@@ -403,8 +433,33 @@ export function createCashPage(UI) {
               {error}
             </p>
           )}
+          {summary && (
+            <section aria-label="Ringkasan pengeluaran">
+              <dl className="rv-expense-totals">
+                {EXPENSE_CATEGORIES.map((category) => (
+                  <div className="rv-card" key={category}>
+                    <dt>{category}</dt>
+                    <dd>{money(summary.byCategory[category] || 0)}</dd>
+                  </div>
+                ))}
+                <div className="rv-card rv-expense-total">
+                  <dt>Total Pengeluaran</dt>
+                  <dd>{money(summary.total)}</dd>
+                </div>
+              </dl>
+              {!!summary.byCategory[UNCATEGORIZED_EXPENSE] && (
+                <p className="rv-note rv-expense-legacy-note">
+                  Total mencakup{" "}
+                  {money(summary.byCategory[UNCATEGORIZED_EXPENSE])} dari
+                  catatan lama yang belum dikategorikan.
+                </p>
+              )}
+            </section>
+          )}
           <div className="rv-section-heading rv-expense-history-heading">
             <h3>Riwayat pengeluaran</h3>
+          </div>
+          <div className="rv-expense-history-filters">
             <select
               aria-label="Filter kas"
               value={filter}
@@ -420,13 +475,32 @@ export function createCashPage(UI) {
                 </option>
               ))}
             </select>
+            <select
+              aria-label="Filter kategori pengeluaran"
+              value={categoryFilter}
+              onChange={(e) => {
+                setCategoryFilter(e.target.value);
+                setOffset(0);
+              }}
+            >
+              <option value="all">Semua kategori</option>
+              {EXPENSE_CATEGORIES.map((category) => (
+                <option key={category}>{category}</option>
+              ))}
+              {(categoryFilter === UNCATEGORIZED_EXPENSE ||
+                !!summary?.byCategory[UNCATEGORIZED_EXPENSE]) && (
+                <option value={UNCATEGORIZED_EXPENSE}>
+                  Belum dikategorikan
+                </option>
+              )}
+            </select>
           </div>
           <div className="rv-cash-entry-list">
             {multiDay
               ? [...dayGroups].map(([day, rows]) => (
                   <details
                     className="rv-cash-day"
-                    key={query + filter + day}
+                    key={query + filter + categoryFilter + day}
                     aria-label={
                       "Pengeluaran " + dateLabel(day) + " " + day.slice(0, 4)
                     }

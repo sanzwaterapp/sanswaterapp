@@ -3,7 +3,7 @@ import { durationBand, readableColor } from "./duration-settings.js";
 export default function DurationChip({ minutes, settings }) {
   if (minutes == null)
     return (
-      <span className="rv-time" title="Waktu mulai Antar belum tercatat">
+      <span className="rv-time" title="Durasi belum tercatat">
         —
       </span>
     );

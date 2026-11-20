@@ -3958,8 +3958,20 @@ export function createApprovedPages(UI) {
                         <dd>{money(report.cashFlow.debt)}</dd>
                       </div>
                     )}
+                    <div>
+                      <dt>
+                        <ArrowUp
+                          size={13}
+                          className="rv-cash-out"
+                          aria-label="Uang keluar"
+                        />{" "}
+                        Total pengeluaran
+                      </dt>
+                      <dd className="rv-cash-out">
+                        {money(report.cashFlow.outgoing)}
+                      </dd>
+                    </div>
                   </dl>
-                  <CashFlowList key={query} query={query} />
                   <footer>
                     <dl className="rv-report-receipt-methods">
                       <div>

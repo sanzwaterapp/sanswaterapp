@@ -138,6 +138,13 @@ export async function createCloudStore(
         .map((row) => row.name),
     ]),
   );
+  const projectionColumns = new Map(
+    [...columnsFor].map(([entity, columns]) => [
+      entity,
+      columns.filter((column) => entity !== "photos" || column !== "bytes"),
+    ]),
+  );
+  const projectionLayout = JSON.stringify(Object.fromEntries(projectionColumns));
   const deletes = new Map(
     tables.map((table) => [
       table,
@@ -218,7 +225,14 @@ export async function createCloudStore(
         throw new Error("Versi data Supabase belum didukung.");
       const rowId = Number(row.row_id);
       if (!row.payload) continue;
-      const payload = { ...row.payload };
+      const layout = projectionColumns.get(row.entity);
+      if (Array.isArray(row.payload) && row.payload.length !== layout.length)
+        throw new Error("Struktur data Supabase berbeda; perbarui aplikasi.");
+      const payload = Array.isArray(row.payload)
+        ? Object.fromEntries(
+            layout.map((key, index) => [key, row.payload[index]]),
+          )
+        : { ...row.payload };
       if (row.entity === "photos") payload.bytes = Buffer.alloc(0);
       const expected = columnsFor.get(row.entity);
       if (
@@ -304,16 +318,34 @@ export async function createCloudStore(
       applyRemote(rows, full);
       if (full) {
         // Cold instances still reconstruct the authoritative projection, but
-        // never aggregate all history in one JSON/heap allocation. Tombstones
-        // are unnecessary after a full clear and are excluded on this path.
+        // send values in SQLite column order to avoid repeating JSON field
+        // names on every row. An invalid shape still fails local validation.
         let cursor = null;
         for (;;) {
           const batch = (
             await client.query(
-              `SELECT entity,row_id,payload FROM ${namespace}.records r
+              `SELECT entity,row_id,
+                CASE WHEN jsonb_typeof(payload) <> 'object' THEN '{}'::jsonb
+                  WHEN keys IS NOT NULL AND payload ?& keys AND payload - keys = '{}'::jsonb
+                  THEN to_jsonb(ARRAY(
+                    SELECT payload -> key FROM unnest(keys) WITH ORDINALITY AS k(key, position)
+                    ORDER BY position
+                  ))
+                  ELSE payload END AS payload
+             FROM ${namespace}.records r
+             CROSS JOIN LATERAL (
+               SELECT CASE WHEN $4::jsonb ? entity
+                 THEN ARRAY(SELECT jsonb_array_elements_text($4::jsonb -> entity))
+               END AS keys
+             ) layout
              WHERE payload IS NOT NULL ${projectionFilter} AND ($1::text IS NULL OR (entity,row_id)>($1::text,$2::bigint))
              ORDER BY entity,row_id LIMIT $3`,
-              [cursor?.entity ?? null, cursor?.row_id ?? 0, bootstrapBatchSize],
+              [
+                cursor?.entity ?? null,
+                cursor?.row_id ?? 0,
+                bootstrapBatchSize,
+                projectionLayout,
+              ],
             )
           ).rows;
           applyRemote(batch, false);

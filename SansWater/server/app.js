@@ -294,7 +294,10 @@ export function createApp(options = {}) {
   });
   route("GET", "/api/session", null, (ctx) => ({
     user: ctx.user,
-    needsSetup: !supabaseAuth && !d.get("SELECT id FROM users LIMIT 1"),
+    needsSetup:
+      options.allowSetup !== false &&
+      !supabaseAuth &&
+      !d.get("SELECT id FROM users LIMIT 1"),
     authProvider: supabaseAuth ? "supabase" : "local",
     today: dayWib(d.now()),
     now: d.now(),
@@ -2439,7 +2442,11 @@ export function createApp(options = {}) {
       }
       if (url.pathname === "/api/login" && options.loginLimiter)
         await options.loginLimiter.consume(body.username);
-      if (options.cloud && url.pathname !== "/api/health")
+      const anonymousSession =
+        url.pathname === "/api/session" &&
+        options.allowSetup === false &&
+        !authCookie(req, "depot_session");
+      if (options.cloud && !anonymousSession && url.pathname !== "/api/health")
         cloudScope = await options.cloud.begin();
       const user = [
         "/api/logout",

@@ -2272,11 +2272,20 @@ export function createApp(options = {}) {
     d.audit(ctx.user, "settings.update", "application", null, changes);
     return { ok: true };
   });
-  route("GET", "/api/audit", "reports", () =>
-    d.all(
+  route("GET", "/api/audit", "reports", async ({ readAudit }) => {
+    if (readAudit) {
+      const actors = new Map(
+        d.all("SELECT id,name FROM users").map(({ id, name }) => [id, name]),
+      );
+      return (await readAudit()).map((row) => ({
+        ...row,
+        actor: actors.get(row.actor_id),
+      }));
+    }
+    return d.all(
       "SELECT a.*,u.name actor FROM audit a JOIN users u ON u.id=a.actor_id ORDER BY a.created_at DESC LIMIT 300",
-    ),
-  );
+    );
+  });
   route("GET", "/api/photos/:id", "login", (ctx) => {
     const p = d.find("photos", ctx.params.id),
       u = ctx.user;
@@ -2363,28 +2372,36 @@ export function createApp(options = {}) {
         (r) => r.method === req.method && r.regex.test(url.pathname),
       );
       if (!match) fail("Layanan tidak ditemukan.", 404);
-      if (match.permission && !authCookie(req, "depot_session"))
+      const sessionToken = authCookie(req, "depot_session");
+      const sessionStatus =
+        url.pathname === "/api/session" && options.allowSetup === false;
+      if (match.permission && !sessionToken)
         fail("Silakan masuk kembali.", 401);
       if (
         req.method === "GET" &&
         options.cloud?.readSyncSession &&
         !supabaseAuth &&
-        ["/api/sync-version", "/api/realtime-session"].includes(url.pathname)
+        ((sessionStatus && sessionToken) ||
+          ["/api/sync-version", "/api/realtime-session"].includes(url.pathname))
       ) {
         const now = d.now();
         const { session, version } = await options.cloud.readSyncSession(
-          hash(authCookie(req, "depot_session")),
+          hash(sessionToken),
           now,
+          sessionStatus,
         );
-        if (!session) fail("Silakan masuk kembali.", 401);
+        if (!session && !sessionStatus) fail("Silakan masuk kembali.", 401);
         const credential = url.pathname === "/api/realtime-session";
         const renewSoon =
+          session &&
           Date.parse(session.expiresAt) - Date.parse(now) <=
-          (sessionLifetime - sessionRenewAfter) * 1000;
+            (sessionLifetime - sessionRenewAfter) * 1000;
         if (credential || !renewSoon) {
-          const data = credential
-            ? (options.realtimeSession?.(session.userId) ?? null)
-            : { version, day: dayWib(now) };
+          const data = sessionStatus
+            ? match.handler({ user: session ? safeUser(session.user) : null })
+            : credential
+              ? (options.realtimeSession?.(session.userId) ?? null)
+              : { version, day: dayWib(now) };
           res.writeHead(200, {
             ...headers,
             "X-Data-Version": version,
@@ -2442,10 +2459,7 @@ export function createApp(options = {}) {
       }
       if (url.pathname === "/api/login" && options.loginLimiter)
         await options.loginLimiter.consume(body.username);
-      const anonymousSession =
-        url.pathname === "/api/session" &&
-        options.allowSetup === false &&
-        !authCookie(req, "depot_session");
+      const anonymousSession = sessionStatus && !sessionToken;
       if (options.cloud && !anonymousSession && url.pathname !== "/api/health")
         cloudScope = await options.cloud.begin();
       const user = [
@@ -2466,6 +2480,7 @@ export function createApp(options = {}) {
         query: url.searchParams,
         params: url.pathname.match(match.regex).groups || {},
         headers,
+        readAudit: cloudScope?.readAudit,
       };
       let result;
       const mutation =

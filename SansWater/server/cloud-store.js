@@ -123,6 +123,22 @@ export async function createCloudStore(
   const projectionFilter = leanProjection
     ? "AND r.entity <> 'idempotency'"
     : "";
+  // Keep audit rowids for SQLite inserts, but project only the snapshots
+  // read by business queries. The audit endpoint reads full rows on demand.
+  const projectionPayload = leanProjection
+    ? `CASE WHEN r.entity = 'audit' AND jsonb_typeof(r.payload) = 'object'
+         THEN jsonb_set(
+           jsonb_set(r.payload, '{before_json}',
+             CASE WHEN r.payload->>'action' = 'order.items'
+               THEN COALESCE(r.payload->'before_json', 'null'::jsonb)
+               ELSE 'null'::jsonb END, false),
+           '{after_json}', CASE WHEN r.payload->>'action' IN
+             ('order.items','order.status','trip.result','order.complete','payment.create','attendance.in')
+             THEN COALESCE(r.payload->'after_json', 'null'::jsonb)
+             ELSE 'null'::jsonb END, false
+         )
+         ELSE r.payload END`
+    : "r.payload";
   if (
     !Number.isInteger(bootstrapBatchSize) ||
     bootstrapBatchSize < 1 ||
@@ -296,7 +312,7 @@ export async function createCloudStore(
       const local = db.prepare("SELECT * FROM _cloud_state WHERE id=1").get();
       const state = (
         await client.query(
-          `SELECT s.*, COALESCE((SELECT jsonb_agg(jsonb_build_object('entity',r.entity,'row_id',r.row_id,'payload',r.payload) ORDER BY r.entity,r.row_id)
+          `SELECT s.*, COALESCE((SELECT jsonb_agg(jsonb_build_object('entity',r.entity,'row_id',r.row_id,'payload',${projectionPayload}) ORDER BY r.entity,r.row_id)
         FROM ${namespace}.records r WHERE s.store_id=$1 AND $2<=s.revision AND r.revision > $2 ${projectionFilter}),'[]'::jsonb) AS records
         FROM ${namespace}.state s WHERE singleton=true`,
           [local?.store_id || null, local?.revision ?? -1],
@@ -320,25 +336,26 @@ export async function createCloudStore(
         // Cold instances still reconstruct the authoritative projection, but
         // send values in SQLite column order to avoid repeating JSON field
         // names on every row. An invalid shape still fails local validation.
-        let cursor = null;
+        let cursor = null, rowCount = 0, payloadBytes = 0;
         for (;;) {
           const batch = (
             await client.query(
               `SELECT entity,row_id,
-                CASE WHEN jsonb_typeof(payload) <> 'object' THEN '{}'::jsonb
-                  WHEN keys IS NOT NULL AND payload ?& keys AND payload - keys = '{}'::jsonb
+                CASE WHEN jsonb_typeof(projected.payload) <> 'object' THEN '{}'::jsonb
+                  WHEN keys IS NOT NULL AND projected.payload ?& keys AND projected.payload - keys = '{}'::jsonb
                   THEN to_jsonb(ARRAY(
-                    SELECT payload -> key FROM unnest(keys) WITH ORDINALITY AS k(key, position)
+                    SELECT projected.payload -> key FROM unnest(keys) WITH ORDINALITY AS k(key, position)
                     ORDER BY position
                   ))
-                  ELSE payload END AS payload
+                  ELSE projected.payload END AS payload
              FROM ${namespace}.records r
+             CROSS JOIN LATERAL (SELECT ${projectionPayload} AS payload) projected
              CROSS JOIN LATERAL (
                SELECT CASE WHEN $4::jsonb ? entity
                  THEN ARRAY(SELECT jsonb_array_elements_text($4::jsonb -> entity))
                END AS keys
              ) layout
-             WHERE payload IS NOT NULL ${projectionFilter} AND ($1::text IS NULL OR (entity,row_id)>($1::text,$2::bigint))
+             WHERE r.payload IS NOT NULL ${projectionFilter} AND ($1::text IS NULL OR (entity,row_id)>($1::text,$2::bigint))
              ORDER BY entity,row_id LIMIT $3`,
               [
                 cursor?.entity ?? null,
@@ -349,9 +366,13 @@ export async function createCloudStore(
             )
           ).rows;
           applyRemote(batch, false);
+          rowCount += batch.length;
+          payloadBytes += Buffer.byteLength(JSON.stringify(batch));
           if (batch.length < bootstrapBatchSize) break;
           cursor = batch.at(-1);
         }
+        if (leanProjection)
+          console.info("Supabase projection bootstrap", { rowCount, payloadBytes });
       }
       db.prepare(
         "INSERT INTO _cloud_state VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET store_id=excluded.store_id,revision=excluded.revision",
@@ -359,6 +380,17 @@ export async function createCloudStore(
       db.exec("DELETE FROM _cloud_dirty");
       return {
         rollback,
+        readAudit: leanProjection
+          ? async () => {
+              const { rows } = await client.query(
+                `SELECT payload FROM ${namespace}.records
+                 WHERE entity='audit' AND payload IS NOT NULL
+                 ORDER BY (payload->>'created_at') COLLATE "C" DESC, row_id
+                 LIMIT 300`,
+              );
+              return rows.map(({ payload }) => payload);
+            }
+          : null,
         prepareReplay: leanProjection
           ? async (userId, key) => {
               // The advisory write lock is already held. Reserve a rowid above every
@@ -432,18 +464,22 @@ export async function createCloudStore(
   const store = {
     begin,
     readSyncSession: leanProjection
-      ? async (tokenHash, now) => {
+      ? async (tokenHash, now, includeUser = false) => {
           try {
             const {
               rows: [state],
             } = await pool.query({
               text: `SELECT store_id,revision,schema_version,initialized,
-           (SELECT jsonb_build_object('userId',u.payload->>'id','expiresAt',s.payload->>'expires_at')
+           (SELECT jsonb_build_object('userId',u.payload->>'id','expiresAt',s.payload->>'expires_at') ||
+              CASE WHEN $3::boolean THEN jsonb_build_object('user',jsonb_build_object(
+                'id',u.payload->'id','name',u.payload->'name','username',u.payload->'username',
+                'owner',u.payload->'owner','active',u.payload->'active','permissions',u.payload->'permissions'
+              )) ELSE '{}'::jsonb END
             FROM ${namespace}.records s JOIN ${namespace}.records u
               ON u.entity='users' AND u.payload->>'id'=s.payload->>'user_id' AND u.payload->>'active'='1'
             WHERE s.entity='sessions' AND s.payload->>'token_hash'=$1 AND s.payload->>'expires_at'>$2 LIMIT 1) AS session
            FROM ${namespace}.state WHERE singleton=true`,
-              values: [tokenHash, now],
+              values: [tokenHash, now, includeUser],
               query_timeout: 3000,
             });
             if (!state?.initialized || state.schema_version !== version)

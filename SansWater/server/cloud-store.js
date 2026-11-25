@@ -378,6 +378,16 @@ export async function createCloudStore(
         "INSERT INTO _cloud_state VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET store_id=excluded.store_id,revision=excluded.revision",
       ).run(state.store_id, Number(state.revision));
       db.exec("DELETE FROM _cloud_dirty");
+      if (leanProjection && (full || rows.length)) {
+        // The projection contains committed Postgres data. Keep it even if
+        // the request is rejected or rolls back preflight to upload photos.
+        // The advisory lock stays held across both SQLite transactions.
+        db.exec("COMMIT");
+        localOpen = false;
+        db.exec("BEGIN IMMEDIATE");
+        localOpen = true;
+        db.exec("PRAGMA defer_foreign_keys=ON");
+      }
       return {
         rollback,
         readAudit: leanProjection

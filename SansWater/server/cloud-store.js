@@ -161,6 +161,22 @@ export async function createCloudStore(
     ]),
   );
   const projectionLayout = JSON.stringify(Object.fromEntries(projectionColumns));
+  const compactPayload = `CASE
+    WHEN projected.payload IS NULL THEN NULL
+    WHEN jsonb_typeof(projected.payload) <> 'object' THEN '{}'::jsonb
+    WHEN keys IS NOT NULL AND projected.payload ?& keys AND projected.payload - keys = '{}'::jsonb
+      THEN to_jsonb(ARRAY(
+        SELECT projected.payload -> key FROM unnest(keys) WITH ORDINALITY AS k(key, position)
+        ORDER BY position
+      ))
+    ELSE projected.payload END`;
+  const projectionJoins = (layoutParameter) => `
+    CROSS JOIN LATERAL (SELECT ${projectionPayload} AS payload) projected
+    CROSS JOIN LATERAL (
+      SELECT CASE WHEN ${layoutParameter}::jsonb ? r.entity
+        THEN ARRAY(SELECT jsonb_array_elements_text(${layoutParameter}::jsonb -> r.entity))
+      END AS keys
+    ) layout`;
   const deletes = new Map(
     tables.map((table) => [
       table,
@@ -312,10 +328,11 @@ export async function createCloudStore(
       const local = db.prepare("SELECT * FROM _cloud_state WHERE id=1").get();
       const state = (
         await client.query(
-          `SELECT s.*, COALESCE((SELECT jsonb_agg(jsonb_build_object('entity',r.entity,'row_id',r.row_id,'payload',${projectionPayload}) ORDER BY r.entity,r.row_id)
-        FROM ${namespace}.records r WHERE s.store_id=$1 AND $2<=s.revision AND r.revision > $2 ${projectionFilter}),'[]'::jsonb) AS records
+          `SELECT s.*, COALESCE((SELECT jsonb_agg(jsonb_build_array(r.entity,r.row_id,${compactPayload}) ORDER BY r.entity,r.row_id)
+        FROM ${namespace}.records r ${projectionJoins("$3")}
+        WHERE s.store_id=$1 AND $2<=s.revision AND r.revision > $2 ${projectionFilter}),'[]'::jsonb) AS records
         FROM ${namespace}.state s WHERE singleton=true`,
-          [local?.store_id || null, local?.revision ?? -1],
+          [local?.store_id || null, local?.revision ?? -1, projectionLayout],
         )
       ).rows[0];
       if (!state?.initialized)
@@ -328,7 +345,11 @@ export async function createCloudStore(
         !local ||
         local.store_id !== state.store_id ||
         local.revision > Number(state.revision);
-      const rows = state.records;
+      const rows = state.records.map(([entity, row_id, payload]) => ({
+        entity,
+        row_id,
+        payload,
+      }));
       db.exec("BEGIN IMMEDIATE");
       localOpen = true;
       applyRemote(rows, full);
@@ -340,21 +361,8 @@ export async function createCloudStore(
         for (;;) {
           const batch = (
             await client.query(
-              `SELECT entity,row_id,
-                CASE WHEN jsonb_typeof(projected.payload) <> 'object' THEN '{}'::jsonb
-                  WHEN keys IS NOT NULL AND projected.payload ?& keys AND projected.payload - keys = '{}'::jsonb
-                  THEN to_jsonb(ARRAY(
-                    SELECT projected.payload -> key FROM unnest(keys) WITH ORDINALITY AS k(key, position)
-                    ORDER BY position
-                  ))
-                  ELSE projected.payload END AS payload
-             FROM ${namespace}.records r
-             CROSS JOIN LATERAL (SELECT ${projectionPayload} AS payload) projected
-             CROSS JOIN LATERAL (
-               SELECT CASE WHEN $4::jsonb ? entity
-                 THEN ARRAY(SELECT jsonb_array_elements_text($4::jsonb -> entity))
-               END AS keys
-             ) layout
+              `SELECT entity,row_id,${compactPayload} AS payload
+             FROM ${namespace}.records r ${projectionJoins("$4")}
              WHERE r.payload IS NOT NULL ${projectionFilter} AND ($1::text IS NULL OR (entity,row_id)>($1::text,$2::bigint))
              ORDER BY entity,row_id LIMIT $3`,
               [

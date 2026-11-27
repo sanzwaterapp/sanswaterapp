@@ -218,30 +218,60 @@ export function WaterFlow({ group }) {
     </section>
   );
 }
-function Metrics({ groups }) {
+function Metrics({ groups, stockClosedAt }) {
   if (!groups?.length)
     return <p className="rv-note">Rincian RO dan Mineral belum tersedia.</p>;
   return (
-    <table className="rv-water-group-metrics">
-      <thead>
-        <tr>
-          <th scope="col">Air</th>
-          <th scope="col">Dijual</th>
-          <th scope="col">Meteran</th>
-          <th scope="col">Selisih</th>
-        </tr>
-      </thead>
-      <tbody>
-        {groups.map((group) => (
-          <tr key={group.group}>
-            <th scope="row">{group.name}</th>
-            <td>{formatLiters(group.salesLiters, 3)}</td>
-            <td>{formatLiters(group.usageLiters, 3)}</td>
-            <td>{formatLiters(group.differenceLiters, 3)}</td>
+    <>
+      <table className="rv-water-group-metrics">
+        <thead>
+          <tr>
+            <th scope="col">Air</th>
+            <th scope="col">Dijual</th>
+            <th scope="col">Meteran</th>
+            <th scope="col">Selisih</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {groups.map((group) => (
+            <tr key={group.group}>
+              <th scope="row">{group.name}</th>
+              <td>{formatLiters(group.salesLiters, 3)}</td>
+              <td>{formatLiters(group.usageLiters, 3)}</td>
+              <td>{formatLiters(group.differenceLiters, 3)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="rv-water-stock-preview" aria-label="Stok air tersisa">
+        <small
+          title={
+            stockClosedAt
+              ? "Stok pada penutupan terakhir"
+              : "Stok pada akhir shift"
+          }
+        >
+          <Droplets size={12} aria-hidden="true" /> Stok sisa
+        </small>
+        <div>
+          {groups.map((group) => (
+            <span key={group.group}>
+              {group.name}{" "}
+              <strong>
+                {Number.isFinite(group.closingLiters)
+                  ? formatLiters(group.closingLiters, 3)
+                  : "—"}
+              </strong>
+            </span>
+          ))}
+        </div>
+        {stockClosedAt && (
+          <small className="rv-water-stock-time">
+            Terakhir · {dateLabel(stockClosedAt)} · {timeLabel(stockClosedAt)}
+          </small>
+        )}
+      </div>
+    </>
   );
 }
 function ProductRows({ title, rows, empty }) {
@@ -459,7 +489,10 @@ export function createWaterReports({
           <strong>{title}</strong>
           <span>{summary.shiftCount} shift</span>
         </header>
-        <Metrics groups={summary.groups} />
+        <Metrics
+          groups={summary.groups}
+          stockClosedAt={summary.stockClosedAt}
+        />
         <Activity row={summary} />
         {summary.legacyInvoices > 0 && (
           <small className="rv-note">Data kapasitas belum lengkap</small>

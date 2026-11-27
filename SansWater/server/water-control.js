@@ -256,12 +256,20 @@ export function registerWaterControl(route, db, d) {
       legacyInvoices: check.legacy_invoices,
       ungroupedLiters: check.ungroupedLiters,
       groups: (check.comparison || []).map(
-        ({ group, name, salesLiters, usageLiters, differenceLiters }) => ({
+        ({
           group,
           name,
           salesLiters,
           usageLiters,
           differenceLiters,
+          closingLiters,
+        }) => ({
+          group,
+          name,
+          salesLiters,
+          usageLiters,
+          differenceLiters,
+          closingLiters,
         }),
       ),
       activity: check.activity
@@ -331,7 +339,12 @@ export function registerWaterControl(route, db, d) {
       ],
     };
     for (const raw of db
-      .prepare("SELECT w.*,u.name actor" + join + where)
+      .prepare(
+        "SELECT w.*,u.name actor" +
+          join +
+          where +
+          " ORDER BY w.created_at ASC,w.rowid ASC",
+      )
       .iterate(...args)) {
       const check = decode(raw);
       if (check.scope !== "shift") {
@@ -340,6 +353,7 @@ export function registerWaterControl(route, db, d) {
       }
       const row = summaryRow(check);
       summary.shiftCount++;
+      summary.stockClosedAt = row.closedAt;
       for (const field of [
         "usageLiters",
         "salesLiters",
@@ -358,6 +372,7 @@ export function registerWaterControl(route, db, d) {
         summary[field] += row.activity?.[field] ?? 0;
       for (const group of summary.groups) {
         const source = check.comparison.find((g) => g.group === group.group);
+        group.closingLiters = source.closingLiters;
         for (const field of [
           "usageLiters",
           "salesLiters",

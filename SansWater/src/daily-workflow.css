@@ -1462,6 +1462,42 @@
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
+#depot-order-payment-review .rv-phone .rv-water-stock-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 10px;
+  padding: 5px 7px;
+  margin: 2px 0 5px;
+  border-radius: 6px;
+  background: #eeebff;
+  color: #57459d;
+  font-size: 11px;
+  line-height: 1.3;
+}
+#depot-order-payment-review .rv-phone .rv-water-stock-preview small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #75679d;
+  font-size: 10px;
+}
+#depot-order-payment-review
+  .rv-phone
+  .rv-water-stock-preview
+  .rv-water-stock-time {
+  flex-basis: 100%;
+  font-size: 9px;
+}
+#depot-order-payment-review .rv-phone .rv-water-stock-preview > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 12px;
+}
+#depot-order-payment-review .rv-phone .rv-water-stock-preview strong {
+  margin-left: 2px;
+  font-variant-numeric: tabular-nums;
+}
 #depot-order-payment-review .rv-phone .rv-water-group-metrics :is(th, td) {
   padding: 5px 6px;
   overflow-wrap: anywhere;
@@ -1936,10 +1972,14 @@
   background: none;
   text-align: center;
 }
-#depot-order-payment-review .rv-staff-metric-centered + .rv-staff-metric-centered {
+#depot-order-payment-review
+  .rv-staff-metric-centered
+  + .rv-staff-metric-centered {
   position: relative;
 }
-#depot-order-payment-review .rv-staff-metric-centered + .rv-staff-metric-centered::before {
+#depot-order-payment-review
+  .rv-staff-metric-centered
+  + .rv-staff-metric-centered::before {
   position: absolute;
   inset-block: 8px;
   inset-inline-start: 0;
